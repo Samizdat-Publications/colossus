@@ -137,9 +137,11 @@ const FRAG_EMISSIVE = /* glsl */ `
   // patchy coverage: phase 2 splits some stones, phase 3 most of them
   float stonePatch = stoneNoise((vStonePos + uStoneSeed * 3.0) * 0.22 + 3.1);
   float cover = smoothstep(0.78 - 0.34 * uCrack, 0.9 - 0.3 * uCrack, stonePatch);
-  float vein = smoothstep(0.4, 0.95, v) * cover * clamp(uCrack, 0.0, 2.0) * pulse;
+  // wider veins as the golem cracks further open
+  float widen = 0.12 * clamp(uCrack - 0.5, 0.0, 1.2);
+  float vein = smoothstep(0.36 - widen, 0.92 - widen, v) * cover * clamp(uCrack, 0.0, 2.2) * pulse;
   vec3 veinCol = mix(uCrackColor, vec3(1.0, 0.72, 0.35), uHeat * 0.5);
-  totalEmissiveRadiance += veinCol * vein * (1.25 + uHeat * 0.35);
+  totalEmissiveRadiance += veinCol * vein * (1.6 + uHeat * 0.45);
   // moonlit rim
   vec3 nView = normalize(normal);
   float facing = clamp(dot(nView, normalize(vViewPosition)), 0.0, 1.0);

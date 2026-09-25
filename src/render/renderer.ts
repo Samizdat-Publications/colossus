@@ -82,4 +82,59 @@ export class Renderer {
     this.renderPass.camera = this.camera;
     this.composer.render(dt);
   }
+
+  /** Render scale for the quality governor (1.5 at best, 0.7 at worst). */
+  setPixelRatio(r: number): void {
+    const want = Math.min(window.devicePixelRatio || 1, r);
+    if (Math.abs(want - this.pixelRatio) < 0.01) return;
+    this.pixelRatio = want;
+    this.resize();
+  }
+}
+
+/**
+ * Keeps the frame rate up on slower machines: after a sustained slow stretch it steps the quality down
+ * (render scale, then shadow resolution); after a long fast stretch it steps back up. Hysteresis keeps it
+ * from flip-flopping. ?quality=low|medium|high pins a level.
+ */
+export class QualityGovernor {
+  level = 3;
+  private slow = 0;
+  private fast = 0;
+  private pinned = false;
+
+  constructor(
+    private readonly apply: (level: number) => void,
+    pin: string | null,
+  ) {
+    if (pin === 'low' || pin === 'medium' || pin === 'high') {
+      this.level = pin === 'low' ? 0 : pin === 'medium' ? 2 : 3;
+      this.pinned = true;
+    }
+    this.apply(this.level);
+  }
+
+  /** frameMs: smoothed frame time; active: only judge while the fight or the title is running. */
+  update(dt: number, frameMs: number, active: boolean): void {
+    if (this.pinned || !active) return;
+    if (frameMs > 19.5) {
+      this.slow += dt;
+      this.fast = 0;
+    } else if (frameMs < 13.5) {
+      this.fast += dt;
+      this.slow = 0;
+    } else {
+      this.slow = Math.max(0, this.slow - dt);
+      this.fast = Math.max(0, this.fast - dt);
+    }
+    if (this.slow > 2.5 && this.level > 0) {
+      this.level--;
+      this.slow = 0;
+      this.apply(this.level);
+    } else if (this.fast > 12 && this.level < 3) {
+      this.level++;
+      this.fast = 0;
+      this.apply(this.level);
+    }
+  }
 }

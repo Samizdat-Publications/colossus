@@ -370,13 +370,13 @@ export class Golem {
 
   /** How much wider the camera should frame right now (leap, stagger). */
   get wantsWide(): number {
-    if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 4;
-    if (this.state === 'stagger') return 4.5;
+    if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 3;
+    if (this.state === 'stagger') return 3;
     if (this.state === 'dead') return 3;
-    // the phase-change roar is a show: step back and take in the whole pose
-    if (this.state === 'transition') return 3.5;
+    // the phase-change roar has its own cinematic; this only covers the blend back
+    if (this.state === 'transition') return 1.5;
     // the meteor rain: golem, sky and the rings around the warrior all at once
-    if (this.attack?.name === 'meteor') return 3.5;
+    if (this.attack?.name === 'meteor') return 2.5;
     return 0;
   }
 

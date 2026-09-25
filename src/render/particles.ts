@@ -128,7 +128,27 @@ export class Particles {
     this.bounce[i] = e.bounce ? 1 : 0;
   }
 
+  private clearOn = false;
+  private readonly clearA = new THREE.Vector3();
+  private readonly clearB = new THREE.Vector3();
+
+  /** Thin out particles near the line from the camera (a) to the warrior (b), so dust never hides them. */
+  setClearLine(a: THREE.Vector3 | null, b?: THREE.Vector3): void {
+    this.clearOn = !!a && !!b;
+    if (a && b) {
+      this.clearA.copy(a);
+      this.clearB.copy(b);
+    }
+  }
+
   update(dt: number, time: number): void {
+    const ax = this.clearA.x;
+    const ay = this.clearA.y;
+    const az = this.clearA.z;
+    const sx = this.clearB.x - ax;
+    const sy = this.clearB.y - ay;
+    const sz = this.clearB.z - az;
+    const sl2 = sx * sx + sy * sy + sz * sz || 1;
     for (let i = 0; i < this.n; i++) {
       if (this.life[i] <= 0) {
         this.size[i] = 0;
@@ -161,7 +181,17 @@ export class Particles {
       this.col[c] = this.baseCol[c];
       this.col[c + 1] = this.baseCol[c + 1];
       this.col[c + 2] = this.baseCol[c + 2];
-      this.col[c + 3] = this.baseCol[c + 3] * fade * fl;
+      let clear = 1;
+      if (this.clearOn) {
+        const px = this.pos[j] - ax;
+        const py = this.pos[j + 1] - ay;
+        const pz = this.pos[j + 2] - az;
+        const u = Math.min(1, Math.max(0, (px * sx + py * sy + pz * sz) / sl2));
+        const d = Math.hypot(px - sx * u, py - sy * u, pz - sz * u);
+        const w = Math.min(1, Math.max(0, (d - 0.7) / 1.3));
+        clear = 0.12 + 0.88 * w * w * (3 - 2 * w);
+      }
+      this.col[c + 3] = this.baseCol[c + 3] * fade * fl * clear;
     }
     (this.geo.getAttribute('position') as THREE.BufferAttribute).needsUpdate = true;
     (this.geo.getAttribute('aColor') as THREE.BufferAttribute).needsUpdate = true;

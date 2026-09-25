@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Rig } from '../anim/rig';
 import { addCameraFade } from './fade';
 import { makeGolemStoneMaterial } from './stoneMaterial';
+import { addHeroLight } from './heroLight';
 import type { Assets, TexName } from './assets';
 import { ARENA } from '../game/world';
 import GOLEM_RIG from '../data/golem_rig.json';
@@ -130,6 +131,7 @@ export function buildWarriorModel(assets: Assets): WarriorModel {
     warrior_brass: new THREE.MeshStandardMaterial({ color: 0xd09a45, metalness: 1.0, roughness: 0.32, envMapIntensity: 1.3 }),
     warrior_flask: new THREE.MeshStandardMaterial({ color: 0xffa040, emissive: 0xff7a20, emissiveIntensity: 1.4, roughness: 0.15 }),
   };
+  for (const k of Object.keys(mats)) addHeroLight(mats[k]);
   for (const m of meshes(rig.root)) {
     m.material = mats[matName(m)] ?? mats.warrior_steel;
     m.castShadow = true;
@@ -151,6 +153,7 @@ export interface ArenaModel {
   rockMat: THREE.MeshStandardMaterial | null;
   debrisGeo: THREE.BufferGeometry | null;
   debrisMat: THREE.MeshStandardMaterial | null;
+  cliffs: THREE.MeshStandardMaterial;
 }
 
 /** arena.glb, the colonnade (pillars.glb) and rubble (rubble.glb) placed from arena_layout.json. */
@@ -239,11 +242,12 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
     rockMat,
     debrisGeo: firstGeometry(proto(assets.models.rubble, 'debris_0')),
     debrisMat: new THREE.MeshStandardMaterial(stoneParams(tex, 'rock', 0x9a9ca2, 1.0)),
+    cliffs: mats.cliff_rock as THREE.MeshStandardMaterial,
   };
 }
 
 /** Uniforms the game animates: time (ripples) and rain (how hard it falls). */
-export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 } };
+export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 }, uWaterHeat: { value: 0 } };
 
 /** Dark water with a real sheen and raindrop ripples (normals perturbed in the shader). */
 function makeWater(): THREE.MeshStandardMaterial {
@@ -260,7 +264,14 @@ function makeWater(): THREE.MeshStandardMaterial {
 varying vec3 vWaterWorld;
 uniform float uWaterTime;
 uniform float uRain;
+uniform float uWaterHeat;
 float wHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+float wNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(wHash(i), wHash(i + vec2(1.0, 0.0)), u.x), mix(wHash(i + vec2(0.0, 1.0)), wHash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
 // expanding rings from raindrops on a jittered grid
 vec2 ripples(vec2 p, float t) {
   vec2 g = floor(p);
@@ -285,6 +296,18 @@ vec2 ripples(vec2 p, float t) {
   vec2 rp = ripples(vWaterWorld.xz * 2.2, uWaterTime) * 0.18 * uRain + ripples(vWaterWorld.xz * 3.7 + 11.0, uWaterTime * 1.3) * 0.12 * uRain;
   vec3 nW = normalize(vec3(-rp.x, 1.0, -rp.y));
   normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
+}`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+// phase 3: the golem's heat turns the flooded joints into slow-churning molten light
+if (uWaterHeat > 0.001) {
+  vec2 q = vWaterWorld.xz * 0.35;
+  float churn = wNoise(q + vec2(uWaterTime * 0.07, -uWaterTime * 0.05)) * 0.6 + wNoise(q * 2.7 - uWaterTime * 0.11) * 0.4;
+  float hot = smoothstep(0.25, 0.85, churn);
+  // deep red, dimmer than the amber of burning ground: light from below, not fire on the floor
+  totalEmissiveRadiance += mix(vec3(0.32, 0.03, 0.006), vec3(0.85, 0.17, 0.025), hot) * (0.25 + 0.65 * hot) * uWaterHeat;
 }`,
       );
   };

@@ -346,8 +346,8 @@ const ROAR_SKY: PoseDef = mergeDefs(ROAR, {
   head: [-16, 0, 0],
 });
 
-// ---- stagger: a giant on its knees, torso still up, head bowed, fists planted in front ----
-const KNEEL: PoseDef = {
+// ---- the old symmetric kneel: the rubble mound of the title screen and intro is built on it ----
+const KNEEL_SYM: PoseDef = {
   $pos: [0, -4.2, 0.3],
   hips: [-12, 0, 0],
   spine: [20, 0, 0],
@@ -370,7 +370,34 @@ const KNEEL: PoseDef = {
   foot_R: [82, 0, 0],
 };
 
+// ---- stagger: a beaten giant down on one knee, the other knee up, one fist braced on the floor, the
+// other arm slumped over the raised knee, head hanging (asymmetric so it reads as a figure from any side)
+const KNEEL: PoseDef = mergeDefs(KNEEL_SYM, {
+  $pos: [0, -4.2, 0.3],
+  hips: [-12, 0, 4],
+  spine: [24, 6, -4],
+  chest: [14, 4, -5],
+  neck: [10, 0, 0],
+  head: [30, -8, 0],
+  upperarm_L: [-52, 0, 22],
+  forearm_L: [-16, 0, 0],
+  hand_L: [50, 0, 0],
+  upperarm_R: [-26, 0, -4],
+  forearm_R: [-60, 0, 0],
+  hand_R: [40, 0, 0],
+  thigh_R: [-85, 0, -12],
+  shin_R: [95, 0, 0],
+  foot_R: [4, 0, 0],
+});
+
 const KNEEL_SLUMP: PoseDef = mergeDefs(KNEEL, {
+  $pos: [0, -4.35, 0.35],
+  spine: [29, 6, -4],
+  chest: [18, 4, -5],
+  head: [38, -8, 0],
+});
+
+const KNEEL_SYM_SLUMP: PoseDef = mergeDefs(KNEEL_SYM, {
   $pos: [0, -4.35, 0.35],
   spine: [25, 0, 0],
   chest: [16, 0, 0],
@@ -425,7 +452,7 @@ const LEAP_AIR: PoseDef = mergeDefs(DOUBLE_RAISE, {
 });
 
 // ---- dormant rubble (used for the intro camera and title screen) ----
-const DORMANT: PoseDef = mergeDefs(KNEEL_SLUMP, {
+const DORMANT: PoseDef = mergeDefs(KNEEL_SYM_SLUMP, {
   $pos: [0, -5.6, 0.6],
   spine: [60, 0, 0],
   chest: [40, 0, 0],

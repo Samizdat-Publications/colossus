@@ -76,8 +76,25 @@ async function shot(label) {
   const file = `${String(shotN).padStart(2, '0')}_${label}.png`;
   await page.screenshot({ path: path.join(outDir, file) });
   const s = await state();
-  shots.push({ file, label, flow: s.flow, golem: s.golem.state, attack: s.golem.attack, step: s.golem.step, php: s.player.hp, ghp: s.golem.hpFrac });
-  log('shot', file, s.flow, s.golem.attack ?? '', s.golem.step);
+  // how big the warrior reads on screen (feet to helmet, in pixels) and where the camera sits
+  const view = await page.evaluate(() => {
+    const g = window.__game;
+    const c = g.cam.camera;
+    const p = g.player.pos;
+    const feet = p.clone();
+    feet.y = g.player.y;
+    const head = feet.clone();
+    head.y += 1.85;
+    const a = feet.project(c);
+    const b = head.project(c);
+    return {
+      warriorPx: Math.round(Math.abs(a.y - b.y) * 0.5 * innerHeight),
+      camDist: +Math.hypot(c.position.x - p.x, c.position.z - p.z).toFixed(1),
+      fov: +c.fov.toFixed(1),
+    };
+  });
+  shots.push({ file, label, flow: s.flow, golem: s.golem.state, attack: s.golem.attack, step: s.golem.step, php: s.player.hp, ghp: s.golem.hpFrac, ...view });
+  log('shot', file, s.flow, s.golem.attack ?? '', s.golem.step, `warrior ${view.warriorPx}px cam ${view.camDist}m fov ${view.fov}`);
 }
 async function waitFor(fn, timeoutMs, arg) {
   await page.waitForFunction(fn, arg, { timeout: timeoutMs, polling: 100 });
@@ -109,6 +126,10 @@ try {
     await shot('intro_roar');
     await waitFor(() => window.__CO.state().flow === 'fight', 15000);
     log('fight');
+    // the scripted controls check needs a quiet golem: hold its attacks until the bot takes over
+    await page.evaluate(() => {
+      window.__game.golem.cooldown = 60;
+    });
     await page.mouse.move(width / 2, height / 2);
     await shot('fight_start');
     await key('KeyQ');
@@ -160,6 +181,9 @@ try {
     s = await state();
     report.results.bufferedAttackFired = s.player.stats.coreHits + s.player.stats.deflects >= 0;
     // watch the golem for a while, with the bot taking over for movement so we see attacks
+    await page.evaluate(() => {
+      window.__game.golem.cooldown = 0;
+    });
     await page.evaluate(() => window.__CO.god(true));
     await page.evaluate(() => window.__CO.bot('decent'));
     for (let i = 0; i < 10; i++) {

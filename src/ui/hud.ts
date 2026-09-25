@@ -43,6 +43,7 @@ export class Hud {
   markCore: GolemTarget | null = null;
   private readonly tip: HTMLDivElement;
   private readonly controls: HTMLDivElement;
+  private readonly controlsPill: HTMLDivElement;
   private readonly floaters: HTMLDivElement;
   private bossTrailFrac = 1;
   private hpTrailFrac = 1;
@@ -86,8 +87,9 @@ export class Hud {
       'div',
       'controls',
       this.root,
-      `<div><b>WASD</b> move</div><div><b>Mouse</b> camera</div><div><b>LMB</b> light attack</div><div><b>RMB</b> heavy (hold to charge)</div><div><b>Shift</b> block</div><div><b>Space</b> roll</div><div><b>F</b> jump</div><div><b>Q</b> lock on</div><div><b>R</b> flask</div><div><b>Esc</b> pause</div><div class="dim"><b>H</b> hide this card</div>`,
+      `<div class="grid"><b>WASD</b><span>move</span><b>LMB</b><span>light attack</span><b>Mouse</b><span>camera</span><b>RMB</b><span>heavy (hold)</span><b>Q</b><span>lock on</span><b>Shift</b><span>block</span><b>R</b><span>flask</span><b>Space</b><span>roll</span><b>Esc</b><span>pause</span><b>F</b><span>jump</span></div><div class="foot"><b>H</b> hides or shows this card</div>`,
     );
+    this.controlsPill = el('div', 'controls-pill', this.root, '<b>H</b> controls');
 
     bus.on('noStamina', () => (this.stFlash = 1));
     bus.on('coreHit', (e) => {
@@ -187,6 +189,7 @@ export class Hud {
       if (this.tipTimer <= 0) this.tip.classList.remove('on');
     }
     this.controls.classList.toggle('hidden', !this.showControls);
+    this.controlsPill.classList.toggle('hidden', this.showControls);
 
     for (let i = this.pending.length - 1; i >= 0; i--) {
       const f = this.pending[i];

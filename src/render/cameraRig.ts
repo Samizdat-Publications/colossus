@@ -28,7 +28,7 @@ const _lookPos = new THREE.Vector3();
 const TOP_MARGIN = 0.1; // leaves the top strip for tips
 const BOTTOM_MARGIN = 0.16; // keeps the feet above the (see-through) boss health panel
 const FOV_MIN = 58;
-const FOV_MAX = 78; // wider lenses stretched the frame edges
+const FOV_MAX = 72; // wider lenses stretched the frame edges and shrank the warrior
 
 /**
  * Third-person camera.
@@ -116,7 +116,7 @@ export class CameraRig {
   /** 0..1: how fast pitch and field of view follow the solve (1 for fast moves like the leap). */
   snappy = 0;
   /** Largest automatic pull-back in metres (the director raises it for the leap). */
-  maxPull = 5;
+  maxPull = 3;
 
   update(dt: number, lookX: number, lookY: number, player: Player, golem: Golem, world: World): void {
     this.time += dt;
@@ -154,7 +154,7 @@ export class CameraRig {
     if (this.lockW > 0.001) {
       const close = smoothstep(14, 4, dGolem);
       this.wideNow = damp(this.wideNow, this.wide, this.wide > this.wideNow ? 2.5 : 1.2, dt);
-      const wantDist = 8.6 + close * 1.6 + this.pullBack + this.wideNow;
+      const wantDist = 8.6 + close * 0.8 + this.pullBack + this.wideNow;
       this.lockDist = damp(this.lockDist, wantDist, 3, dt);
       this.riseNow = damp(this.riseNow, this.rise, 2.5, dt);
       const camH = Math.max(1.3, this.pivot.y + 1.1 - close * 0.9 + (this.pullBack + this.wideNow) * 0.35 + this.riseNow);
@@ -193,7 +193,7 @@ export class CameraRig {
       }
       const span = top - feet;
       const needFov = span / (1 - TOP_MARGIN - BOTTOM_MARGIN);
-      const fov = clamp(needFov / DEG, FOV_MIN, FOV_MAX + Math.min(8, this.wideNow)) * DEG;
+      const fov = clamp(needFov / DEG, FOV_MIN, FOV_MAX + Math.min(4, this.wideNow)) * DEG;
       const lo = top - fov * (0.5 - TOP_MARGIN);
       const hi = feet + fov * (0.5 - BOTTOM_MARGIN);
       // when both cannot fit, the ground around the warrior wins and the camera pulls back

@@ -54,8 +54,9 @@ void main() {
   col = mix(col + moonGlow, cloudCol, cloud * 0.7 * smoothstep(-0.05, 0.25, d.y));
   // lightning lights the cloud deck
   col += vec3(0.55, 0.62, 0.8) * uFlash * (0.35 + cloud * 0.9) * smoothstep(-0.1, 0.3, d.y);
-  // lava reflected on the low clouds in phase 3
-  col += vec3(0.32, 0.15, 0.04) * uLava * (1.0 - smoothstep(0.0, 0.45, d.y)) * (0.4 + cloud);
+  // phase 3: a darker sky with a molten glow low on the horizon (the ridges stand black against it)
+  col *= 1.0 - 0.4 * uLava;
+  col += vec3(0.5, 0.12, 0.025) * uLava * (1.0 - smoothstep(-0.03, 0.28, d.y)) * (0.45 + cloud);
   gl_FragColor = vec4(col, 1.0);
 }`;
 

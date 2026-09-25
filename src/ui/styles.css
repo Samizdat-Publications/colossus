@@ -328,24 +328,55 @@ kbd {
 .controls {
   position: absolute;
   right: 24px;
-  top: 96px;
-  font-size: 15px;
+  top: 24px;
+  font-size: 14px;
   color: var(--ash);
-  line-height: 1.55;
-  padding: 12px 16px;
+  line-height: 1.45;
+  padding: 10px 14px 9px;
   background: var(--panel);
   border-left: 2px solid var(--line-strong);
+  transition: opacity 0.6s ease;
 }
-.controls .dim {
-  opacity: 0.65;
-  margin-top: 4px;
+.controls .grid {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  column-gap: 8px;
+  row-gap: 1px;
+  align-items: baseline;
 }
-.controls b {
+.controls .grid span:nth-of-type(odd) {
+  margin-right: 12px;
+}
+.controls .foot {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid var(--line);
+  color: var(--bone);
+  font-size: 13px;
+}
+.controls b,
+.controls-pill b {
   font-family: var(--display);
   font-size: 12px;
   font-weight: 600;
   color: var(--bone);
+}
+.controls .foot b {
   margin-right: 4px;
+}
+.controls-pill {
+  position: absolute;
+  right: 24px;
+  top: 24px;
+  font-size: 13px;
+  color: var(--ash);
+  padding: 4px 10px;
+  background: var(--panel);
+  border-left: 2px solid var(--line);
+  opacity: 0.8;
+}
+.controls-pill b {
+  margin-right: 5px;
 }
 
 /* ------------------------------------------------------------------ floating damage numbers */
