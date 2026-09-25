@@ -26,6 +26,7 @@ import { addBrazierFlames, buildArenaModel, buildGolemModel, buildWarriorModel, 
 import { makeEnvironment } from '../render/environment';
 import { waterUniforms } from '../render/models';
 import { Cape } from '../render/cloth';
+import { AudioEngine } from '../audio/audio';
 import { Hud, Tips } from '../ui/hud';
 import { Screens, type EndStats } from '../ui/screens';
 
@@ -89,6 +90,7 @@ export class Game {
   private crackShown = 0;
   private heatShown = 0;
 
+  readonly audio: AudioEngine;
   /** The warrior's cloth cape (Blender assets only). */
   private cape: Cape | null = null;
   private readonly wind = new THREE.Vector3();
@@ -105,6 +107,15 @@ export class Game {
     this.cam = new CameraRig(window.innerWidth / window.innerHeight);
     this.renderer = new Renderer(container, this.scene, this.cam.camera);
     this.input = new Input(this.renderer.canvas);
+    // audio unlocks on the first click or key (browser rule), then follows the flow
+    this.audio = new AudioEngine(this.cam.camera, opts.sound);
+    const unlock = () => {
+      const first = !this.audio.ctx;
+      this.audio.unlock();
+      if (first && this.audio.ctx) this.audio.setMusic(this.flow === 'fight' ? 'fight' : 'title', this.golem?.phase ?? 1);
+    };
+    window.addEventListener('pointerdown', unlock);
+    window.addEventListener('keydown', unlock);
 
     // atmosphere: moon behind the golem (rim light, shadow toward the player), cool fill, sky dome
     this.scene.background = new THREE.Color(0x0a0e16);
@@ -193,6 +204,7 @@ export class Game {
     const home = new THREE.Vector3(ARENA.golemHome[0], 0, ARENA.golemHome[1]);
     this.golem.reset(home.x, home.z, 0);
     this.assembler = new Assembler([...this.golemParts, ...this.coreMeshes.values()], home);
+    this.assembler.onPieceLanded = (pos, size) => bus.emit('assembleChunk', { pos, size });
     this.fader = new PartFader(this.golemParts);
 
     this.ctx = {
@@ -286,6 +298,8 @@ export class Game {
 
   toTitle(): void {
     this.paused = false;
+    void this.audio.ctx?.resume();
+    this.audio.setMusic('title');
     this.input.exitPointerLock();
     this.resetFight();
     this.setFlow('title');
@@ -328,6 +342,8 @@ export class Game {
   private startIntro(quick: boolean): void {
     this.paused = false;
     this.resetFight();
+    bus.emit('assembleStart', { quick });
+    if (this.audio.music) this.audio.setMusic('title');
     this.tips.newAttempt();
     this.introQuick = quick;
     const F = balance.fight;
@@ -373,11 +389,13 @@ export class Game {
     this.paused = true;
     this.screens.show('pause');
     this.input.exitPointerLock();
+    void this.audio.ctx?.suspend();
   }
 
   resume(): void {
     if (!this.paused) return;
     this.paused = false;
+    void this.audio.ctx?.resume();
     this.screens.show('none');
     if (!this.opts.test) this.input.requestPointerLock();
     this.last = performance.now();
@@ -397,6 +415,7 @@ export class Game {
 
   private onGolemDeath(): void {
     if (this.flow !== 'fight') return;
+    bus.emit('victory', {});
     this.setFlow('victoryCine');
     this.slowmo = 0.3;
     this.slowmoTimer = 1.6;
@@ -715,6 +734,20 @@ export class Game {
   private heroLight: THREE.PointLight | null = null;
   private heldRockMesh: THREE.Mesh | null = null;
 
+  private updateAudio(): void {
+    const p = this.player.pos;
+    // fire: the nearest brazier or burning patch
+    let fire = 0;
+    for (const b of this.arenaModel?.braziers ?? []) fire = Math.max(fire, 1 - Math.min(1, Math.hypot(b.x - p.x, b.z - p.z) / 9));
+    for (const h of this.threats.hazards) {
+      if (h.t < h.arm) continue;
+      fire = Math.max(fire, 1 - Math.min(1, (Math.hypot(h.pos.x - p.x, h.pos.z - p.z) - h.radius) / 7));
+    }
+    const g = this.golem;
+    const heat = this.flow !== 'fight' ? 0 : g.staggered ? 0.15 : 1;
+    this.audio.update(p, 1, fire, heat, g.phase);
+  }
+
   /** Phase 3: the chest plates burst off and tumble to the floor, baring the molten heart. */
   private burstPlates(): void {
     const chest = this.golem.rig.bone('chest');
@@ -855,6 +888,7 @@ export class Game {
     this.threatView.update(this.threats, this.ctx.time);
     this.updatePlates(dt);
     waterUniforms.uWaterTime.value = this.ctx.time;
+    this.updateAudio();
     if (this.cape) {
       // gusty storm wind from the north-west, plus the air the warrior runs through
       const t = this.ctx.time;

@@ -180,23 +180,25 @@ export class Music {
     bus.gain.linearRampToValueAtTime(level, t + 1.6);
     bus.gain.setValueAtTime(level, t + dur - 1.4);
     bus.gain.linearRampToValueAtTime(0.0001, t + dur + 0.8);
+    // one set of voices feeds three vowel formants in parallel ("aah")
+    const voices = ctx.createGain();
     for (const [f, q] of vowel) {
       const bp = ctx.createBiquadFilter();
       bp.type = 'bandpass';
       bp.frequency.value = f;
       bp.Q.value = q;
-      bp.connect(bus);
-      gains.push(bus);
-      for (const n of notes) {
-        for (const det of [-9, 8]) {
-          const o = ctx.createOscillator();
-          o.type = 'sawtooth';
-          o.frequency.value = midi(n);
-          o.detune.value = det;
-          o.connect(bp);
-          o.start(t);
-          o.stop(t + dur + 1);
-        }
+      voices.connect(bp).connect(bus);
+    }
+    gains.push(bus);
+    for (const n of notes) {
+      for (const det of [-9, 8]) {
+        const o = ctx.createOscillator();
+        o.type = 'sawtooth';
+        o.frequency.value = midi(n);
+        o.detune.value = det;
+        o.connect(voices);
+        o.start(t);
+        o.stop(t + dur + 1);
       }
     }
     bus.connect(this.out);

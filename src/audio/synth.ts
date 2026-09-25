@@ -68,12 +68,6 @@ export function env(ctx: BaseAudioContext, t: number, peak: number, attack: numb
   return g;
 }
 
-function stopAfter(node: AudioScheduledSourceNode, t: number): void {
-  node.start(t);
-  node.stop(t + 0.05);
-}
-void stopAfter;
-
 function filt(ctx: BaseAudioContext, type: BiquadFilterType, freq: number, q = 0.7): BiquadFilterNode {
   const f = ctx.createBiquadFilter();
   f.type = type;

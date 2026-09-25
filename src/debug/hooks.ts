@@ -92,6 +92,8 @@ export function installHooks(game: Game): void {
     setGolemHp: (frac: number) => {
       game.golem.hp = game.golem.maxHp * frac;
     },
+    audioLevel: () => game.audio.level(),
+    audioState: () => game.audio.ctx?.state ?? 'none',
     /** Always plays the phase-change roar into phase ph (even if the fight already reached it). */
     forcePhase: (ph: number) => {
       const g = game.golem;

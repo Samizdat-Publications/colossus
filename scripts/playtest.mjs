@@ -176,6 +176,13 @@ try {
     await sleep(200);
     s = await state();
     report.results.resumed = !s.paused;
+    // sound: something must be audible once the fight is on (music, rain, steps, impacts)
+    let peak = 0;
+    for (let i = 0; i < 20; i++) {
+      peak = Math.max(peak, await page.evaluate(() => window.__CO.audioLevel()));
+      await sleep(100);
+    }
+    report.results.audio = { state: await page.evaluate(() => window.__CO.audioState()), peakRms: Math.round(peak * 1000) / 1000 };
   } else if (scenario === 'lose') {
     await page.click('button[data-act="begin"]');
     await page.evaluate(() => window.__CO.skipIntro());

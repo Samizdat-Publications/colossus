@@ -29,6 +29,17 @@ export class AudioEngine {
   private lastPlayed = new Map<string, number>();
   settings: AudioSettings = { master: 0.8, music: 0.55, sfx: 0.9 };
   private unsub: (() => void)[] = [];
+  private analyser: AnalyserNode | null = null;
+  private readonly levelBuf = new Float32Array(1024);
+
+  /** RMS level of everything that is playing (tests use it to check that sound is really produced). */
+  level(): number {
+    if (!this.analyser) return 0;
+    this.analyser.getFloatTimeDomainData(this.levelBuf);
+    let sum = 0;
+    for (const v of this.levelBuf) sum += v * v;
+    return Math.sqrt(sum / this.levelBuf.length);
+  }
 
   constructor(camera: THREE.Camera, private readonly enabled: boolean) {
     this.camera = camera;
@@ -50,6 +61,9 @@ export class AudioEngine {
       comp.release.value = 0.25;
       this.master = ctx.createGain();
       this.master.connect(comp).connect(ctx.destination);
+      this.analyser = ctx.createAnalyser();
+      this.analyser.fftSize = 1024;
+      comp.connect(this.analyser);
       this.sfx = ctx.createGain();
       this.sfx.connect(this.master);
       this.amb = ctx.createGain();
