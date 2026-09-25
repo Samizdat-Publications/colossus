@@ -29,7 +29,10 @@ export class Assembler {
   private lastProgress = -1;
   onPieceLanded: ((pos: THREE.Vector3, size: number) => void) | null = null;
 
+  private readonly center: THREE.Vector3;
+
   constructor(objects: THREE.Object3D[], center: THREE.Vector3, seed = 7) {
+    this.center = center.clone();
     const rng = new RNG(seed);
     for (const obj of objects) {
       const box = new THREE.Box3().setFromObject(obj);
@@ -98,5 +101,21 @@ export class Assembler {
   /** Reset to rubble (for retries). */
   reset(): void {
     this.lastProgress = -1;
+    if (this.home) this.setCenter(this.home);
+  }
+
+  private home: THREE.Vector3 | null = null;
+
+  /** Move the rubble field (keeps each piece's offset) - used to crumble where the golem fell. */
+  setCenter(center: THREE.Vector3): void {
+    if (!this.home) this.home = this.center.clone();
+    const dx = center.x - this.center.x;
+    const dz = center.z - this.center.z;
+    for (const pc of this.pieces) {
+      pc.startPos.x += dx;
+      pc.startPos.z += dz;
+    }
+    this.center.set(center.x, 0, center.z);
+    this.lastProgress = 0.5;
   }
 }

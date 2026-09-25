@@ -17,6 +17,7 @@ import { ThreatView } from '../render/threatView';
 import { buildGreyboxArena } from '../render/arenaGreybox';
 import { buildGreyboxGolem, buildGreyboxWarrior } from '../render/greybox';
 import { Assembler } from '../render/assembler';
+import { setFade } from '../render/fade';
 import { Hud, Tips } from '../ui/hud';
 import { Screens, type EndStats } from '../ui/screens';
 
@@ -113,7 +114,7 @@ export class Game {
     this.scene.add(gRig.root);
     this.golem = new Golem(gRig);
     for (const [name, mesh] of this.coreMeshes) {
-      const light = new THREE.PointLight(0xff7a2a, 0, 16, 2);
+      const light = new THREE.PointLight(name === 'core_chest' ? 0xff6a20 : 0x5fe8ff, 0, 14, 2);
       mesh.add(light);
       this.coreLights.set(name, light);
     }
@@ -173,7 +174,7 @@ export class Game {
     bus.on('deflect', () => {
       this.hitstop = Math.max(this.hitstop, 0.05);
       this.cam.shake(0.1);
-      this.tips.show('deflect', 'Stone <b>deflects</b> your blade. Strike the <b class="ember">glowing cores</b> on its arms.', 3, 5);
+      this.tips.show('deflect', 'Stone <b>deflects</b> your blade. Strike the <b class="core">glowing cores</b> on its arms.', 3, 5);
     });
     bus.on('playerHit', (e) => {
       this.cam.shake(e.knockdown ? 0.5 : 0.32);
@@ -185,7 +186,7 @@ export class Game {
     bus.on('golemDeath', () => this.onGolemDeath());
     bus.on('staggerStart', () => {
       this.cam.shake(0.5);
-      this.tips.show('stagger', 'It is <b>down</b>! Get behind it and strike the <b class="ember">core on its back</b>.', 3, 5);
+      this.tips.show('stagger', 'It is <b>down</b>! Get behind it and strike the <b class="core">core on its back</b>.', 3, 5);
     });
     bus.on('phaseChange', (e) => {
       this.hud.bossVisible = true;
@@ -278,7 +279,7 @@ export class Game {
     this.hud.bossVisible = true;
     bus.emit('fightStart', { attempt: this.attempt });
     if (this.attempt === 1) {
-      this.tips.show('start', 'Lock on with <b>Q</b>. Only the <b class="ember">glowing cores</b> can be harmed.', 1, 6);
+      this.tips.show('start', 'Lock on with <b>Q</b>. Only the <b class="core">glowing cores</b> can be harmed.', 1, 6);
     }
   }
 
@@ -464,6 +465,7 @@ export class Game {
               this.setFlow('victory');
               this.screens.show('victory', this.endStats());
             }
+            this.hud.setVisible(false);
             this.input.exitPointerLock();
           }
         }
@@ -506,28 +508,54 @@ export class Game {
     }
   }
 
+  private crumbleT = -1;
+
   private updateVisuals(dt: number): void {
     this.threatView.update(this.threats, this.ctx.time);
     const g = this.golem;
+    // camera-occlusion fade on the golem (off in cinematics and on the title)
+    const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
+    setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), gameplayCam);
+    // teach the punish window the first few times it opens
+    if (this.flow === 'fight' && g.windowOpen) {
+      if (g.staggered) this.hud.markCore = g.targets.find((t) => t.kind === 'back') ?? null;
+      else {
+        const arm = g.focusCore(this.player.pos);
+        this.hud.markCore = arm && arm.pos.y < 3.4 ? arm : null;
+        if (this.hud.markCore) this.tips.show('window', 'Its fist is stuck: strike the <b class="core">glowing core</b> on its arm!', 3, 3.5);
+      }
+    } else this.hud.markCore = null;
+    // death: the Ruin falls back into rubble
+    if (g.state === 'dead') {
+      if (this.crumbleT < 0 && g.stateTime > 1.1) {
+        this.crumbleT = 0;
+        this.assembler.setCenter(g.pos);
+      }
+      if (this.crumbleT >= 0) {
+        this.crumbleT += dt;
+        this.assembler.apply(1 - Math.min(1, this.crumbleT / 2.4), this.ctx.time);
+      }
+    } else this.crumbleT = -1;
     for (const t of g.targets) {
       const mesh = this.coreMeshes.get(t.name);
       if (!mesh) continue;
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      let base = t.kind === 'back' ? (t.open ? 4.5 : 0.35) : g.state === 'dormant' ? 0.2 : 3.2;
-      if (g.phase >= 2) base *= 1.25;
-      if (g.state === 'dead') base = Math.max(0.05, base * (1 - g.stateTime / 2));
-      const pulse = t.kind === 'arm' && t.pos.y < 3.4 && g.state !== 'dead' ? 1 + 0.5 * Math.sin(this.ctx.time * 9) : 1;
-      mat.emissiveIntensity = base * pulse + t.flash * 8;
+      let base = t.kind === 'back' ? (t.open ? 2.2 : 0.2) : g.state === 'dormant' ? 0.12 : 1.5;
+      if (g.state === 'dead') base = Math.max(0.02, base * (1 - g.stateTime / 1.2));
+      const low = t.open && t.pos.y < 3.4 && g.state !== 'dead';
+      const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;
+      mat.emissiveIntensity = base * pulse + t.flash * 5;
       const light = this.coreLights.get(t.name);
-      if (light) light.intensity = (base * pulse + t.flash * 6) * 14;
+      if (light) light.intensity = (base * pulse * 0.6 + t.flash * 3) * 6;
     }
     const chest = this.coreMeshes.get('core_chest');
     if (chest) {
       const on = g.phase >= 3 && g.state !== 'dormant' ? 1 : 0;
-      (chest.material as THREE.MeshStandardMaterial).emissiveIntensity = on * (4 + Math.sin(this.ctx.time * 5));
-      chest.visible = on > 0 || g.state === 'assemble';
+      (chest.material as THREE.MeshStandardMaterial).emissiveIntensity = on * (1.6 + 0.4 * Math.sin(this.ctx.time * 5));
+      chest.visible = on > 0;
+      chest.scale.setScalar(0.7);
       const l = this.coreLights.get('core_chest');
-      if (l) l.intensity = on * 90;
+      if (l) l.intensity = on * 40;
     }
     void dt;
   }

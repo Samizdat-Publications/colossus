@@ -36,6 +36,9 @@ export class CameraRig {
   private kickAmt = 0;
   private time = 0;
   private fov = 60;
+  /** Lock-on framing: extra look-up (metres) and extra field of view so the whole golem stays in view. */
+  private lift = 0;
+  private zoom = 0;
   shakeScale = 1;
   /** 0 = gameplay, 1 = cinematic shot fully applied. */
   cineBlend = 0;
@@ -121,12 +124,13 @@ export class CameraRig {
     if (this.lockW > 0.001) {
       const w = lerp(0.18, 0.42, smoothstep(22, 5, dGolem));
       _look.lerpVectors(this.pivot, _p, w);
+      _look.y += this.lift;
       _want.lerp(_look, this.lockW);
     }
     this.lookPos.copy(_want);
 
     // blend with cinematic shot
-    let fov = lerp(60, 64, this.lockW * smoothstep(12, 4, dGolem));
+    let fov = lerp(60, 64, this.lockW * smoothstep(12, 4, dGolem)) + this.zoom * this.lockW;
     const cam = this.camera;
     if (this.cineBlend > 0.001) {
       const b = this.cineBlend;
@@ -152,6 +156,37 @@ export class CameraRig {
 
     cam.getWorldDirection(_f);
     this.moveYaw = Math.atan2(_f.x, _f.z);
+
+    // Framing: keep the golem's highest point (head or raised fists) and the player's feet in view.
+    if (locked && this.cineBlend < 0.01 && golem.pos.y < 0.5) {
+      cam.updateMatrixWorld();
+      let top = -Infinity;
+      for (const c of golem.capsules) {
+        for (const q of [c.a, c.b]) {
+          _c.copy(q);
+          _c.y += c.r * 0.5;
+          _c.project(cam);
+          if (_c.z < 1 && Math.abs(_c.x) < 1.4) top = Math.max(top, _c.y);
+        }
+      }
+      _c.set(player.pos.x, player.y, player.pos.z).project(cam);
+      const feet = _c.y;
+      let wantLift = this.lift;
+      let wantZoom = this.zoom;
+      if (top > 0.8) {
+        if (feet > -0.78) wantLift = this.lift + (top - 0.8) * 9;
+        wantZoom = this.zoom + (top - 0.8) * (feet > -0.78 ? 6 : 18);
+      } else if (top < 0.58) {
+        wantLift = this.lift - (0.58 - top) * 4;
+        wantZoom = this.zoom - (0.58 - top) * 10;
+      }
+      if (feet < -0.9) wantLift = this.lift - (-0.9 - feet) * 5;
+      this.lift = damp(this.lift, clamp(wantLift, 0, 8), 8, dt);
+      this.zoom = damp(this.zoom, clamp(wantZoom, 0, 16), 6, dt);
+    } else {
+      this.lift = damp(this.lift, 0, 3, dt);
+      this.zoom = damp(this.zoom, 0, 3, dt);
+    }
   }
 
   /** Title-screen orbit around the arena. */

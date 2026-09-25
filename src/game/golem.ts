@@ -267,6 +267,8 @@ export class Golem {
 
   private cancelAttack(): void {
     this.attack = null;
+    this.leapTarget = null;
+    this.pos.y = 0;
     this.ik.L = this.ik.R = null;
     if (this.heldRock) this.heldRock = '';
   }
@@ -341,8 +343,8 @@ export class Golem {
     const P = this.poses;
     bus.emit('golemDeath', { pos: this.pos.clone() });
     this.anim.play([
-      { name: 'stagger', dur: 0.8, pose: P.roarSky, ease: 'outCubic' },
-      { name: 'collapse', dur: 1.2, pose: P.kneel, ease: 'inQuad' },
+      { name: 'stagger', dur: 0.45, pose: P.roarSky, ease: 'outCubic' },
+      { name: 'collapse', dur: 0.8, pose: P.kneel, ease: 'inQuad' },
       { name: 'slump', dur: 1.6, pose: P.dormant, ease: 'inOutSine' },
       { name: 'still', dur: 1000, pose: P.dormant },
     ]);
@@ -524,10 +526,39 @@ export class Golem {
     }
   }
 
+  /** Where the lock-on camera looks: the torso, but never up in the sky during a leap. */
   lockPoint(out: THREE.Vector3): THREE.Vector3 {
+    if (this.leapTarget) return out.set(this.leapTarget.x, 3.5, this.leapTarget.z);
     const hips = this.capsules[this.rig.i('hips')].a;
     const chest = this.capsules[this.rig.i('chest')].a;
-    return out.lerpVectors(hips, chest, 0.55);
+    out.lerpVectors(hips, chest, 0.55);
+    out.y = clamp(out.y - this.pos.y, 2.5, 9);
+    return out;
+  }
+  /** Landing point while leaping (the camera watches it). */
+  leapTarget: THREE.Vector3 | null = null;
+
+  /** The core the lock-on reticle marks: the back core when it is open, else the nearest open core. */
+  focusCore(from: THREE.Vector3): CoreInfo | null {
+    let best: CoreInfo | null = null;
+    let bestScore = Infinity;
+    for (const t of this.targets) {
+      if (!t.open) continue;
+      const d = Math.hypot(t.pos.x - from.x, t.pos.z - from.z);
+      const score = d + Math.max(0, t.pos.y - 3) * 1.5 - (t.kind === 'back' ? 6 : 0);
+      if (score < bestScore) {
+        bestScore = score;
+        best = t;
+      }
+    }
+    return best;
+  }
+
+  /** Is a punish window open right now (fists planted or golem down)? */
+  get windowOpen(): boolean {
+    const s = this.step;
+    if (this.staggered) return s === 'down';
+    return !!this.attack && (s === 'stuck' || s === 'rest');
   }
 
   // ------------------------------------------------------------------ locomotion & AI
@@ -1167,6 +1198,7 @@ export class Golem {
           if (ld > lim) land.multiplyScalar(lim / ld);
           impact.copy(land).addScaledVector(dir, midDist);
           tele = ctx.threats.telegraph(impact, L.radius, L.air * k, 'leap');
+          this.leapTarget = impact.clone();
           bus.emit('leapTakeoff', { pos: start.clone() });
         },
       },
@@ -1182,6 +1214,7 @@ export class Golem {
         exit: () => {
           this.pos.copy(land);
           this.pos.y = 0;
+          this.leapTarget = null;
         },
       },
       {

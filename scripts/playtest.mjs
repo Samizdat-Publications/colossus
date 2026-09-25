@@ -252,6 +252,7 @@ try {
       if (r > 0) await page.evaluate(() => window.__CO.retry());
       await page.evaluate(() => window.__CO.skipIntro());
       await waitFor(() => window.__CO.state().flow === 'fight', 20000);
+      const evStart = await page.evaluate(() => window.__CO.state().time);
       await page.evaluate(({ m, seed }) => window.__CO.bot(m, seed), { m: mode, seed: 1000 + r * 17 });
       await page.evaluate((s) => window.__CO.setTimeScale(s), scale);
       const deadline = Date.now() + 10 * 60000;
@@ -262,7 +263,7 @@ try {
         await sleep(500);
       }
       s = await state();
-      const ev = await page.evaluate(() => window.__CO.events());
+      const ev = await page.evaluate((t) => window.__CO.events(t), evStart);
       const hits = ev.filter((e) => e.type === 'playerHit').map((e) => e.info);
       const by = {};
       for (const h of hits) by[h] = (by[h] || 0) + 1;

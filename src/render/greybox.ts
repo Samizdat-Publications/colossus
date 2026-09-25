@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { Rig } from '../anim/rig';
+import { addCameraFade } from './fade';
 import GOLEM_RIG from '../data/golem_rig.json';
 import WARRIOR_RIG from '../data/warrior_rig.json';
 
@@ -7,8 +8,8 @@ const _up = new THREE.Vector3(0, 1, 0);
 
 /** Primitive stand-ins for the golem: a stone block per bone, glowing core spheres, eyes. */
 export function buildGreyboxGolem(rig: Rig): { cores: Map<string, THREE.Mesh>; eyes: THREE.Mesh[]; parts: THREE.Mesh[] } {
-  const stone = new THREE.MeshStandardMaterial({ color: 0x6d7078, roughness: 0.85, metalness: 0.0, flatShading: true });
-  const stoneDark = new THREE.MeshStandardMaterial({ color: 0x55585f, roughness: 0.9, flatShading: true });
+  const stone = addCameraFade(new THREE.MeshStandardMaterial({ color: 0x6d7078, roughness: 0.85, metalness: 0.0, flatShading: true }));
+  const stoneDark = addCameraFade(new THREE.MeshStandardMaterial({ color: 0x55585f, roughness: 0.9, flatShading: true }));
   const parts: THREE.Mesh[] = [];
   for (let i = 0; i < rig.count; i++) {
     const name = rig.names[i];
@@ -35,8 +36,16 @@ export function buildGreyboxGolem(rig: Rig): { cores: Map<string, THREE.Mesh>; e
   }
   const cores = new Map<string, THREE.Mesh>();
   for (const c of GOLEM_RIG.cores) {
-    const mat = new THREE.MeshStandardMaterial({ color: 0x331100, emissive: 0xff6a1a, emissiveIntensity: 3.2, roughness: 0.4 });
-    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(c.radius * 0.8, 1), mat);
+    const isChest = c.kind === 'chest';
+    const mat = addCameraFade(
+      new THREE.MeshStandardMaterial({
+        color: isChest ? 0x331100 : 0x0a2a30,
+        emissive: isChest ? 0xff5a14 : 0x5ff0ff,
+        emissiveIntensity: 1.6,
+        roughness: 0.3,
+      }),
+    );
+    const m = new THREE.Mesh(new THREE.IcosahedronGeometry(c.radius * 0.62, 1), mat);
     const bi = rig.i(c.bone);
     m.position.fromArray(c.pos).sub(rig.restWorld[bi]);
     m.name = c.name;
@@ -44,7 +53,7 @@ export function buildGreyboxGolem(rig: Rig): { cores: Map<string, THREE.Mesh>; e
     cores.set(c.name, m);
   }
   const eyes: THREE.Mesh[] = [];
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffa040, emissiveIntensity: 5 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffa040, emissiveIntensity: 2.2 });
   const hi = rig.i(GOLEM_RIG.eyes.bone);
   for (const p of [GOLEM_RIG.eyes.left, GOLEM_RIG.eyes.right]) {
     const e = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.22, 0.2), eyeMat);

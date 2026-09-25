@@ -3,6 +3,23 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+
+/** Replaces NaN/Inf pixels before bloom: one bad pixel would otherwise blur into a black screen. */
+const SanitizeShader = {
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0);
+      gl_FragColor = min(c, vec4(48.0));
+    }`,
+};
 
 /** WebGL renderer + HDR composer (MSAA, bloom, tone mapping). */
 export class Renderer {
@@ -34,7 +51,8 @@ export class Renderer {
     this.composer = new EffectComposer(r, rt);
     this.renderPass = new RenderPass(scene, camera);
     this.composer.addPass(this.renderPass);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.7, 0.45, 0.82);
+    this.composer.addPass(new ShaderPass(SanitizeShader));
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.42, 0.35, 0.92);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
 

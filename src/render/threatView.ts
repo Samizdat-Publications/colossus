@@ -1,29 +1,133 @@
 import * as THREE from 'three';
 import type { Fissure, Hazard, Rock, Spike, Telegraph, Threats, Wave } from '../game/threats';
 
-/** Primitive visuals for the threats (greybox; replaced by proper effects later). */
+/*
+ * Threat visuals. One colour language:
+ *   RED    ring + filling disc  = something is about to land here (slam, rock, meteor, leap, fissure path)
+ *   ORANGE crack pattern        = burning ground (dim and flickering while it charges, bright once it burns)
+ *   PALE   ring band            = shockwave travelling outward (roll through it or jump over it)
+ */
+const RED = new THREE.Color(0xff2e22);
+const EMBER = new THREE.Color(0xff7418);
+const LAVA = new THREE.Color(0xff5410);
+
+function crackTexture(): THREE.CanvasTexture {
+  const S = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const g = cv.getContext('2d')!;
+  g.fillStyle = '#000';
+  g.fillRect(0, 0, S, S);
+  g.strokeStyle = '#fff';
+  g.lineCap = 'round';
+  let seed = 11;
+  const rnd = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  const branch = (x: number, y: number, a: number, len: number, w: number, depth: number) => {
+    let cx = x;
+    let cy = y;
+    const steps = 6;
+    for (let i = 0; i < steps; i++) {
+      const nx = cx + Math.cos(a) * (len / steps);
+      const ny = cy + Math.sin(a) * (len / steps);
+      g.lineWidth = w * (1 - i / (steps + 2));
+      g.beginPath();
+      g.moveTo(cx, cy);
+      g.lineTo(nx, ny);
+      g.stroke();
+      cx = nx;
+      cy = ny;
+      a += (rnd() - 0.5) * 0.7;
+      if (depth > 0 && rnd() < 0.3) branch(cx, cy, a + (rnd() - 0.5) * 1.6, len * 0.45, w * 0.6, depth - 1);
+    }
+  };
+  for (let i = 0; i < 11; i++) branch(S / 2, S / 2, (i / 11) * Math.PI * 2 + rnd() * 0.4, S * (0.36 + rnd() * 0.12), 7, 2);
+  // bright crater centre
+  const grd = g.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S * 0.16);
+  grd.addColorStop(0, 'rgba(255,255,255,0.9)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, S, S);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.NoColorSpace;
+  return tex;
+}
+
+const RING_VERT = /* glsl */ `
+varying vec2 vXZ;
+void main() {
+  vec4 w = modelMatrix * vec4(position, 1.0);
+  vXZ = w.xz;
+  gl_Position = projectionMatrix * viewMatrix * w;
+}`;
+const RING_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform vec2 uCenter;
+uniform float uR;
+uniform float uWidth;
+uniform float uAlpha;
+varying vec2 vXZ;
+void main() {
+  float d = length(vXZ - uCenter);
+  float band = 1.0 - smoothstep(0.0, uWidth * 0.5, abs(d - uR));
+  float core = 1.0 - smoothstep(0.0, uWidth * 0.12, abs(d - uR));
+  float a = (band * 0.55 + core * 0.8) * uAlpha;
+  if (a < 0.01) discard;
+  gl_FragColor = vec4(uColor * (1.0 + core * 1.5), a);
+}`;
+const BAND_VERT = /* glsl */ `
+varying float vH;
+varying float vA;
+void main() {
+  vH = uv.y;
+  vA = uv.x;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+const BAND_FRAG = /* glsl */ `
+uniform vec3 uColor;
+uniform float uAlpha;
+uniform float uTime;
+varying float vH;
+varying float vA;
+void main() {
+  float fade = pow(clamp(1.0 - vH, 0.0, 1.0), 1.6);
+  float shimmer = 0.75 + 0.25 * sin(vA * 180.0 + uTime * 9.0);
+  float a = fade * shimmer * uAlpha;
+  gl_FragColor = vec4(uColor, a);
+}`;
+
 export class ThreatView {
   readonly group = new THREE.Group();
   private readonly hazardMeshes = new Map<Hazard, THREE.Mesh>();
-  private readonly waveMeshes = new Map<Wave, THREE.Mesh>();
-  private readonly rockMeshes = new Map<Rock, THREE.Mesh>();
+  private readonly waveMeshes = new Map<Wave, THREE.Group>();
+  private readonly rockMeshes = new Map<Rock, THREE.Group>();
   private readonly teleMeshes = new Map<Telegraph, THREE.Group>();
   private readonly spikeMeshes = new Map<Spike, THREE.Mesh>();
   private readonly fissureMeshes = new Map<Fissure, THREE.Mesh>();
-  private readonly stripGeo = new THREE.PlaneGeometry(1, 1);
-  private readonly discGeo = new THREE.CircleGeometry(1, 40);
-  private readonly ringGeo = new THREE.RingGeometry(0.9, 1, 56);
-  private readonly wallGeo = new THREE.CylinderGeometry(1, 1, 1, 64, 1, true);
+  private readonly discGeo = new THREE.CircleGeometry(1, 48);
+  private readonly ringGeo = new THREE.RingGeometry(0.88, 1, 64);
+  private readonly quadGeo = new THREE.PlaneGeometry(2, 2);
+  private readonly bandGeo = new THREE.CylinderGeometry(1, 1, 1, 96, 1, true);
   private readonly rockGeo = new THREE.IcosahedronGeometry(1, 0);
+  private readonly trailGeo = new THREE.ConeGeometry(0.7, 1, 10, 1, true);
   private readonly spikeGeo = new THREE.ConeGeometry(0.7, 2.6, 5);
-  private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x6a6660, roughness: 0.9, flatShading: true });
+  private readonly stripGeo = new THREE.PlaneGeometry(1, 1);
+  private readonly crackTex = crackTexture();
+  private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x5a5550, roughness: 0.9, flatShading: true, emissive: 0xff5a14, emissiveIntensity: 0.45 });
+  private readonly trailMat = new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  private time = 0;
 
   constructor() {
     this.discGeo.rotateX(-Math.PI / 2);
     this.ringGeo.rotateX(-Math.PI / 2);
+    this.quadGeo.rotateX(-Math.PI / 2);
     this.stripGeo.rotateX(-Math.PI / 2);
     this.stripGeo.translate(0, 0, 0.5);
-    this.wallGeo.translate(0, 0.5, 0);
+    this.bandGeo.translate(0, 0.5, 0);
+    // trail cone: tip at the rock, flaring backward along -Y then rotated to face -velocity
+    this.trailGeo.translate(0, -0.5, 0);
     this.group.name = 'threats';
   }
 
@@ -31,6 +135,10 @@ export class ThreatView {
     for (const [k, v] of map) {
       if (!list.includes(k)) {
         this.group.remove(v);
+        v.traverse((o) => {
+          const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+          if (m && m !== this.rockMat && m !== this.trailMat) m.dispose();
+        });
         map.delete(k);
       }
     }
@@ -44,95 +152,183 @@ export class ThreatView {
   }
 
   update(th: Threats, time: number): void {
+    this.time = time;
+    this.updateHazards(th);
+    this.updateWaves(th);
+    this.updateRocks(th);
+    this.updateTelegraphs(th);
+    this.updateFissures(th);
+    this.updateSpikes(th);
+  }
+
+  private updateHazards(th: Threats): void {
     this.sync(th.hazards, this.hazardMeshes, (h) => {
       const m = new THREE.Mesh(
         this.discGeo,
-        new THREE.MeshBasicMaterial({ color: h.kind === 'lava' ? 0xff5a10 : 0xd0501a, transparent: true, opacity: 0.5, depthWrite: false }),
+        new THREE.MeshBasicMaterial({
+          color: h.kind === 'lava' ? LAVA : EMBER,
+          alphaMap: this.crackTex,
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        }),
       );
-      m.position.copy(h.pos).setY(0.04);
-      m.scale.setScalar(h.radius);
+      m.position.copy(h.pos).setY(0.05);
+      m.rotation.y = h.seed;
+      m.renderOrder = 2;
       return m;
     });
     for (const [h, m] of this.hazardMeshes) {
       const mat = m.material as THREE.MeshBasicMaterial;
-      const grow = Math.min(1, h.t / 0.35);
-      const fade = Math.min(1, (h.dur - h.t) / 1);
+      const grow = Math.min(1, h.t / 0.3);
+      const fade = Math.min(1, (h.dur - h.t) / 1.2);
       const armed = h.t >= h.arm;
-      const warm = armed ? 1 : 0.15 + 0.35 * Math.max(0, 1 - (h.arm - h.t) / 1.2);
-      mat.opacity = (0.35 + 0.15 * Math.sin(time * (armed ? 6 : 14) + h.seed)) * fade * warm;
-      m.scale.setScalar(h.radius * (0.4 + 0.6 * grow));
+      // charging: dim, fast flicker; burning: bright with a slow pulse
+      const charge = armed ? 1 : 0.18 + 0.3 * Math.max(0, 1 - (h.arm - h.t) / 1.0);
+      const flick = armed ? 0.85 + 0.15 * Math.sin(this.time * 7 + h.seed) : 0.6 + 0.4 * Math.sin(this.time * 22 + h.seed);
+      mat.opacity = Math.max(0, charge * flick * fade);
+      m.scale.setScalar(h.radius * (0.35 + 0.65 * grow));
     }
+  }
 
-    this.sync(th.waves, this.waveMeshes, () => {
-      const m = new THREE.Mesh(
-        this.wallGeo,
-        new THREE.MeshBasicMaterial({ color: 0xffb070, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }),
+  private updateWaves(th: Threats): void {
+    this.sync(th.waves, this.waveMeshes, (w) => {
+      const g = new THREE.Group();
+      const ring = new THREE.Mesh(
+        this.quadGeo,
+        new THREE.ShaderMaterial({
+          vertexShader: RING_VERT,
+          fragmentShader: RING_FRAG,
+          uniforms: {
+            uColor: { value: new THREE.Color(0xffc080) },
+            uCenter: { value: new THREE.Vector2(w.center.x, w.center.z) },
+            uR: { value: w.r },
+            uWidth: { value: w.width },
+            uAlpha: { value: 1 },
+          },
+          transparent: true,
+          depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        }),
       );
-      return m;
+      ring.position.copy(w.center).setY(0.06);
+      ring.scale.setScalar(w.maxR + 1);
+      const band = new THREE.Mesh(
+        this.bandGeo,
+        new THREE.ShaderMaterial({
+          vertexShader: BAND_VERT,
+          fragmentShader: BAND_FRAG,
+          uniforms: { uColor: { value: new THREE.Color(0xffe2b8) }, uAlpha: { value: 0.5 }, uTime: { value: 0 } },
+          transparent: true,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          blending: THREE.AdditiveBlending,
+        }),
+      );
+      band.position.copy(w.center);
+      g.add(ring, band);
+      return g;
     });
-    for (const [w, m] of this.waveMeshes) {
-      m.position.copy(w.center);
-      m.scale.set(w.r, w.height, w.r);
-      (m.material as THREE.MeshBasicMaterial).opacity = 0.6 * (1 - w.r / w.maxR) + 0.15;
+    for (const [w, g] of this.waveMeshes) {
+      const ring = g.children[0] as THREE.Mesh;
+      const band = g.children[1] as THREE.Mesh;
+      const life = 1 - w.r / w.maxR;
+      const rm = ring.material as THREE.ShaderMaterial;
+      rm.uniforms.uR.value = w.r;
+      rm.uniforms.uAlpha.value = 0.35 + 0.65 * life;
+      band.scale.set(w.r, w.height * 1.25, w.r);
+      const bm = band.material as THREE.ShaderMaterial;
+      bm.uniforms.uAlpha.value = 0.55 * life + 0.1;
+      bm.uniforms.uTime.value = this.time;
     }
+  }
 
+  private updateRocks(th: Threats): void {
     this.sync(th.rocks, this.rockMeshes, (r) => {
+      const g = new THREE.Group();
       const m = new THREE.Mesh(this.rockGeo, this.rockMat);
       m.scale.setScalar(r.size);
       m.castShadow = true;
-      return m;
+      const trail = new THREE.Mesh(this.trailGeo, this.trailMat);
+      g.add(m, trail);
+      return g;
     });
-    for (const [r, m] of this.rockMeshes) {
-      m.visible = r.t >= 0;
-      m.position.copy(r.pos);
-      m.rotation.set(r.spin.x * r.t, r.spin.y * r.t, r.spin.z * r.t);
+    const up = new THREE.Vector3(0, 1, 0);
+    for (const [r, g] of this.rockMeshes) {
+      const visible = r.t >= (r.meteor ? -0.9 : 0);
+      g.visible = visible;
+      if (!visible) continue;
+      const rock = g.children[0];
+      const trail = g.children[1] as THREE.Mesh;
+      if (r.t < 0) {
+        // meteor hanging in the clouds, glowing, drifting down to its launch point
+        g.position.copy(r.pos);
+        g.position.y += -r.t * 6;
+      } else g.position.copy(r.pos);
+      rock.rotation.set(r.spin.x * r.t, r.spin.y * r.t, r.spin.z * r.t);
+      const v = r.t < 0 ? new THREE.Vector3(0, -1, 0) : r.vel.clone();
+      const speed = v.length();
+      if (speed > 0.1) {
+        trail.quaternion.setFromUnitVectors(up, v.normalize());
+        trail.scale.set(r.size * 0.9, Math.min(9, 1.5 + speed * 0.22) * (r.meteor ? 1.4 : 1), r.size * 0.9);
+      }
     }
+  }
 
-    this.sync(th.telegraphs, this.teleMeshes, (t) => {
+  private updateTelegraphs(th: Threats): void {
+    this.sync(th.telegraphs, this.teleMeshes, () => {
       const g = new THREE.Group();
-      const color = t.kind === 'meteor' || t.kind === 'rock' ? 0xff8a3a : 0xff5030;
       const ring = new THREE.Mesh(
         this.ringGeo,
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }),
+        new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }),
       );
       const fill = new THREE.Mesh(
         this.discGeo,
-        new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending }),
+        new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending }),
       );
       g.add(ring, fill);
+      g.renderOrder = 3;
       return g;
     });
     for (const [t, g] of this.teleMeshes) {
-      g.position.copy(t.pos).setY(0.06);
-      g.scale.setScalar(t.radius);
+      g.position.copy(t.pos).setY(0.07);
       const u = Math.min(1, t.t / t.dur);
+      // the ring appears slightly larger and tightens onto the danger radius
+      const s = t.radius * (1 + 0.25 * (1 - Math.min(1, u * 3)));
+      g.scale.setScalar(s);
       const ring = g.children[0] as THREE.Mesh;
       const fill = g.children[1] as THREE.Mesh;
-      (ring.material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.5 * u + 0.15 * Math.sin(time * 18);
+      const late = u > 0.75 ? 0.5 + 0.5 * Math.sin(this.time * 40) : 0;
+      (ring.material as THREE.MeshBasicMaterial).opacity = 0.45 + 0.45 * u + 0.25 * late;
       fill.scale.setScalar(Math.max(0.01, u));
-      (fill.material as THREE.MeshBasicMaterial).opacity = 0.12 + 0.2 * u;
+      (fill.material as THREE.MeshBasicMaterial).opacity = 0.1 + 0.22 * u;
     }
+  }
 
+  private updateFissures(th: Threats): void {
     this.sync(th.fissures, this.fissureMeshes, (f) => {
       const m = new THREE.Mesh(
         this.stripGeo,
-        new THREE.MeshBasicMaterial({ color: f.kind === 'lava' ? 0xff5a18 : 0xff7a2a, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }),
+        new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.6, depthWrite: false, blending: THREE.AdditiveBlending }),
       );
-      m.position.copy(f.from).addScaledVector(f.dir, f.start).setY(0.07);
+      m.position.copy(f.from).addScaledVector(f.dir, f.start).setY(0.08);
       m.rotation.y = Math.atan2(f.dir.x, f.dir.z);
       m.scale.set(1.4, 1, f.length);
       return m;
     });
     for (const [f, m] of this.fissureMeshes) {
       const u = Math.min(1, f.t / Math.max(0.01, f.delay));
-      (m.material as THREE.MeshBasicMaterial).opacity = 0.25 + 0.55 * u + 0.2 * Math.sin(time * 30);
-      m.scale.x = 0.6 + 1.2 * u;
+      const mat = m.material as THREE.MeshBasicMaterial;
+      mat.opacity = 0.25 + 0.5 * u + (f.t < f.delay ? 0.25 * Math.sin(this.time * 30) : 0);
+      m.scale.x = 0.8 + 2.0 * u;
     }
+  }
 
+  private updateSpikes(th: Threats): void {
     this.sync(th.spikes, this.spikeMeshes, (s) => {
       const m = new THREE.Mesh(
         this.spikeGeo,
-        new THREE.MeshStandardMaterial({ color: 0x5a5550, emissive: s.kind === 'lava' ? 0xff4a10 : 0x802a08, emissiveIntensity: 1.2, flatShading: true }),
+        new THREE.MeshStandardMaterial({ color: 0x5a5550, emissive: s.kind === 'lava' ? 0xff4a10 : 0xa03a0c, emissiveIntensity: 1.1, flatShading: true }),
       );
       m.position.copy(s.pos);
       m.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * 6, (Math.random() - 0.5) * 0.5);

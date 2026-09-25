@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { bus } from '../core/events';
 import type { Player } from '../game/player';
 import type { Golem } from '../game/golem';
+import type { GolemTarget } from '../game/context';
 
 export const BOSS_NAME = 'OSTRAKON, THE LIVING RUIN';
 
@@ -28,6 +29,10 @@ export class Hud {
   private readonly stWrap: HTMLDivElement;
   private readonly flaskWrap: HTMLDivElement;
   private readonly reticle: HTMLDivElement;
+  private readonly marker: HTMLDivElement;
+  private readonly coreDots: HTMLDivElement[] = [];
+  /** A core to point at with a pulsing chevron (punish windows, first attempts). */
+  markCore: GolemTarget | null = null;
   private readonly tip: HTMLDivElement;
   private readonly controls: HTMLDivElement;
   private readonly floaters: HTMLDivElement;
@@ -64,6 +69,8 @@ export class Hud {
     this.flaskWrap = el('div', 'flasks', pl);
 
     this.reticle = el('div', 'reticle', this.root);
+    this.marker = el('div', 'core-marker', this.root, '<i></i><span>STRIKE</span>');
+    for (let i = 0; i < 3; i++) this.coreDots.push(el('div', 'core-dot', this.root));
     this.tip = el('div', 'tip', this.root);
     this.floaters = el('div', 'floaters', this.root);
     this.controls = el(
@@ -119,7 +126,7 @@ export class Hud {
     this.boss.dataset.phase = String(golem.phase);
     if (this.dmgTimer > 0) {
       this.dmgTimer -= dt;
-      this.bossDmg.textContent = String(Math.round(this.dmgAccum));
+      this.bossDmg.textContent = `-${Math.round(this.dmgAccum)}`;
       this.bossDmg.style.opacity = String(Math.min(1, this.dmgTimer * 2));
       if (this.dmgTimer <= 0) this.dmgAccum = 0;
     } else this.bossDmg.style.opacity = '0';
@@ -138,14 +145,34 @@ export class Hud {
       this.flaskWrap.innerHTML = `<span class="key">R</span>` + Array.from({ length: player.B.flask.charges }, (_, i) => `<i class="${i < flasks ? 'full' : 'empty'}"></i>`).join('');
     }
 
-    // lock-on reticle
-    if (player.locked && golem.lockable) {
-      const p = golem.lockPoint(new THREE.Vector3()).project(camera);
-      if (p.z < 1) {
-        this.reticle.style.display = 'block';
-        this.reticle.style.transform = `translate(${((p.x + 1) / 2) * width}px, ${((1 - p.y) / 2) * height}px) rotate(45deg)`;
-      } else this.reticle.style.display = 'none';
+    // lock-on reticle sits on a core (the only thing worth hitting), with dots on the other open cores
+    const toScreen = (v: THREE.Vector3) => {
+      const p = v.clone().project(camera);
+      return { x: ((p.x + 1) / 2) * width, y: ((1 - p.y) / 2) * height, on: p.z < 1 && Math.abs(p.x) < 1.1 && Math.abs(p.y) < 1.1 };
+    };
+    const focus = player.locked && golem.lockable ? golem.focusCore(player.pos) : null;
+    if (focus) {
+      const p = toScreen(focus.pos);
+      this.reticle.style.display = p.on ? 'block' : 'none';
+      this.reticle.style.transform = `translate(${p.x}px, ${p.y}px) rotate(45deg)`;
     } else this.reticle.style.display = 'none';
+    let di = 0;
+    if (player.locked && golem.lockable) {
+      for (const t of golem.targets) {
+        if (!t.open || t === focus || di >= this.coreDots.length) continue;
+        const p = toScreen(t.pos);
+        if (!p.on) continue;
+        const d = this.coreDots[di++];
+        d.style.display = 'block';
+        d.style.transform = `translate(${p.x}px, ${p.y}px)`;
+      }
+    }
+    for (; di < this.coreDots.length; di++) this.coreDots[di].style.display = 'none';
+    if (this.markCore) {
+      const p = toScreen(this.markCore.pos.clone().setY(this.markCore.pos.y + this.markCore.radius + 0.6));
+      this.marker.style.display = p.on ? 'block' : 'none';
+      this.marker.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    } else this.marker.style.display = 'none';
 
     if (this.tipTimer > 0) {
       this.tipTimer -= dt;
