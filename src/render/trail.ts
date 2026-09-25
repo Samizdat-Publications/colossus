@@ -82,6 +82,13 @@ export class SwordTrail {
       this.base[0].copy(this.local0).applyMatrix4(this.sword.matrixWorld);
       this.tip[0].copy(this.local1).applyMatrix4(this.sword.matrixWorld);
       this.age[0] = 0;
+      // a fresh swing: forget where the last one ended (the quad between them drew a long streak)
+      if (this.count === 0) {
+        for (let i = 1; i < N; i++) {
+          this.base[i].copy(this.base[0]);
+          this.tip[i].copy(this.tip[0]);
+        }
+      }
       this.count = Math.min(N, this.count + 1);
     }
     const life = heavy ? 0.22 : 0.15;

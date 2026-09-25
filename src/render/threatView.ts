@@ -505,7 +505,7 @@ export class ThreatView {
       m.castShadow = true;
       const trail = new THREE.Mesh(this.trailGeo, this.trailMat);
       const halo = new THREE.Sprite(this.haloMat);
-      halo.scale.setScalar(r.size * 4.2);
+      halo.scale.setScalar(r.size * 2.6);
       g.add(m, trail, halo);
       return g;
     });

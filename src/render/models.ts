@@ -75,6 +75,7 @@ export function buildGolemModel(assets: Assets): GolemModel {
         }),
       );
       m.castShadow = false;
+      if (chest) moltenHeart(m.material as THREE.MeshStandardMaterial);
       if (chest) {
         // the molten heart's glow spills out of the burst chest
         const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTexture(), color: 0xff8a30, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }));
@@ -111,6 +112,45 @@ export function buildGolemModel(assets: Assets): GolemModel {
     }
   }
   return { rig, cores, eyes, parts, plates };
+}
+
+/** Time for the molten heart's churn (set by the game each frame). */
+export const heartUniforms = { uHeartTime: { value: 0 } };
+
+/** The phase 3 heart churns: bright molten veins and darker crusts drifting over it. */
+function moltenHeart(mat: THREE.MeshStandardMaterial): void {
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev.call(mat, shader, renderer);
+    Object.assign(shader.uniforms, heartUniforms);
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+uniform float uHeartTime;
+float hh(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+float hn(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hh(i), hh(i + vec3(1, 0, 0)), u.x), mix(hh(i + vec3(0, 1, 0)), hh(i + vec3(1, 1, 0)), u.x), u.y),
+             mix(mix(hh(i + vec3(0, 0, 1)), hh(i + vec3(1, 0, 1)), u.x), mix(hh(i + vec3(0, 1, 1)), hh(i + vec3(1, 1, 1)), u.x), u.y), u.z);
+}`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+{
+  vec3 q = vFadeWorld * 1.6 + vec3(0.0, -uHeartTime * 0.6, uHeartTime * 0.25);
+  float n = hn(q) * 0.6 + hn(q * 2.3 + 5.0) * 0.4;
+  float vein = smoothstep(0.45, 0.8, n);
+  totalEmissiveRadiance *= 0.35 + 1.25 * vein;
+  totalEmissiveRadiance += vec3(1.0, 0.85, 0.5) * pow(vein, 4.0) * 1.5 * length(emissive);
+}`,
+      );
+  };
+  const key = mat.customProgramCacheKey.bind(mat);
+  mat.customProgramCacheKey = () => `${key()}|molten`;
 }
 
 let haloTex: THREE.Texture | null = null;

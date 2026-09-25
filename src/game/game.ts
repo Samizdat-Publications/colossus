@@ -24,6 +24,7 @@ import { createSky, skyUniforms } from '../render/sky';
 import type { Assets } from '../render/assets';
 import { addBrazierFlames, buildArenaModel, buildGolemModel, buildWarriorModel, type ArenaModel } from '../render/models';
 import { setHeroLight } from '../render/heroLight';
+import { heartUniforms } from '../render/models';
 import { makeEnvironment } from '../render/environment';
 import { waterUniforms } from '../render/models';
 import { Cape } from '../render/cloth';
@@ -869,10 +870,10 @@ export class Game {
     const t = Math.min(1, this.deathT / 5);
     // a limb that swings into the view after the choice (the golem's attack runs on) forces a new choice
     if (this.deathSide !== 0) {
-      _v3.set(p.x + this.deathDir.x * 6.5, 2.4, p.z + this.deathDir.z * 6.5);
+      _v3.set(p.x + this.deathDir.x * 5, 4.2, p.z + this.deathDir.z * 5);
       _v2.set(p.x, 0.4, p.z);
       let blocked = false;
-      for (const cap of this.golem.capsules) if (segSegDist(_v3, _v2, cap.a, cap.b) < cap.r * 0.9 + 0.25) blocked = true;
+      for (const cap of this.golem.capsules) if (segSegDist(_v3, _v2, cap.a, cap.b) < cap.r * 1.3 + 0.4) blocked = true;
       this.deathBlocked = blocked ? this.deathBlocked + dt : 0;
       if (this.deathBlocked > 0.25) {
         this.deathSide = 0;
@@ -892,13 +893,13 @@ export class Game {
         const a = (i / 16) * Math.PI * 2;
         const ux = Math.sin(a);
         const uz = Math.cos(a);
-        const cx = p.x + ux * 6.5;
-        const cz = p.z + uz * 6.5;
+        const cx = p.x + ux * 5;
+        const cz = p.z + uz * 5;
         if (Math.hypot(cx, cz) > 28) continue;
-        _v3.set(cx, 2.4, cz);
+        _v3.set(cx, 4.2, cz);
         _v2.set(p.x, 0.4, p.z);
         let clear = 99;
-        for (const cap of this.golem.capsules) clear = Math.min(clear, segSegDist(_v3, _v2, cap.a, cap.b) - cap.r);
+        for (const cap of this.golem.capsules) clear = Math.min(clear, segSegDist(_v3, _v2, cap.a, cap.b) - cap.r * 1.3);
         const behind = -(ux * tox + uz * toz);
         const score = Math.min(clear, 3) * 2 + behind * 1.5 - (clear < 0.4 ? 20 : 0);
         if (score > best) {
@@ -909,7 +910,7 @@ export class Game {
       // seen from there, which side of the body does the golem show on? (camera right = (dz, -dx))
       this.deathSide = Math.sign((g.x - p.x) * this.deathDir.z - (g.z - p.z) * this.deathDir.x) || 1;
     }
-    const back = 5.4 + 1.8 * t;
+    const back = 4.2 + 1.6 * t;
     let px = p.x + this.deathDir.x * back;
     let pz = p.z + this.deathDir.z * back;
     const d = Math.hypot(px, pz);
@@ -918,7 +919,8 @@ export class Game {
       px *= 28 / d;
       pz *= 28 / d;
     }
-    c.pos.set(px, 1.6 + 1.4 * t, pz);
+    // high over the body: the warrior's fall reads from above, limbs rarely cross the view
+    c.pos.set(px, 3.4 + 1.8 * t, pz);
     // never inside the golem
     for (const cap of this.golem.capsules) {
       const ax = cap.b.x - cap.a.x;
@@ -946,8 +948,9 @@ export class Game {
     const sx = -fz;
     const sz = fx;
     const tv = Math.tan((c.fov * Math.PI) / 360);
-    const turn = Math.atan(0.56 * tv * this.cam.camera.aspect) * this.deathSide;
     const pitch = Math.atan2(by, bh) + Math.atan(0.3 * tv);
+    // a steep camera squeezes a yaw offset on screen: widen the turn by 1 / cos(pitch)
+    const turn = Math.atan((0.6 * tv * this.cam.camera.aspect) / Math.max(0.5, Math.cos(pitch))) * this.deathSide;
     const lx = fx * Math.cos(turn) + sx * Math.sin(turn);
     const lz = fz * Math.cos(turn) + sz * Math.sin(turn);
     c.look.set(c.pos.x + lx * 10 * Math.cos(pitch), c.pos.y + 10 * Math.sin(pitch), c.pos.z + lz * 10 * Math.cos(pitch));
@@ -956,7 +959,7 @@ export class Game {
       this.deathPosNow.copy(c.pos);
       this.deathLookNow.copy(c.look);
     } else {
-      const k = 1 - Math.exp(-2.8 * dt);
+      const k = 1 - Math.exp(-4.5 * dt);
       this.deathPosNow.lerp(c.pos, k);
       this.deathLookNow.lerp(c.look, k);
     }
@@ -1342,7 +1345,7 @@ export class Game {
     const meteorCall = this.flow === 'fight' && g.attack?.name === 'meteor';
     this.cam.maxPull = leaping ? 9 : meteorCall ? 5 : bigWindup || this.threats.rocks.length > 0 ? 4.5 : 3;
     // the leap and the meteor call keep clear sky above the golem (they were pinned against the top edge)
-    this.cam.topMargin = leaping ? 0.16 : meteorCall ? 0.13 : 0.1;
+    this.cam.topMargin = leaping ? 0.2 : meteorCall ? 0.13 : 0.1;
     this.prevGolemY = g.pos.y;
     if (g.pushTele) {
       this.threats.telegraph(g.pushTele.pos, g.pushTele.radius, g.pushTele.dur, 'push');
@@ -1409,11 +1412,12 @@ export class Game {
     golemLook.uHeat.value = this.heatShown;
     golemLook.uTime.value = this.ctx.time;
     skyUniforms.uTime.value = this.ctx.time;
+    heartUniforms.uHeartTime.value = this.ctx.time;
     skyUniforms.uLava.value = this.heatShown;
     const h = this.heatShown;
     this.hemi.color.setRGB(0.5 - 0.02 * h, 0.54 - 0.14 * h, 0.64 - 0.3 * h);
     // phase 3: lava light from below (the molten water) warms everything from the ground up
-    this.hemi.groundColor.setRGB(0.173 + 0.3 * h, 0.153 + 0.02 * h, 0.137 - 0.08 * h);
+    this.hemi.groundColor.setRGB(0.173 + 0.1 * h, 0.153 + 0.01 * h, 0.137 - 0.04 * h);
     (this.scene.fog as THREE.FogExp2).color.setRGB(0.118 - 0.085 * h, 0.157 - 0.14 * h, 0.22 - 0.205 * h);
     // the far ridges go dark in phase 3 so they read as silhouettes against the molten horizon
     this.arenaModel?.cliffs.color.setRGB(0.33 - 0.17 * h, 0.34 - 0.2 * h, 0.376 - 0.23 * h, THREE.SRGBColorSpace);
@@ -1423,7 +1427,7 @@ export class Game {
     const gs = this.golem.state;
     const merged = !!this.golemMerge && (this.flow === 'fight' || this.flow === 'dying' || this.flow === 'dead') && gs !== 'dormant' && gs !== 'assemble' && gs !== 'dead';
     this.golemMerge?.use(merged);
-    const fadeOn = (gameplayCam && this.cam.cineBlend < 0.5) || this.flow === 'dying' || this.flow === 'dead' || this.flow === 'victoryCine';
+    const fadeOn = (gameplayCam && this.cam.cineBlend < 0.5) || this.flow === 'dying' || this.flow === 'dead';
     // while the golem kneels the camera looks down past its limbs: fade anything within 5 m of the lens
     const deathCam = this.flow === 'dying' || this.flow === 'dead';
     const near = deathCam ? 6 : this.golem.staggered ? 5 : 2.2;

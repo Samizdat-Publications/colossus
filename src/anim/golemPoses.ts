@@ -463,6 +463,38 @@ const LEAP_AIR: PoseDef = mergeDefs(DOUBLE_RAISE, {
 });
 
 // ---- dormant rubble (used for the intro camera and title screen) ----
+// ---- death: it reels back, arms flung wide, and topples away from the warrior ----
+const REEL_BACK: PoseDef = mergeDefs(IDLE, {
+  $pos: [0, -0.8, -1.4],
+  hips: [-12, 0, 0],
+  spine: [-20, 0, 4],
+  chest: [-16, 0, -3],
+  neck: [-10, 0, 0],
+  head: [-18, 8, 0],
+  upperarm_L: [-45, 0, 75],
+  upperarm_R: [-30, 0, -65],
+  forearm_L: [-35, 0, 0],
+  forearm_R: [-25, 0, 0],
+  thigh_L: [-26, 0, 8],
+  thigh_R: [-8, 0, -8],
+  shin_L: [34, 0, 0],
+  shin_R: [18, 0, 0],
+});
+
+const FALL_BACK: PoseDef = mergeDefs(REEL_BACK, {
+  $pos: [0, -3.6, -3.4],
+  hips: [-30, 0, 6],
+  spine: [-30, 0, 6],
+  chest: [-22, 0, -4],
+  head: [-24, 12, 0],
+  upperarm_L: [-80, 0, 85],
+  upperarm_R: [-70, 0, -80],
+  thigh_L: [-70, 0, 14],
+  thigh_R: [-55, 0, -12],
+  shin_L: [90, 0, 0],
+  shin_R: [70, 0, 0],
+});
+
 const DORMANT: PoseDef = mergeDefs(KNEEL_SYM_SLUMP, {
   $pos: [0, -5.6, 0.6],
   spine: [60, 0, 0],
@@ -501,6 +533,8 @@ export const GOLEM_POSE_DEFS = {
   kneel: KNEEL,
   kneelSlump: KNEEL_SLUMP,
   kneelBow: KNEEL_BOW,
+  reelBack: REEL_BACK,
+  fallBack: FALL_BACK,
   pushUp: PUSH_UP,
   leapCrouch: LEAP_CROUCH,
   leapAir: LEAP_AIR,

@@ -473,7 +473,7 @@ kbd {
   background: radial-gradient(ellipse at center, rgba(40, 4, 6, 0.3), rgba(18, 2, 3, 0.78));
 }
 .screens.victory {
-  background: radial-gradient(ellipse at center, rgba(10, 9, 6, 0.35), rgba(5, 5, 4, 0.8));
+  background: radial-gradient(ellipse at center, rgba(10, 9, 6, 0.22), rgba(5, 5, 4, 0.72));
 }
 
 h1,

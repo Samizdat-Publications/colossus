@@ -347,10 +347,10 @@ export class Golem {
     const P = this.poses;
     bus.emit('golemDeath', { pos: this.pos.clone() });
     this.anim.play([
-      { name: 'stagger', dur: 0.4, pose: P.pushUp, ease: 'outCubic' },
-      { name: 'collapse', dur: 0.8, pose: P.kneel, ease: 'inQuad' },
-      { name: 'slump', dur: 1.6, pose: P.dormant, ease: 'inOutSine' },
-      { name: 'still', dur: 1000, pose: P.dormant },
+      { name: 'stagger', dur: 0.45, pose: P.reelBack, ease: 'outCubic' },
+      { name: 'collapse', dur: 0.9, pose: P.fallBack, ease: 'inQuad' },
+      { name: 'slump', dur: 1.4, pose: P.fallBack, ease: 'inOutSine' },
+      { name: 'still', dur: 1000, pose: P.fallBack },
     ]);
   }
 
