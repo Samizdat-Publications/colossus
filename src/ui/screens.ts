@@ -9,6 +9,7 @@ export interface ScreenHandlers {
 }
 
 export interface EndStats {
+  cause: string;
   attempt: number;
   time: number;
   bossLeft: number;
@@ -92,6 +93,7 @@ export class Screens {
         break;
       case 'dead':
         this.root.innerHTML = `<div class="panel center"><h1 class="death">FALLEN</h1>
+          <p class="cause">Killed by ${stats?.cause ?? 'the Ruin'}</p>
           <p class="sub">Attempt ${stats?.attempt ?? 1} · The Ruin endures at ${Math.round((stats?.bossLeft ?? 1) * 100)}%</p>
           <p class="hint">${stats?.hint ?? ''}</p>
           <div class="menu"><button data-act="retry">Try again</button><button data-act="title">Title</button></div></div>`;

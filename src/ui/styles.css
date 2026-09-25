@@ -377,6 +377,12 @@ body {
   color: var(--gold);
   letter-spacing: 0.2em;
 }
+.cause {
+  color: #e8b0a8;
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  margin: 4px 0 2px;
+}
 .sub {
   color: var(--bone);
   font-size: 20px;

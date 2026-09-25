@@ -317,6 +317,7 @@ export class Game {
   private onPlayerDeath(): void {
     if (this.flow !== 'fight') return;
     this.tips.dismiss('lock');
+    this.hitstop = Math.max(this.hitstop, 0.22);
     this.setFlow('dying');
     this.slowmo = 0.35;
     this.slowmoTimer = 1.3;
@@ -362,8 +363,26 @@ export class Game {
     }
   }
 
+  /** What killed the warrior, in words. */
+  deathCause(): string {
+    const names: Record<string, string> = {
+      slam: 'a ground slam',
+      doubleSlam: 'the two-fisted slam',
+      sweep: 'a sweeping arm',
+      stomp: 'a stomp',
+      leap: 'the leaping slam',
+      rock: 'a thrown rock',
+      meteor: 'falling rubble',
+      hazard: 'the burning floor',
+      fissure: 'the racing fissure',
+      push: 'the shockwave of its rise',
+    };
+    return names[this.player.lastHitSource] ?? 'the Ruin';
+  }
+
   private endStats(): EndStats {
     return {
+      cause: this.deathCause(),
       attempt: this.attempt,
       time: this.fightTime,
       bossLeft: this.golem.healthFrac,
@@ -654,7 +673,7 @@ export class Game {
     for (const t of this.threats.telegraphs) {
       if (t.kind === 'sector') continue;
       const d = Math.hypot(t.pos.x - p.x, t.pos.z - p.z);
-      if (d > t.radius + 6) continue;
+      if (d > t.radius + 1.2) continue; // only rings the warrior is in (or about to be) are hard constraints
       let dx = cam.x - t.pos.x;
       let dz = cam.z - t.pos.z;
       const l = Math.hypot(dx, dz) || 1;
@@ -670,6 +689,7 @@ export class Game {
     this.updateMustSee();
     this.updateHeldRock();
     this.cam.wide = this.flow === 'fight' || this.flow === 'victoryCine' ? g.wantsWide : 0;
+    this.cam.rise = this.flow === 'fight' ? g.wantsRise : 0;
     if (g.riseTele) {
       this.threats.telegraph(g.riseTele, balance.golem.stagger.risePushRadius, balance.golem.stagger.rise * 0.75, 'push');
       g.riseTele = null;
@@ -692,6 +712,8 @@ export class Game {
     skyUniforms.uTime.value = this.ctx.time;
     skyUniforms.uLava.value = this.heatShown;
     this.hemi.color.setRGB(0.506 + 0.12 * this.heatShown, 0.588 - 0.06 * this.heatShown, 0.733 - 0.2 * this.heatShown);
+    // phase 3: lava light from the cracks warms the floor
+    this.hemi.groundColor.setRGB(0.173 + 0.28 * this.heatShown, 0.153 + 0.06 * this.heatShown, 0.137 - 0.05 * this.heatShown);
     // camera-occlusion fade on the golem (off in cinematics and on the title)
     const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
     setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), false);
@@ -733,11 +755,16 @@ export class Game {
       const mesh = this.coreMeshes.get(t.name);
       if (!mesh) continue;
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      let base = t.kind === 'back' ? (t.open ? 2.2 : 0.2) : g.state === 'dormant' ? 0.12 : 1.5 + 0.35 * (g.phase - 1);
+      const lit = g.state !== 'dormant' && (g.state !== 'assemble' || g.step === 'roar' || g.step === 'roarHold' || g.step === 'settle');
+      let base = t.kind === 'back' ? (t.open ? 2.4 : 0) : !lit ? 0 : 1.5 + 0.35 * (g.phase - 1);
+      if (t.kind === 'arm' && g.staggered) base *= 0.35; // the back core is the one to go for
       if (g.state === 'dead') base = Math.max(0.0, base * (1 - g.stateTime / 0.25));
       const low = t.open && t.pos.y < 3.4 && g.state !== 'dead';
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;
       mat.emissiveIntensity = base * pulse + t.flash * 5;
+      // sealed cores are dark stone sockets, not dim teal balls; arm cores ignite at the roar
+      mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x1b1d22);
+      mesh.visible = t.kind === 'back' ? g.state !== 'dormant' && g.state !== 'assemble' : lit;
       const light = this.coreLights.get(t.name);
       if (light) light.intensity = (base * pulse * 0.6 + t.flash * 3) * 6;
     }

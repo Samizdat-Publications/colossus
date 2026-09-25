@@ -360,6 +360,13 @@ export class Golem {
     return Math.max(0, 1 - this.stateTime / total);
   }
 
+  /** How much higher the camera should sit right now (look down on a kneeling golem). */
+  get wantsRise(): number {
+    if (this.state === 'stagger') return 3.5;
+    if (this.attack?.name === 'meteor') return 1.5;
+    return 0;
+  }
+
   /** How much wider the camera should frame right now (leap, stagger). */
   get wantsWide(): number {
     if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 4;

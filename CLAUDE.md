@@ -187,3 +187,17 @@ Newest at the bottom. Record every non-obvious choice.
   shader, shadow falls toward the player), sky dome with clouds. Camera pulled back to 7.8 m and rises
   over the golem instead of pushing in. Arm cores moved from mid-forearm to the wrist (head height in
   every punish window), fists clamped above the floor by IK. Boss bar moved to the bottom (Souls layout).
+- 2026-09-24 (M1 critic r3-r6): the lock-on camera is a framing solve (`src/render/cameraRig.ts`): each
+  frame it picks pitch and FOV so the warrior's feet and the near edges of warning rings stay above the
+  boss panel (hard constraint) and the golem's highest point stays in frame (soft); it pulls back at most
+  3 m (plus director "wide" requests: leap 4 m, stagger 2 m, victory 3 m). It never moves into the golem;
+  golem parts that crowd the lens fade as whole parts (`PartFader`), because a dither pattern read as
+  "dotted see-through mesh". Earlier "rise over the golem" and 10 m pull-backs made the warrior a speck.
+- 2026-09-24 (M1 critic r4-r5): every melee attack now has a ground telegraph (sweep = red arc sector,
+  stomp = ring around the lifted foot, stagger rise = push ring). Tips sit in a one-line strip at the top
+  (the camera keeps that strip clear of golem) and hush while a warning covers the warrior.
+- 2026-09-24 (M1 critic r5-r6): the phase 3 molten heart is a real weak point, but only while the golem is
+  down: it glows lava-orange while out of reach and turns cyan (with the STRIKE tag) when it can be hit,
+  so "cyan = hit here" never lies.
+- 2026-09-24 (M1 bot): with the fixes above the decent bot wins about 1 run in 4 (fight about 4 minutes)
+  and the expert bot wins in under 5 minutes with little health to spare: in the target band.
