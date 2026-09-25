@@ -436,6 +436,7 @@ export class Game {
   }
 
   private startFight(): void {
+    this.hud.cine = false;
     this.setFlow('fight');
     this.player.control = true;
     this.ctx.live = true;
@@ -639,6 +640,10 @@ export class Game {
       this.updateVisuals(dt);
     }
     this.hud.dying = this.flow === 'dying';
+    // the fissure gets its own tip the first times it races out
+    if (this.flow === 'fight' && this.threats.fissures.length > 0) {
+      this.tips.showNow('fissure', 'A <b>fissure</b> tears along the red line: step off it before it erupts.', 2, 3);
+    }
     this.hud.bossDim = this.flow === 'fight' && this.ringUnderBossPanel();
     this.hud.update(rawDt, this.player, this.golem, this.cam.camera, window.innerWidth, window.innerHeight);
     this.renderer.render(rawDt);
@@ -719,6 +724,7 @@ export class Game {
         }
         if (this.flow === 'victoryCine') {
           this.phaseCineT = -1;
+          this.hud.cine = true;
           this.victoryShot();
           cam.cineBlend = damp(cam.cineBlend, 1, 2.2, rawDt);
         } else if (this.flow === 'dying') {

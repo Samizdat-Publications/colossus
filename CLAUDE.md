@@ -94,7 +94,7 @@ phase-change roar, `killGolem()` starts the victory, `forceAttack(name, side)`.
 1. [x] **Greybox**: core loop with primitive shapes. Player controller (move, lock-on, light and heavy
    attacks, roll with i-frames, block, jump, flask, stamina, input buffer), golem with all attacks for
    3 phases, weak points, break and stagger, hazards, win and lose states.
-2. [ ] **Assets**: model everything in Blender via the MCP (golem, warrior, arena, pillars, rubble),
+2. [x] **Assets**: model everything in Blender via the MCP (golem, warrior, arena, pillars, rubble),
    bake procedural textures, export GLB, swap into the game.
 3. [ ] **Feel**: animation, camera, particles, screen shake, hit stop and feedback, rain, lightning,
    dust and debris, synthesized sound and music.
@@ -112,6 +112,10 @@ lose screen with no bugs; README.md with controls and how to run; `screenshots/`
 
 Milestone 1 closed after 16 critic rounds (see `docs/critic/m1-r16.md`): the worst remaining item was
 close-range framing of the giant, which moved into milestone 3's camera work.
+
+Milestone 2 closed after 16 critic rounds (see `docs/critic/m2-r16.md`): rounds 12 to 16 were MINOR at worst. The
+recurring items (the golem reads as a heap at melee range, phase lighting, effects) move to milestones 3 and 4.
+Balance at the close: the decent bot wins about 3 attempts in 10.
 
 ## Asset list
 

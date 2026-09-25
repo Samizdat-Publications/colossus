@@ -92,7 +92,7 @@ export class SwordTrail {
       this.count = Math.min(N, this.count + 1);
     }
     const life = heavy ? 0.22 : 0.15;
-    this.mat.uniforms.uColor.value.setHex(heavy ? 0xffe6c2 : 0xdde8ff);
+    this.mat.uniforms.uColor.value.setHex(heavy ? 0xffd9a8 : 0xdde8ff);
     let any = false;
     for (let i = 0; i < N; i++) {
       const k = i < this.count ? Math.max(0, 1 - this.age[i] / life) * (1 - i / N) : 0;
@@ -100,7 +100,7 @@ export class SwordTrail {
       this.pos.set([this.base[i].x, this.base[i].y, this.base[i].z], i * 6);
       this.pos.set([this.tip[i].x, this.tip[i].y, this.tip[i].z], i * 6 + 3);
       this.alpha[i * 2] = k * 0.12;
-      this.alpha[i * 2 + 1] = k * 0.55;
+      this.alpha[i * 2 + 1] = k * (heavy ? 0.42 : 0.55);
     }
     if (!active && !any) this.count = 0;
     this.mesh.visible = any;
