@@ -186,10 +186,10 @@ export class Screens {
                 <p>Core hits fill <span class="core">BREAK</span>. Fill it and the Ruin falls to its knees: get behind it and strike its back.</p>
                 <h3>Read the floor</h3>
                 <ul class="legend">
-                  <li><i class="sw red"></i><b>Red</b> ring, sector or strip: a blow lands here. Roll out.</li>
-                  <li><i class="sw shock"></i><b>Pale red</b> band: a shockwave. Roll or jump through it.</li>
-                  <li><i class="sw fire"></i><b>Amber</b> cracks: burning ground. Step off.</li>
-                  <li><i class="sw cyan"></i><b>Cyan</b>: a weak point. Strike it.</li>
+                  <li><i class="sw red"></i><span><b>Red</b> ring, sector or strip: a blow lands here. Roll out.</span></li>
+                  <li><i class="sw shock"></i><span><b>Pale red</b> band: a shockwave. Roll or jump through it.</span></li>
+                  <li><i class="sw fire"></i><span><b>Amber</b> cracks: burning ground. Step off.</span></li>
+                  <li><i class="sw cyan"></i><span><b>Cyan</b>: a weak point. Strike it.</span></li>
                 </ul>
               </section>
               <section>

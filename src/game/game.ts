@@ -26,6 +26,7 @@ import { addBrazierFlames, buildArenaModel, buildGolemModel, buildWarriorModel, 
 import { makeEnvironment } from '../render/environment';
 import { waterUniforms } from '../render/models';
 import { Cape } from '../render/cloth';
+import { GolemMerge } from '../render/golemMerge';
 import { AudioEngine } from '../audio/audio';
 import { loadSettings, saveSettings, type Settings } from '../core/settings';
 import { Fx } from '../render/fx';
@@ -74,6 +75,8 @@ export class Game {
   private readonly coreLights = new Map<string, THREE.PointLight>();
   private readonly golemParts: THREE.Mesh[];
   private readonly fader: PartFader;
+  private golemMerge: GolemMerge | null = null;
+  private faderMerged: PartFader | null = null;
   flow: Flow = 'loading';
   flowTime = 0;
   paused = false;
@@ -234,6 +237,11 @@ export class Game {
     this.assembler = new Assembler([...this.golemParts, ...this.coreMeshes.values()], home);
     this.assembler.onPieceLanded = (pos, size) => bus.emit('assembleChunk', { pos, size });
     this.fader = new PartFader(this.golemParts);
+    if (assets) {
+      // one mesh per bone and stone kind while the golem fights (the loose pieces fly only in and out)
+      this.golemMerge = new GolemMerge(gRig, this.golemParts, new Set(this.plates.map((p) => p.mesh)));
+      this.faderMerged = new PartFader(this.golemMerge.meshes);
+    }
 
     this.ctx = {
       time: 0,
@@ -1100,7 +1108,10 @@ export class Game {
     // camera-occlusion fade on the golem (off in cinematics and on the title)
     const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
     setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), false);
-    this.fader.update(this.cam.camera.position, _v, dt, gameplayCam);
+    const gs = this.golem.state;
+    const merged = !!this.golemMerge && (this.flow === 'fight' || this.flow === 'dying' || this.flow === 'dead') && gs !== 'dormant' && gs !== 'assemble' && gs !== 'dead';
+    this.golemMerge?.use(merged);
+    (merged && this.faderMerged ? this.faderMerged : this.fader).update(this.cam.camera.position, _v, dt, gameplayCam);
     // teach the punish window the first few times it opens (never while a warning covers the warrior)
     const underThreat = this.threats.fissures.length > 0 || this.threats.telegraphs.some((t) => {
       if (t.kind === 'sector') return true;
