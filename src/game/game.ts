@@ -333,6 +333,11 @@ export class Game {
     bus.on('guardBreak', () => this.cam.shake(0.3));
     bus.on('playerDeath', () => this.onPlayerDeath());
     bus.on('golemDeath', () => this.onGolemDeath());
+    bus.on('golemKneel', () => {
+      this.cam.shake(0.7);
+      this.cam.kick(0.9);
+      this.hitstop = Math.max(this.hitstop, 0.1);
+    });
     bus.on('staggerStart', () => {
       this.cam.shake(0.5);
       if (this.golem.phase >= 3) this.tips.show('stagger3', 'It is <b>down</b>! Strike its <b class="core">exposed heart</b> or the <b class="core">core on its back</b>.', 2, 5);
@@ -654,6 +659,7 @@ export class Game {
       this.updateVisuals(dt);
     }
     this.hud.dying = this.flow === 'dying';
+    this.hud.burning = this.flow === 'fight' && this.ctx.time - this.lastBurnFlash < 0.45;
     // the fissure gets its own tip the first times it races out
     if (this.flow === 'fight' && this.threats.fissures.length > 0) {
       this.tips.showNow('fissure', 'A <b>fissure</b> tears along the red line: step off it before it erupts.', 2, 3);
@@ -803,6 +809,7 @@ export class Game {
   private readonly fireSpots: { x: number; z: number; size: number }[] = [];
   private swordMat: THREE.MeshStandardMaterial | null = null;
   private chargeMoteT = 0;
+  private heldHeat = 0;
   private readonly swordMid = new THREE.Vector3();
   private chargeFlashed = false;
 
@@ -1098,7 +1105,10 @@ export class Game {
       // a held heavy attack heats the blade; a full charge flashes once and burns bright into the strike
       if (this.swordMat) {
         const charging = !!a?.heavy && !a.chargeDone;
-        const heat = charging ? 0.6 + 3.4 * a.charge : a?.heavy && a.charged && striking ? 3.6 : 0;
+        // the blade keeps its heat through the blow (a released charge flares, it never switches off)
+        if (charging) this.heldHeat = 0.6 + 3.4 * a.charge;
+        const heat = charging ? this.heldHeat : a?.heavy && striking ? this.heldHeat * 1.35 + (a.charged ? 1 : 0) : 0;
+        if (!a?.heavy) this.heldHeat = 0;
         const want = Math.max(0.22, heat);
         const k = this.swordMat.emissiveIntensity;
         this.swordMat.emissiveIntensity = k + (want - k) * Math.min(1, dt * (want > k ? 14 : 5));
@@ -1398,8 +1408,8 @@ export class Game {
     this.fireSpots.length = 0;
     for (const hz of this.threats.hazards) {
       const armed = hz.t >= hz.arm;
-      const warm = armed ? 1 : Math.max(0, 1 - (hz.arm - hz.t) / 1.0) * 0.35;
-      const left = Math.min(1, Math.max(0, (hz.dur - hz.t - 0.3) / 0.7));
+      const warm = armed ? Math.min(1, (hz.t - hz.arm) / 0.15) : 0;
+      const left = Math.min(1, Math.max(0, (hz.dur - hz.t - 1.0) / 0.35));
       const k = warm * left;
       if (k <= 0.02) continue;
       const n = Math.min(4, 1 + Math.round(hz.radius * 0.9));

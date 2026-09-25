@@ -99,6 +99,27 @@ body {
 .hud.dying::after {
   opacity: 1;
 }
+/* standing in fire: a hot glow rises from the bottom of the screen and the health bar throbs */
+.hud::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease-out;
+  background: linear-gradient(to top, rgba(255, 96, 20, 0.42), rgba(255, 70, 10, 0.12) 24%, rgba(255, 60, 0, 0) 45%);
+}
+.hud.burning::before {
+  opacity: 1;
+  animation: burn-throb 0.35s ease-in-out infinite alternate;
+}
+@keyframes burn-throb {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+.hud.burning .pbar.hp {
+  box-shadow: 0 0 0 1px rgba(255, 110, 40, 0.9), 0 0 12px rgba(255, 90, 20, 0.7);
+}
 .hud.cine .boss,
 .hud.cine .player,
 .hud.cine .reticle,

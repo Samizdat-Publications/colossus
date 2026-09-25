@@ -139,7 +139,7 @@ export class Fx {
     const u = this.unsub;
     u.push(on('slamImpact', (e) => {
       // a low, fast dust wave rolling out, a slower cloud, chunks thrown high and a water splash
-      this.dustRing(e.pos, e.radius * 0.5, e.big ? 44 : 30, 16, 1.2, 1.1, true);
+      this.dustRing(e.pos, e.radius * 0.5, e.big ? 64 : 44, 16, 1.5, 1.2, true);
       this.dustRing(e.pos, e.radius * 0.8, e.big ? 60 : 42, 7, 1.8, 2.2);
       this.chunks(e.pos, e.big ? 26 : 18, e.radius, 11, 0.5);
       this.splash(e.pos, 32, 7);
@@ -173,9 +173,9 @@ export class Fx {
     }));
     u.push(on('deflect', (e) => {
       // blade on stone: a fan of hot sparks, white steel sparks, stone chips and a puff of grit
-      this.sparks(e.pos, e.normal, e.heavy ? 34 : 22, SPARK, 10, 0.5, 0.11);
-      this.sparks(e.pos, e.normal, 10, STEEL_SPARK, 7, 0.3, 0.07);
-      this.flash(e.pos, SPARK, e.heavy ? 1.3 : 0.95, 0.1);
+      this.sparks(e.pos, e.normal, e.heavy ? 40 : 28, SPARK, 11, 0.55, 0.17);
+      this.sparks(e.pos, e.normal, 14, STEEL_SPARK, 8, 0.35, 0.11);
+      this.flash(e.pos, SPARK, e.heavy ? 2.4 : 1.8, 0.12);
       if (this.debris) {
         for (let i = 0; i < (e.heavy ? 7 : 4); i++) {
           _v.set(e.normal.x * rnd(2, 5) + rnd(-2, 2), rnd(2, 5), e.normal.z * rnd(2, 5) + rnd(-2, 2));
@@ -197,7 +197,6 @@ export class Fx {
       _p.copy(e.pos).setY(1.15);
       this.dustRing(e.pos, 0.8, heavy ? 16 : 10, heavy ? 4 : 2.5, 0.7, 1.1);
       this.sparks(_p, null, heavy ? 22 : 12, STEEL_SPARK, 6, 0.35, 0.09);
-      this.flash(_p, STEEL_SPARK, heavy ? 1.4 : 0.9, 0.1);
       // a rock or a fist: stone shatters on the warrior
       if (this.debris && e.source !== 'hazard' && e.source !== 'push') {
         for (let i = 0; i < (heavy ? 8 : 4); i++) {
@@ -213,6 +212,12 @@ export class Fx {
       this.flameLick(e.pos, 0.35);
     }));
     u.push(on('roll', (e) => this.splash(e.pos, 8, 3)));
+    u.push(on('swing', (e) => {
+      // a heavy blow kicks up a ring of grit and spray at the warrior's feet
+      if (!e.heavy) return;
+      this.dustRing(e.pos, 0.6, e.charged ? 14 : 8, e.charged ? 5 : 3.5, 0.55, 0.8);
+      this.splash(e.pos, e.charged ? 12 : 7, 3);
+    }));
     u.push(on('heavyCharge', (e) => {
       // motes drawn in toward the blade while a heavy attack charges; more as the charge fills
       for (let i = 0; i < 2 + Math.round(e.charge * 4); i++) {

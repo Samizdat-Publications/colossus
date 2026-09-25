@@ -256,7 +256,7 @@ export class Weather {
         across.push(0, 1, 0, 1, 1, 0);
       }
     };
-    ribbon(pts, 2.6);
+    ribbon(pts, 3.6);
     const forks = 2 + Math.floor(Math.random() * 2);
     for (let k = 0; k < forks; k++) {
       const from = pts[1 + Math.floor(Math.random() * Math.max(1, pts.length - 3))];
@@ -269,7 +269,7 @@ export class Weather {
         const last = fork[fork.length - 1];
         fork.push(new THREE.Vector3(last.x + dx * 0.35 + (Math.random() - 0.5) * 6, Math.max(30, fy), last.z + dz * 0.35 + (Math.random() - 0.5) * 6));
       }
-      ribbon(fork, 1.2);
+      ribbon(fork, 2.0);
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));

@@ -222,8 +222,8 @@ export class Threats {
       }
       if (h.t < h.arm || !ctx.live) continue; // not burning yet
       const d = Math.hypot(pl.pos.x - h.pos.x, pl.pos.z - h.pos.z);
-      const fade = h.t > h.dur - 1 ? h.dur - h.t : 1;
-      if (d < h.radius * 0.92 && fade > 0.3) {
+      // the last second is dying embers: safe, and drawn without flames
+      if (d < h.radius * 0.92 && h.dur - h.t > 1.0) {
         if (pl.burn(h.dps * dt)) burning = true;
       }
     }

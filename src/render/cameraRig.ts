@@ -245,7 +245,8 @@ export class CameraRig {
     const t = this.time * 23;
     cam.position.copy(_camPos);
     cam.position.x += noise1(t, 1) * tr * 0.5;
-    cam.position.y += noise1(t, 2) * tr * 0.45 - this.kickAmt * 0.25;
+    // the Camera shake setting scales the kicks too (0 = a perfectly steady camera)
+    cam.position.y += noise1(t, 2) * tr * 0.45 - this.kickAmt * 0.25 * this.shakeScale;
     cam.position.z += noise1(t, 3) * tr * 0.5;
     cam.lookAt(_lookPos);
     cam.rotateZ(noise1(t * 0.8, 4) * tr * 0.05);

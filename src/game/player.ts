@@ -336,7 +336,13 @@ export class Player {
           }
         },
       },
-      { name: 'strike', dur: H.active, pose: P.heavyStrike, ease: 'inQuad' },
+      {
+        name: 'strike',
+        dur: H.active,
+        pose: P.heavyStrike,
+        ease: 'inQuad',
+        enter: () => bus.emit('swing', { heavy: true, charged: !!this.atk?.charged, pos: this.pos }),
+      },
       { name: 'recover', dur: H.recovery, pose: P.idle, ease: 'inOutSine' },
     ];
     this.anim.play(steps);

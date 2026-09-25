@@ -48,6 +48,8 @@ export class Hud {
   dying = false;
   /** a warning ring lies under the boss panel: fade the panel so the ring shows */
   bossDim = false;
+  /** the warrior is standing in fire right now */
+  burning = false;
   private readonly floaters: HTMLDivElement;
   private bossTrailFrac = 1;
   private hpTrailFrac = 1;
@@ -176,7 +178,7 @@ export class Hud {
       const p = v.clone().project(camera);
       return { x: ((p.x + 1) / 2) * width, y: ((1 - p.y) / 2) * height, on: p.z < 1 && Math.abs(p.x) < 1.1 && Math.abs(p.y) < 1.1 };
     };
-    const focus = player.locked && golem.lockable ? golem.focusCore(player.pos) : null;
+    const focus = player.locked && golem.lockable ? (golem.staggered && this.markCore ? this.markCore : golem.focusCore(player.pos)) : null;
     if (focus) {
       const p = toScreen(focus.pos);
       this.reticle.style.display = p.on ? 'block' : 'none';
@@ -198,6 +200,7 @@ export class Hud {
     this.controls.classList.toggle('hidden', !this.showControls);
     this.root.classList.toggle('cine', this.cine);
     this.root.classList.toggle('dying', this.dying);
+    this.root.classList.toggle('burning', this.burning);
     this.boss.classList.toggle('dim', this.bossDim);
     this.controlsPill.classList.toggle('hidden', this.showControls);
 

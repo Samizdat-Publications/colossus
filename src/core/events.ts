@@ -13,6 +13,8 @@ export interface GameEvents {
   justGuard: { pos: THREE.Vector3 };
   guardBreak: { pos: THREE.Vector3 };
   hazardBurn: { pos: THREE.Vector3 };
+  /** the staggered golem's knees hit the floor */
+  golemKneel: { pos: THREE.Vector3 };
   /** a heavy attack is charging (pos: the blade's middle; charge 0..1) */
   heavyCharge: { pos: THREE.Vector3; charge: number; full: boolean };
   healStart: { pos: THREE.Vector3 };

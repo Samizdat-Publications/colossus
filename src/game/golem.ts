@@ -284,7 +284,17 @@ export class Golem {
     bus.emit('staggerStart', { pos: this.pos });
     this.anim.play([
       { name: 'collapse', dur: S.collapse * 0.55, pose: P.pushUp, ease: 'inQuad' },
-      { name: 'drop', dur: S.collapse * 0.45, pose: P.kneel, ease: 'outCubic', exit: () => bus.emit('slamImpact', { pos: this.pos.clone(), radius: 5, big: false }) },
+      {
+        name: 'drop',
+        dur: S.collapse * 0.45,
+        pose: P.kneel,
+        ease: 'outCubic',
+        exit: () => {
+          // the knees hit the floor: a big burst of dust and stone
+          bus.emit('slamImpact', { pos: this.pos.clone(), radius: 7, big: true });
+          bus.emit('golemKneel', { pos: this.pos.clone() });
+        },
+      },
       {
         name: 'down',
         dur: S.duration,
@@ -364,7 +374,7 @@ export class Golem {
 
   /** How much higher the camera should sit right now (look down on a kneeling golem). */
   get wantsRise(): number {
-    if (this.state === 'stagger') return 5.2;
+    if (this.state === 'stagger') return 3.4;
     // a low camera looks up at the airborne golem (the classic colossus angle)
     if (this.attack?.name === 'leap' && (this.step === 'air' || (this.step === 'windup' && this.pos.y > 0.2))) return -1.8;
     return 0;
@@ -374,7 +384,7 @@ export class Golem {
   get wantsWide(): number {
     // the leap is the one move worth a small warrior: the whole airborne golem over its landing ring
     if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 5;
-    if (this.state === 'stagger') return 3;
+    if (this.state === 'stagger') return 1.8;
     if (this.state === 'dead') return 3;
     // the phase-change roar has its own cinematic; this only covers the blend back
     if (this.state === 'transition') return 1.5;
