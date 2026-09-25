@@ -76,12 +76,12 @@ const L1_STRIKE: PoseDef = mergeDefs(IDLE, {
   hand_R: [92, 10, 0],
   upperarm_L: [-10, 0, 30],
   forearm_L: [-30, 0, 0],
-  thigh_L: [-30, 0, 6],
-  shin_L: [30, 0, 0],
-  foot_L: [0, 0, 0],
-  thigh_R: [18, 0, -6],
-  shin_R: [20, 0, 0],
-  foot_R: [-38, 0, 0],
+  thigh_L: [-44, 0, 6],
+  shin_L: [52, 0, 0],
+  foot_L: [-6, 0, 0],
+  thigh_R: [22, 0, -6],
+  shin_R: [30, 0, 0],
+  foot_R: [-44, 0, 0],
 });
 
 // Light 2: rising backhand from the left back to the right.
@@ -103,12 +103,12 @@ const L2_STRIKE: PoseDef = mergeDefs(IDLE, {
   hand_R: [70, -14, 0],
   upperarm_L: [-26, 10, 30],
   forearm_L: [-40, 0, 0],
-  thigh_L: [-26, 0, 6],
-  shin_L: [26, 0, 0],
-  foot_L: [0, 0, 0],
-  thigh_R: [16, 0, -6],
-  shin_R: [18, 0, 0],
-  foot_R: [-34, 0, 0],
+  thigh_L: [-40, 0, 6],
+  shin_L: [48, 0, 0],
+  foot_L: [-6, 0, 0],
+  thigh_R: [20, 0, -6],
+  shin_R: [28, 0, 0],
+  foot_R: [-40, 0, 0],
 });
 
 // Light 3: two-handed overhead chop.
@@ -263,21 +263,24 @@ const HEAL: PoseDef = mergeDefs(IDLE, {
   hand_R: [40, 0, 0],
 });
 
+// struck: the torso snaps back from the blow, the head whips, the arms fling down and out, the knees buckle
 const HIT: PoseDef = mergeDefs(IDLE, {
-  $pos: [0, -0.12, -0.16],
-  hips: [-8, 8, 0],
-  spine: [-16, 6, 0],
-  chest: [-22, -10, 6],
-  neck: [-18, 10, 0],
-  head: [-16, 8, 0],
-  upperarm_L: [-55, 0, 28],
-  forearm_L: [-70, 0, 0],
-  upperarm_R: [-40, 0, -26],
-  forearm_R: [-50, 0, 0],
-  thigh_L: [-20, 0, 6],
-  shin_L: [30, 0, 0],
-  thigh_R: [14, 0, -6],
-  shin_R: [18, 0, 0],
+  $pos: [0, -0.16, -0.2],
+  hips: [-10, 10, 0],
+  spine: [-20, 8, 0],
+  chest: [-26, -12, 8],
+  neck: [-22, 12, 0],
+  head: [-24, 10, 0],
+  upperarm_L: [18, 0, 42],
+  forearm_L: [-24, 0, 0],
+  upperarm_R: [22, 0, -38],
+  forearm_R: [-30, 0, 0],
+  hand_R: [30, 0, 0],
+  thigh_L: [-34, 0, 8],
+  shin_L: [52, 0, 0],
+  thigh_R: [8, 0, -8],
+  shin_R: [40, 0, 0],
+  foot_R: [-20, 0, 0],
 });
 
 const DOWN: PoseDef = {

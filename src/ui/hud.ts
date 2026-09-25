@@ -178,7 +178,7 @@ export class Hud {
       const p = v.clone().project(camera);
       return { x: ((p.x + 1) / 2) * width, y: ((1 - p.y) / 2) * height, on: p.z < 1 && Math.abs(p.x) < 1.1 && Math.abs(p.y) < 1.1 };
     };
-    const focus = player.locked && golem.lockable ? (golem.staggered && this.markCore ? this.markCore : golem.focusCore(player.pos)) : null;
+    const focus = player.locked && golem.lockable ? (golem.staggered ? this.markCore : golem.focusCore(player.pos)) : null;
     if (focus) {
       const p = toScreen(focus.pos);
       this.reticle.style.display = p.on ? 'block' : 'none';

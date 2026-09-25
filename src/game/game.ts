@@ -23,7 +23,7 @@ import { PartFader } from '../render/partFader';
 import { createSky, skyUniforms } from '../render/sky';
 import type { Assets } from '../render/assets';
 import { addBrazierFlames, buildArenaModel, buildGolemModel, buildWarriorModel, type ArenaModel } from '../render/models';
-import { setHeroLight } from '../render/heroLight';
+import { heroUniforms, setHeroLight } from '../render/heroLight';
 import { propFadeUniforms } from '../render/fade';
 import { heartUniforms } from '../render/models';
 import { makeEnvironment } from '../render/environment';
@@ -333,6 +333,9 @@ export class Game {
     bus.on('guardBreak', () => this.cam.shake(0.3));
     bus.on('playerDeath', () => this.onPlayerDeath());
     bus.on('golemDeath', () => this.onGolemDeath());
+    bus.on('swing', (e) => {
+      if (e.heavy) this.cam.kick(e.charged ? 0.45 : 0.3);
+    });
     bus.on('golemKneel', () => {
       this.cam.shake(0.7);
       this.cam.kick(0.9);
@@ -363,6 +366,7 @@ export class Game {
     });
     bus.on('shockwave', () => this.tips.showNow('wave', 'Shockwave: <b>roll</b> (Space) or <b>jump</b> (F) through the ring.', 2, 3));
     bus.on('playerHit', (e) => {
+      this.heroHit = 1;
       this.hud.flash(e.knockdown ? 1 : 0.7);
       this.cam.shake(e.knockdown || e.damage >= 25 ? 0.45 : 0.25);
       this.cam.kick(0.5);
@@ -833,6 +837,7 @@ export class Game {
   }
 
   private deathSide = 0;
+  private heroHit = 0;
   private lastBurnFlash = -9;
   private deathT = 0;
   private readonly deathDir = new THREE.Vector3(0, 0, 1);
@@ -1438,6 +1443,8 @@ export class Game {
       l.intensity = 12 * hz.radius * lit * fade * flick;
       l.distance = 5 + hz.radius * 3;
     });
+    this.heroHit = Math.max(0, this.heroHit - dt * 3.2);
+    heroUniforms.uHeroHit.value = this.heroHit;
     const camPos = this.cam.camera.position;
     setHeroLight(Math.hypot(camPos.x - this.player.pos.x, camPos.z - this.player.pos.z), this.flow === 'dying' || this.flow === 'dead' ? 1.3 : 1);
     // phase look: veins crack open in phase 2, molten in phase 3; the arena takes the lava light

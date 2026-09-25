@@ -392,7 +392,8 @@ export class ThreatView {
       );
       const cold = new THREE.Mesh(
         this.discGeo,
-        new THREE.MeshBasicMaterial({ color: 0x0d0a08, alphaMap: this.crackTex, transparent: true, opacity: 0, depthWrite: false }),
+        // fresh cracks: pale grit in the broken stone, visible on wet dark flagstones
+        new THREE.MeshBasicMaterial({ color: 0x77706a, alphaMap: this.crackTex, transparent: true, opacity: 0, depthWrite: false }),
       );
       cold.position.y = -0.01;
       cold.renderOrder = 1;
@@ -489,10 +490,10 @@ export class ThreatView {
       const life = 1 - w.r / w.maxR;
       const rm = ring.material as THREE.ShaderMaterial;
       rm.uniforms.uR.value = w.r;
-      rm.uniforms.uAlpha.value = 0.85 + 0.6 * life;
+      rm.uniforms.uAlpha.value = 0.7 + 0.45 * life;
       band.scale.set(w.r, w.height * 1.5, w.r);
       const bm = band.material as THREE.ShaderMaterial;
-      bm.uniforms.uAlpha.value = 1.1 * life + 0.45;
+      bm.uniforms.uAlpha.value = 0.8 * life + 0.3;
       bm.uniforms.uTime.value = this.time;
     }
   }

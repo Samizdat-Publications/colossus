@@ -9,6 +9,8 @@ import * as THREE from 'three';
 export const heroUniforms = {
   uHeroFill: { value: 0.2 },
   uHeroRim: { value: new THREE.Color(0.5, 0.62, 0.85) },
+  /** 0..1: the warrior was just hit (the armour flashes red-hot for a moment) */
+  uHeroHit: { value: 0 },
 };
 
 const RIM = new THREE.Color(0.5, 0.62, 0.85);
@@ -26,7 +28,7 @@ export function addHeroLight<T extends THREE.Material>(mat: T): T {
     prev?.call(mat, shader, renderer);
     Object.assign(shader.uniforms, heroUniforms);
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uHeroFill;\nuniform vec3 uHeroRim;')
+      .replace('#include <common>', '#include <common>\nuniform float uHeroFill;\nuniform vec3 uHeroRim;\nuniform float uHeroHit;')
       .replace(
         '#include <lights_fragment_end>',
         `#include <lights_fragment_end>
@@ -34,6 +36,7 @@ export function addHeroLight<T extends THREE.Material>(mat: T): T {
   float heroNdV = saturate(dot(normal, normalize(vViewPosition)));
   totalEmissiveRadiance += diffuseColor.rgb * uHeroFill * (0.3 + 0.7 * heroNdV);
   totalEmissiveRadiance += uHeroRim * pow(1.0 - heroNdV, 3.0);
+  totalEmissiveRadiance += vec3(1.6, 0.36, 0.24) * uHeroHit * (0.7 + 1.5 * pow(1.0 - heroNdV, 2.0));
 }`,
       );
   };

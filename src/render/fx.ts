@@ -51,13 +51,13 @@ export class Fx {
 
   // ------------------------------------------------------------------ building blocks
 
-  dustRing(pos: THREE.Vector3, r0: number, count: number, speed: number, size: number, life = 1.8, dark = false): void {
+  dustRing(pos: THREE.Vector3, r0: number, count: number, speed: number, size: number, life = 1.8, dark = false, alpha = 0.22): void {
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
       const r = r0 * Math.sqrt(Math.random());
       _p.set(pos.x + Math.cos(a) * r, 0.3 + Math.random() * 0.6, pos.z + Math.sin(a) * r);
       _v.set(Math.cos(a) * speed * rnd(0.5, 1.1), rnd(0.4, 2.2), Math.sin(a) * speed * rnd(0.5, 1.1));
-      this.dust.emit({ pos: _p, vel: _v, life: life * rnd(0.7, 1.2), size: size * rnd(0.8, 1.6), grow: 2.8, color: dark ? DUST_DARK : DUST, alpha: 0.22, drag: 1.8, gravity: -0.3 });
+      this.dust.emit({ pos: _p, vel: _v, life: life * rnd(0.7, 1.2), size: size * rnd(0.8, 1.6), grow: 2.8, color: dark ? DUST_DARK : DUST, alpha, drag: 1.8, gravity: -0.3 });
     }
   }
 
@@ -139,8 +139,8 @@ export class Fx {
     const u = this.unsub;
     u.push(on('slamImpact', (e) => {
       // a low, fast dust wave rolling out, a slower cloud, chunks thrown high and a water splash
-      this.dustRing(e.pos, e.radius * 0.5, e.big ? 64 : 44, 16, 1.5, 1.2, true);
-      this.dustRing(e.pos, e.radius * 0.8, e.big ? 60 : 42, 7, 1.8, 2.2);
+      this.dustRing(e.pos, e.radius * 0.5, e.big ? 64 : 44, 16, 1.5, 1.2, true, 0.42);
+      this.dustRing(e.pos, e.radius * 0.8, e.big ? 60 : 42, 7, 1.9, 2.4, false, 0.36);
       this.chunks(e.pos, e.big ? 26 : 18, e.radius, 11, 0.5);
       this.splash(e.pos, 32, 7);
     }));
@@ -196,7 +196,7 @@ export class Fx {
       const heavy = e.damage >= 25 || e.knockdown;
       _p.copy(e.pos).setY(1.15);
       this.dustRing(e.pos, 0.8, heavy ? 16 : 10, heavy ? 4 : 2.5, 0.7, 1.1);
-      this.sparks(_p, null, heavy ? 22 : 12, STEEL_SPARK, 6, 0.35, 0.09);
+      this.sparks(_p, null, heavy ? 26 : 16, STEEL_SPARK, 7, 0.4, 0.15);
       // a rock or a fist: stone shatters on the warrior
       if (this.debris && e.source !== 'hazard' && e.source !== 'push') {
         for (let i = 0; i < (heavy ? 8 : 4); i++) {
