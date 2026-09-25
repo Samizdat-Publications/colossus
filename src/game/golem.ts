@@ -1029,6 +1029,20 @@ export class Golem {
     const fi = this.rig.i(`forearm_${side}`);
     const windDur = (second ? (this.A.sweepCombo.between ?? 0.45) : S.windup) * k;
     let tele: { set: (p: THREE.Vector3) => void; kill: () => void } | null = null;
+    // the arc it will really sweep: fixed the moment the red sector appears (it stops turning then)
+    const INNER = 1.8;
+    const OUTER = R + 2.2;
+    let arcYaw = this.yaw;
+    const inSweep = (p: THREE.Vector3, margin: number): boolean => {
+      const dx = p.x - this.pos.x;
+      const dz = p.z - this.pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d < INNER - margin || d > OUTER + margin) return false;
+      const lo = Math.min(a0, a1) - margin / Math.max(d, 1);
+      const hi2 = Math.max(a0, a1) + margin / Math.max(d, 1);
+      const rel = Math.atan2(Math.sin(Math.atan2(dx, dz) - arcYaw), Math.cos(Math.atan2(dx, dz) - arcYaw));
+      return rel >= lo && rel <= hi2;
+    };
     const steps: Step[] = [
       {
         name: 'windup',
@@ -1037,13 +1051,14 @@ export class Golem {
         ease: 'outCubic',
         enter: () => bus.emit('golemWindup', { attack: 'sweep', duration: windDur, pos: this.pos }),
         update: (t, dt) => {
-          // keep facing the player during most of the wind-up
-          if (t < 0.75) {
+          // face the player until the warning appears, then commit: the sweep covers exactly the red sector
+          if (!tele) {
             const want = Math.atan2(ctx.player.pos.x - this.pos.x, ctx.player.pos.z - this.pos.z);
             this.yaw = rotateToward(this.yaw, want, 70 * DEG * dt);
           }
           if (!tele && t > (second ? 0 : 0.35)) {
-            tele = ctx.threats.sector(this.pos, 4.2, R + 2.2, this.yaw + a0, this.yaw + a1, windDur * (1 - t) + S.strike * k * 0.5);
+            arcYaw = this.yaw;
+            tele = ctx.threats.sector(this.pos, INNER, OUTER, arcYaw + a0, arcYaw + a1, windDur * (1 - t) + S.strike * k * 0.5);
           }
           arcPoint(0, 1.6, goal.target);
           goal.weight = ease.inQuad(t) * 0.6;
@@ -1064,7 +1079,9 @@ export class Golem {
           if (!hit && ctx.player.alive) {
             const c1 = this.capsules[fi];
             const c2 = this.capsules[hi];
-            if (this.hitsPlayer(ctx, c1.a, c1.b, c1.r) || this.hitsPlayer(ctx, c2.a, c2.b, c2.r + 0.2)) {
+            const touching = this.hitsPlayer(ctx, c1.a, c1.b, c1.r) || this.hitsPlayer(ctx, c2.a, c2.b, c2.r + 0.2);
+            // fair: only inside the red sector it showed (plus the warrior's own radius)
+            if (touching && inSweep(ctx.player.pos, 0.45)) {
               hit = true;
               ctx.player.takeHit({ damage: S.damage, from: this.pos, knockback: S.knockback, knockdown: S.knockdown, source: 'sweep' });
             }

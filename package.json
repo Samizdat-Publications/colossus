@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "playtest": "node scripts/playtest.mjs",
-    "balance": "node scripts/balance-sim.mjs",
+    "balance": "node scripts/playtest.mjs --scenario bot",
     "assets": "node scripts/build-assets.mjs"
   },
   "dependencies": {

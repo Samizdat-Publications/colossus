@@ -5,7 +5,7 @@ import type { Fissure, Hazard, Rock, Spike, Telegraph, Threats, Wave } from '../
  * Threat visuals. One colour language:
  *   RED    ring + filling disc  = something is about to land here (slam, rock, meteor, leap, fissure path)
  *   ORANGE crack pattern        = burning ground (dim and flickering while it charges, bright once it burns)
- *   PALE   ring band            = shockwave travelling outward (roll through it or jump over it)
+ *   PALE RED ring band          = shockwave travelling outward (roll through it or jump over it)
  */
 const RED = new THREE.Color(0xff2e22);
 // burning ground is amber-gold, well away from the red of incoming hits
@@ -141,7 +141,8 @@ export class ThreatView {
   private readonly rimGeo = new THREE.RingGeometry(0.975, 1, 64);
   private readonly quadGeo = new THREE.PlaneGeometry(2, 2);
   private readonly bandGeo = new THREE.CylinderGeometry(1, 1, 1, 96, 1, true);
-  private readonly rockGeo = new THREE.IcosahedronGeometry(1, 0);
+  private rockGeo: THREE.BufferGeometry = new THREE.IcosahedronGeometry(1, 0);
+  private meteorGeo: THREE.BufferGeometry | null = null;
   private readonly trailGeo = new THREE.ConeGeometry(0.7, 1, 12, 1, true);
   private readonly spikeGeo = new THREE.ConeGeometry(0.7, 2.6, 5);
   private readonly stripGeo = new THREE.PlaneGeometry(1, 1);
@@ -160,7 +161,14 @@ export class ThreatView {
   })();
   private readonly hazardEdgeGeo = brokenRingGeometry();
   private readonly crackTex = crackTexture();
-  private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x4a4744, roughness: 0.95, flatShading: true, emissive: 0x802808, emissiveIntensity: 0.25 });
+  private rockMat: THREE.Material = new THREE.MeshStandardMaterial({ color: 0x4a4744, roughness: 0.95, flatShading: true, emissive: 0x802808, emissiveIntensity: 0.25 });
+
+  /** Use the Blender boulders (unit radius) for thrown rocks and meteors. */
+  setRockLook(rock: THREE.BufferGeometry | null, meteor: THREE.BufferGeometry | null, mat: THREE.Material | null): void {
+    if (rock) this.rockGeo = rock;
+    this.meteorGeo = meteor;
+    if (mat) this.rockMat = mat;
+  }
   private readonly trailMat = new THREE.ShaderMaterial({
     vertexShader: /* glsl */ `
       varying float vK;
@@ -319,7 +327,7 @@ export class ThreatView {
           vertexShader: RING_VERT,
           fragmentShader: RING_FRAG,
           uniforms: {
-            uColor: { value: new THREE.Color(0xbfdcff) },
+            uColor: { value: new THREE.Color(0xff9d90) },
             uCenter: { value: new THREE.Vector2(w.center.x, w.center.z) },
             uR: { value: w.r },
             uWidth: { value: w.width },
@@ -337,7 +345,7 @@ export class ThreatView {
         new THREE.ShaderMaterial({
           vertexShader: BAND_VERT,
           fragmentShader: BAND_FRAG,
-          uniforms: { uColor: { value: new THREE.Color(0xdcecff) }, uAlpha: { value: 0.5 }, uTime: { value: 0 } },
+          uniforms: { uColor: { value: new THREE.Color(0xffc8c0) }, uAlpha: { value: 0.5 }, uTime: { value: 0 } },
           transparent: true,
           depthWrite: false,
           side: THREE.DoubleSide,
@@ -365,7 +373,7 @@ export class ThreatView {
   private updateRocks(th: Threats): void {
     this.sync(th.rocks, this.rockMeshes, (r) => {
       const g = new THREE.Group();
-      const m = new THREE.Mesh(this.rockGeo, this.rockMat);
+      const m = new THREE.Mesh(r.meteor && this.meteorGeo ? this.meteorGeo : this.rockGeo, this.rockMat);
       m.scale.setScalar(r.size);
       m.castShadow = true;
       const trail = new THREE.Mesh(this.trailGeo, this.trailMat);

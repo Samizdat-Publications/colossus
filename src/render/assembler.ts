@@ -65,6 +65,7 @@ export class Assembler {
     if (p >= 1 && this.lastProgress >= 1) return;
     const flight = 0.3;
     for (const pc of this.pieces) {
+      if (pc.obj.userData.detached) continue; // burst off (phase 3 chest plates): lying where it fell
       const start = clamp(pc.order * (1 - flight) + pc.delay, 0, 1 - flight);
       const u = clamp((p - start) / flight, 0, 1);
       const parent = pc.obj.parent;

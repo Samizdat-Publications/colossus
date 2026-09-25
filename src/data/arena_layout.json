@@ -9,16 +9,16 @@
   "golemHome": [0, -3],
   "gate": { "angle": 0, "width": 7 },
   "pillars": [
-    { "x": 9.58,   "z": 29.48,  "type": "pillar_intact",      "r": 1.3, "h": 13.5, "rot": 12 },
-    { "x": 25.08,  "z": 18.22,  "type": "pillar_broken_mid",  "r": 1.3, "h": 5.2,  "rot": 40 },
-    { "x": 31.0,   "z": 0.0,    "type": "pillar_intact",      "r": 1.3, "h": 13.5, "rot": 75 },
-    { "x": 25.08,  "z": -18.22, "type": "pillar_stump",       "r": 1.3, "h": 2.2,  "rot": 110 },
-    { "x": 9.58,   "z": -29.48, "type": "pillar_broken_tall", "r": 1.3, "h": 9.4,  "rot": 150 },
-    { "x": -9.58,  "z": -29.48, "type": "pillar_intact",      "r": 1.3, "h": 13.5, "rot": 200 },
-    { "x": -25.08, "z": -18.22, "type": "pillar_broken_mid",  "r": 1.3, "h": 5.2,  "rot": 230 },
-    { "x": -31.0,  "z": 0.0,    "type": "pillar_intact",      "r": 1.3, "h": 13.5, "rot": 265 },
-    { "x": -25.08, "z": 18.22,  "type": "pillar_stump",       "r": 1.3, "h": 2.2,  "rot": 300 },
-    { "x": -9.58,  "z": 29.48,  "type": "pillar_broken_tall", "r": 1.3, "h": 9.4,  "rot": 330 }
+    { "x": 9.58,   "z": 29.48,  "type": "pillar_intact",      "r": 1.5, "h": 13.5, "rot": 12 },
+    { "x": 25.08,  "z": 18.22,  "type": "pillar_broken_mid",  "r": 1.5, "h": 5.2,  "rot": 40 },
+    { "x": 31.0,   "z": 0.0,    "type": "pillar_intact",      "r": 1.5, "h": 13.5, "rot": 75 },
+    { "x": 25.08,  "z": -18.22, "type": "pillar_stump",       "r": 1.5, "h": 2.2,  "rot": 110 },
+    { "x": 9.58,   "z": -29.48, "type": "pillar_broken_tall", "r": 1.5, "h": 9.4,  "rot": 150 },
+    { "x": -9.58,  "z": -29.48, "type": "pillar_intact",      "r": 1.5, "h": 13.5, "rot": 200 },
+    { "x": -25.08, "z": -18.22, "type": "pillar_broken_mid",  "r": 1.5, "h": 5.2,  "rot": 230 },
+    { "x": -31.0,  "z": 0.0,    "type": "pillar_intact",      "r": 1.5, "h": 13.5, "rot": 265 },
+    { "x": -25.08, "z": 18.22,  "type": "pillar_stump",       "r": 1.5, "h": 2.2,  "rot": 300 },
+    { "x": -9.58,  "z": 29.48,  "type": "pillar_broken_tall", "r": 1.5, "h": 9.4,  "rot": 330 }
   ],
   "fallen": [
     { "x": -20.2, "z": 23.4, "yaw": 38, "length": 9.0, "r": 0.95, "type": "pillar_fallen" }

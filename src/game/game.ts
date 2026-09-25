@@ -21,6 +21,9 @@ import { setFade } from '../render/fade';
 import { golemLook, makeVeinTexture } from '../render/stoneMaterial';
 import { PartFader } from '../render/partFader';
 import { createSky, skyUniforms } from '../render/sky';
+import type { Assets } from '../render/assets';
+import { addBrazierFlames, buildArenaModel, buildGolemModel, buildWarriorModel, type ArenaModel } from '../render/models';
+import { makeEnvironment } from '../render/environment';
 import { Hud, Tips } from '../ui/hud';
 import { Screens, type EndStats } from '../ui/screens';
 
@@ -84,9 +87,15 @@ export class Game {
   private crackShown = 0;
   private heatShown = 0;
 
+  /** The Blender-made arena, when the assets loaded (null = greybox primitives). */
+  private readonly arenaModel: ArenaModel | null = null;
+  /** Chest plates that burst off in phase 3, with where they sit on the golem. */
+  private readonly plates: { mesh: THREE.Mesh; parent: THREE.Object3D; pos: THREE.Vector3; quat: THREE.Quaternion; vel: THREE.Vector3; spin: THREE.Vector3; flying: boolean }[] = [];
+
   constructor(
     readonly container: HTMLElement,
     readonly opts: GameOptions,
+    readonly assets: Assets | null = null,
   ) {
     this.cam = new CameraRig(window.innerWidth / window.innerHeight);
     this.renderer = new Renderer(container, this.scene, this.cam.camera);
@@ -96,7 +105,8 @@ export class Game {
     this.scene.background = new THREE.Color(0x0a0e16);
     this.scene.fog = new THREE.FogExp2(0x1e2838, 0.0105);
     this.scene.add(createSky());
-    golemLook.uCrackMap.value = makeVeinTexture();
+    golemLook.uCrackMap.value = assets ? assets.tex.crack : makeVeinTexture();
+    if (assets) golemLook.uRim.value = 0.3; // textured stone needs less of the greybox's silhouette rim
     this.hemi = new THREE.HemisphereLight(0x8196bb, 0x2c2723, 1.35);
     this.scene.add(this.hemi);
     this.moon = new THREE.DirectionalLight(0xc4d2ee, 2.3);
@@ -112,20 +122,43 @@ export class Game {
     this.moon.shadow.normalBias = 0.04;
     this.scene.add(this.moon);
     this.scene.add(this.moon.target);
+    // image-based light from a moonlit night sky: steel, wet stone and water get something to reflect
+    this.scene.environment = makeEnvironment(this.renderer.renderer, this.moon.position.clone().normalize());
+    this.scene.environmentIntensity = 0.55;
 
-    buildGreyboxArena(this.scene);
+    if (assets) {
+      this.arenaModel = buildArenaModel(this.scene, assets);
+      addBrazierFlames(this.scene, this.arenaModel.braziers);
+      this.threatView.setRockLook(this.arenaModel.rockGeo, this.arenaModel.meteorGeo, this.arenaModel.rockMat);
+    } else buildGreyboxArena(this.scene);
     this.scene.add(this.threatView.group);
 
-    const pRig = Rig.fromJoints(WARRIOR_RIG.bones);
-    buildGreyboxWarrior(pRig);
+    let pRig: Rig;
+    if (assets) pRig = buildWarriorModel(assets).rig;
+    else {
+      pRig = Rig.fromJoints(WARRIOR_RIG.bones);
+      buildGreyboxWarrior(pRig);
+    }
     this.scene.add(pRig.root);
     this.player = new Player(pRig);
 
-    const gRig = Rig.fromJoints(GOLEM_RIG.bones);
-    const gb = buildGreyboxGolem(gRig);
-    this.coreMeshes = gb.cores;
-    this.golemEyes = gb.eyes;
-    this.golemParts = gb.parts;
+    let gRig: Rig;
+    if (assets) {
+      const gm = buildGolemModel(assets);
+      gRig = gm.rig;
+      this.coreMeshes = gm.cores;
+      this.golemEyes = gm.eyes;
+      this.golemParts = gm.parts;
+      for (const mesh of gm.plates) {
+        this.plates.push({ mesh, parent: mesh.parent!, pos: mesh.position.clone(), quat: mesh.quaternion.clone(), vel: new THREE.Vector3(), spin: new THREE.Vector3(), flying: false });
+      }
+    } else {
+      gRig = Rig.fromJoints(GOLEM_RIG.bones);
+      const gb = buildGreyboxGolem(gRig);
+      this.coreMeshes = gb.cores;
+      this.golemEyes = gb.eyes;
+      this.golemParts = gb.parts;
+    }
     this.scene.add(gRig.root);
     this.golem = new Golem(gRig);
     for (const [name, mesh] of this.coreMeshes) {
@@ -210,6 +243,7 @@ export class Game {
       else this.tips.show('stagger', 'It is <b>down</b>! Get behind it and strike the <b class="core">core on its back</b>.', 3, 5);
     });
     bus.on('phaseChange', (e) => {
+      if (e.phase >= 3) this.burstPlates();
       this.hud.bossVisible = true;
       if (e.phase === 2) this.tips.show('phase2', 'The Ruin cracks open. It is faster now.', 1, 4);
       if (e.phase === 3) this.tips.show('phase3', 'Its heart burns in its chest: bring it to its <b>knees</b> before you strike it. Watch the sky.', 1, 5);
@@ -255,6 +289,7 @@ export class Game {
     this.player.control = false;
     const home = ARENA.golemHome;
     this.golem.reset(home[0], home[1], 0);
+    this.restorePlates();
     this.assembler.reset();
     this.assembler.apply(0, 0);
     this.fightTime = 0;
@@ -656,6 +691,62 @@ export class Game {
   private heroLight: THREE.PointLight | null = null;
   private heldRockMesh: THREE.Mesh | null = null;
 
+  /** Phase 3: the chest plates burst off and tumble to the floor, baring the molten heart. */
+  private burstPlates(): void {
+    const chest = this.golem.rig.bone('chest');
+    const c = chest.getWorldPosition(new THREE.Vector3());
+    for (const p of this.plates) {
+      if (p.flying) continue;
+      this.scene.attach(p.mesh);
+      p.mesh.userData.detached = true;
+      const w = p.mesh.getWorldPosition(new THREE.Vector3());
+      const out = w.sub(c).setY(0);
+      if (out.lengthSq() < 1e-4) out.set(Math.sin(this.golem.yaw), 0, Math.cos(this.golem.yaw));
+      out.normalize();
+      p.vel.copy(out).multiplyScalar(7 + Math.random() * 3).setY(5 + Math.random() * 2);
+      p.spin.set((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 4);
+      p.flying = true;
+    }
+    if (this.plates.length) bus.emit('rockImpact', { pos: c.clone(), radius: 3 });
+  }
+
+  private updatePlates(dt: number): void {
+    for (const p of this.plates) {
+      if (!p.flying) continue;
+      const m = p.mesh;
+      if (p.vel.lengthSq() < 1e-6) continue;
+      p.vel.y -= 22 * dt;
+      m.position.addScaledVector(p.vel, dt);
+      m.rotation.x += p.spin.x * dt;
+      m.rotation.y += p.spin.y * dt;
+      m.rotation.z += p.spin.z * dt;
+      if (m.position.y < 0.45) {
+        m.position.y = 0.45;
+        if (Math.abs(p.vel.y) > 3) {
+          p.vel.y *= -0.25;
+          p.vel.x *= 0.5;
+          p.vel.z *= 0.5;
+          p.spin.multiplyScalar(0.4);
+          bus.emit('rockImpact', { pos: m.position.clone(), radius: 1.5 });
+        } else {
+          p.vel.set(0, 0, 0);
+          p.spin.set(0, 0, 0);
+        }
+      }
+    }
+  }
+
+  private restorePlates(): void {
+    for (const p of this.plates) {
+      if (!p.flying) continue;
+      p.parent.add(p.mesh);
+      p.mesh.position.copy(p.pos);
+      p.mesh.quaternion.copy(p.quat);
+      p.mesh.userData.detached = false;
+      p.flying = false;
+    }
+  }
+
   private strikeSpot: THREE.Group | null = null;
 
   /** While the golem is down: a cyan ring on the floor under the core to go for ("stand here"). */
@@ -690,10 +781,15 @@ export class Game {
   private updateHeldRock(): void {
     const side = this.golem.heldRock;
     if (!this.heldRockMesh) {
-      this.heldRockMesh = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(1.5, 0),
-        new THREE.MeshStandardMaterial({ color: 0x5a554e, roughness: 0.92, flatShading: true, emissive: 0xff4a10, emissiveIntensity: 0.3 }),
-      );
+      const am = this.arenaModel;
+      this.heldRockMesh =
+        am?.rockGeo && am.rockMat
+          ? new THREE.Mesh(am.rockGeo, am.rockMat)
+          : new THREE.Mesh(
+              new THREE.IcosahedronGeometry(1.5, 0),
+              new THREE.MeshStandardMaterial({ color: 0x5a554e, roughness: 0.92, flatShading: true, emissive: 0xff4a10, emissiveIntensity: 0.3 }),
+            );
+      if (am?.rockGeo) this.heldRockMesh.scale.setScalar(1.5);
       this.heldRockMesh.castShadow = true;
       this.scene.add(this.heldRockMesh);
     }
@@ -733,6 +829,14 @@ export class Game {
 
   private updateVisuals(dt: number): void {
     this.threatView.update(this.threats, this.ctx.time);
+    this.updatePlates(dt);
+    // the seal wakes with the golem: its runes burn while it assembles, then settle to an ember
+    if (this.arenaModel?.runes) {
+      const gs = this.golem.state;
+      const want = gs === 'assemble' ? 2.4 : gs === 'dormant' ? 0.35 : gs === 'dead' ? 0.15 : 0.7;
+      const r = this.arenaModel.runes;
+      r.emissiveIntensity += (want - r.emissiveIntensity) * Math.min(1, dt * 2);
+    }
     const g = this.golem;
     this.updateMustSee();
     this.updateHeldRock();
