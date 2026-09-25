@@ -543,6 +543,21 @@ export class Game {
       pz *= 36 / d;
     }
     c.pos.set(px, 3.2 + 3 * t, pz);
+    // never inside the golem
+    for (const cap of this.golem.capsules) {
+      const ax = cap.b.x - cap.a.x;
+      const ay = cap.b.y - cap.a.y;
+      const az = cap.b.z - cap.a.z;
+      const len2 = ax * ax + ay * ay + az * az || 1;
+      let u = ((c.pos.x - cap.a.x) * ax + (c.pos.y - cap.a.y) * ay + (c.pos.z - cap.a.z) * az) / len2;
+      u = Math.max(0, Math.min(1, u));
+      const qx = c.pos.x - (cap.a.x + ax * u);
+      const qy = c.pos.y - (cap.a.y + ay * u);
+      const qz = c.pos.z - (cap.a.z + az * u);
+      const dd = Math.hypot(qx, qy, qz) || 1;
+      const min = cap.r + 1.2;
+      if (dd < min) c.pos.set(c.pos.x + (qx / dd) * (min - dd), Math.max(1, c.pos.y + (qy / dd) * (min - dd)), c.pos.z + (qz / dd) * (min - dd));
+    }
     c.look.set(p.x - dx * 3, 1.5 + 2.5 * t, p.z - dz * 3);
     c.fov = 55;
   }
@@ -601,10 +616,41 @@ export class Game {
   }
 
   private crumbleT = -1;
+  private heroLight: THREE.PointLight | null = null;
+
+  /** Near edges of warning rings around the warrior: the camera must keep them in frame. */
+  private updateMustSee(): void {
+    const must = this.cam.mustSee;
+    must.length = 0;
+    const cam = this.cam.camera.position;
+    const p = this.player.pos;
+    for (const t of this.threats.telegraphs) {
+      if (t.kind === 'sector') continue;
+      const d = Math.hypot(t.pos.x - p.x, t.pos.z - p.z);
+      if (d > t.radius + 6) continue;
+      let dx = cam.x - t.pos.x;
+      let dz = cam.z - t.pos.z;
+      const l = Math.hypot(dx, dz) || 1;
+      dx /= l;
+      dz /= l;
+      must.push(new THREE.Vector3(t.pos.x + dx * t.radius, 0, t.pos.z + dz * t.radius));
+    }
+  }
 
   private updateVisuals(dt: number): void {
     this.threatView.update(this.threats, this.ctx.time);
     const g = this.golem;
+    this.updateMustSee();
+    if (g.riseTele) {
+      this.threats.telegraph(g.riseTele, balance.golem.stagger.risePushRadius, balance.golem.stagger.rise * 0.75, 'push');
+      g.riseTele = null;
+    }
+    // a soft light that follows the warrior so they never vanish into the dark
+    if (!this.heroLight) {
+      this.heroLight = new THREE.PointLight(0xc8d8ff, 7, 8, 2);
+      this.scene.add(this.heroLight);
+    }
+    this.heroLight.position.set(this.player.pos.x, this.player.y + 2.8, this.player.pos.z);
     // phase look: veins crack open in phase 2, molten in phase 3; the arena takes the lava light
     const dormant = g.state === 'dormant' || g.state === 'assemble';
     const crackWant = g.state === 'dead' ? 0 : dormant ? 0 : g.phase >= 3 ? 1.15 : g.phase >= 2 ? 0.8 : 0;
@@ -656,11 +702,11 @@ export class Game {
     const chest = this.coreMeshes.get('core_chest');
     if (chest) {
       const on = g.phase >= 3 && g.state !== 'dormant' ? 1 : 0;
-      (chest.material as THREE.MeshStandardMaterial).emissiveIntensity = on * (1.6 + 0.4 * Math.sin(this.ctx.time * 5));
+      (chest.material as THREE.MeshStandardMaterial).emissiveIntensity = on * (2.4 + 0.6 * Math.sin(this.ctx.time * 5));
       chest.visible = on > 0;
-      chest.scale.setScalar(0.7);
+      chest.scale.setScalar(2.1);
       const l = this.coreLights.get('core_chest');
-      if (l) l.intensity = on * 40;
+      if (l) l.intensity = on * 120;
     }
     void dt;
   }

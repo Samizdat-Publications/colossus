@@ -214,16 +214,17 @@ body {
 
 .tip {
   position: absolute;
-  left: 50%;
-  top: 14vh;
-  transform: translateX(-50%);
-  padding: 8px 18px;
-  background: rgba(10, 12, 16, 0.72);
-  font-size: 18px;
+  left: 28px;
+  top: 38vh;
+  padding: 10px 16px;
+  background: rgba(10, 12, 16, 0.78);
+  border-left: 3px solid var(--core);
+  font-size: 17px;
+  line-height: 1.35;
   opacity: 0;
   transition: opacity 0.4s;
-  text-align: center;
-  max-width: 70vw;
+  text-align: left;
+  max-width: min(340px, 30vw);
 }
 .tip.on {
   opacity: 1;
@@ -287,10 +288,10 @@ body {
 
 .controls {
   position: absolute;
-  right: 24px;
-  top: 24px;
+  right: 20px;
+  top: 38vh;
   font-family: system-ui, sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ash);
   text-align: left;
   line-height: 1.55;

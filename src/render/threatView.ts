@@ -202,10 +202,18 @@ export class ThreatView {
       const grow = Math.min(1, h.t / 0.3);
       const fade = Math.min(1, (h.dur - h.t) / 1.2);
       const armed = h.t >= h.arm;
-      // charging: dim, fast flicker; burning: bright with a slow pulse
-      const charge = armed ? 1 : 0.18 + 0.3 * Math.max(0, 1 - (h.arm - h.t) / 1.0);
-      const flick = armed ? 0.85 + 0.15 * Math.sin(this.time * 7 + h.seed) : 0.6 + 0.4 * Math.sin(this.time * 22 + h.seed);
-      mat.opacity = Math.max(0, charge * flick * fade);
+      const warn = Math.max(0, 1 - (h.arm - h.t) / 0.8); // last 0.8 s before burning
+      if (!armed && warn <= 0) {
+        // cold cracks: dark fissures in the stone, safe to stand on
+        mat.blending = THREE.NormalBlending;
+        mat.color.setRGB(0.05, 0.04, 0.035);
+        mat.opacity = 0.75 * fade;
+      } else {
+        mat.blending = THREE.AdditiveBlending;
+        mat.color.copy(h.kind === 'lava' ? LAVA : EMBER);
+        const flick = armed ? 0.85 + 0.15 * Math.sin(this.time * 7 + h.seed) : 0.5 + 0.5 * Math.sin(this.time * 26 + h.seed);
+        mat.opacity = Math.max(0, (armed ? 1 : 0.35 * warn) * flick * fade);
+      }
       m.scale.setScalar(h.radius * (0.35 + 0.65 * grow));
     }
   }
@@ -295,8 +303,23 @@ export class ThreatView {
   }
 
   private updateTelegraphs(th: Threats): void {
-    this.sync(th.telegraphs, this.teleMeshes, () => {
+    this.sync(th.telegraphs, this.teleMeshes, (t) => {
       const g = new THREE.Group();
+      if (t.kind === 'sector') {
+        const lo = Math.min(t.a0!, t.a1!);
+        const len = Math.abs(t.a1! - t.a0!);
+        const band = new THREE.RingGeometry(t.inner!, t.radius, 48, 1, lo - Math.PI / 2, len);
+        band.rotateX(-Math.PI / 2);
+        const edge = new THREE.RingGeometry(t.radius - 0.35, t.radius, 64, 1, lo - Math.PI / 2, len);
+        edge.rotateX(-Math.PI / 2);
+        g.add(
+          new THREE.Mesh(band, new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending })),
+          new THREE.Mesh(edge, new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending })),
+        );
+        g.userData.sector = true;
+        g.renderOrder = 3;
+        return g;
+      }
       const ring = new THREE.Mesh(
         this.ringGeo,
         new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }),
@@ -310,6 +333,13 @@ export class ThreatView {
       return g;
     });
     for (const [t, g] of this.teleMeshes) {
+      if (g.userData.sector) {
+        g.position.copy(t.pos).setY(0.07);
+        const u = Math.min(1, t.t / t.dur);
+        (((g.children[0] as THREE.Mesh).material) as THREE.MeshBasicMaterial).opacity = 0.1 + 0.25 * u;
+        (((g.children[1] as THREE.Mesh).material) as THREE.MeshBasicMaterial).opacity = 0.4 + 0.5 * u + (u > 0.7 ? 0.2 * Math.sin(this.time * 40) : 0);
+        continue;
+      }
       g.position.copy(t.pos).setY(0.07);
       const u = Math.min(1, t.t / t.dur);
       // the ring appears slightly larger and tightens onto the danger radius

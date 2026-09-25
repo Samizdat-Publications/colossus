@@ -75,6 +75,10 @@ export interface Telegraph {
   dur: number;
   kind: string;
   dead: boolean;
+  /** Sector telegraphs (sweeps): inner radius and angle range (world yaw, radians). */
+  inner?: number;
+  a0?: number;
+  a1?: number;
 }
 
 export interface TelegraphHandle {
@@ -127,6 +131,16 @@ export class Threats {
     bus.emit('shockwave', { pos: center.clone(), maxRadius: maxR });
   }
 
+  /** A red arc on the floor: the area a sweep will cross (yaw a0 -> a1 around pos). */
+  sector(pos: THREE.Vector3, inner: number, outer: number, a0: number, a1: number, dur: number): TelegraphHandle {
+    const t: Telegraph = { pos: pos.clone().setY(0), radius: outer, inner, a0, a1, t: 0, dur: Math.max(0.05, dur), kind: 'sector', dead: false };
+    this.telegraphs.push(t);
+    return {
+      set: (p) => t.pos.set(p.x, 0, p.z),
+      kill: () => (t.dead = true),
+    };
+  }
+
   telegraph(pos: THREE.Vector3, radius: number, dur: number, kind: string): TelegraphHandle {
     const t: Telegraph = { pos: pos.clone().setY(0), radius, t: 0, dur: Math.max(0.05, dur), kind, dead: false };
     this.telegraphs.push(t);
@@ -162,10 +176,12 @@ export class Threats {
     });
   }
 
-  meteor(pos: THREE.Vector3, warn: number, damage: number, radius: number, knockback: number): void {
-    const fall = 0.55;
+  meteor(pos: THREE.Vector3, warn: number, damage: number, radius: number, knockback: number, from?: THREE.Vector3): void {
+    const fall = 0.75;
     const tele = this.telegraph(pos, radius, warn, 'meteor');
-    const start = pos.clone().add(new THREE.Vector3(rng.range(-6, 6), 38, rng.range(-6, 6)));
+    // come in at a steep slant from beside the line of sight, so trails read as falling from the sky
+    const side = from ? new THREE.Vector3(pos.z - from.z, 0, from.x - pos.x).normalize().multiplyScalar(rng.sign() * 14) : new THREE.Vector3(rng.range(-8, 8), 0, rng.range(-8, 8));
+    const start = pos.clone().add(side).add(new THREE.Vector3(0, 34, 0));
     const r: Rock = {
       pos: start,
       vel: new THREE.Vector3(),

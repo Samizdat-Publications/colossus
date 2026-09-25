@@ -28,7 +28,7 @@ const _lookPos = new THREE.Vector3();
 const TOP_MARGIN = 0.07;
 const BOTTOM_MARGIN = 0.21; // keeps the feet above the boss health panel
 const FOV_MIN = 58;
-const FOV_MAX = 74;
+const FOV_MAX = 80;
 
 /**
  * Third-person camera.
@@ -99,6 +99,9 @@ export class CameraRig {
     to.y = Math.max(0.4, to.y);
   }
 
+  /** Ground points that must stay in frame (near edges of warning rings around the warrior). */
+  readonly mustSee: THREE.Vector3[] = [];
+
   update(dt: number, lookX: number, lookY: number, player: Player, golem: Golem, world: World): void {
     this.time += dt;
     const locked = player.locked && golem.lockable;
@@ -151,7 +154,12 @@ export class CameraRig {
         if (Math.abs(Math.atan2(lat, h)) > hHalf * 1.05) return null;
         return Math.atan2(y - _lockPos.y, h);
       };
-      const feet = angleOf(player.pos.x, player.y, player.pos.z) ?? -0.2;
+      // the warrior and the warnings around them are a hard constraint; the golem's top is soft
+      let feet = angleOf(player.pos.x, player.y, player.pos.z) ?? -0.2;
+      for (const m of this.mustSee) {
+        const a = angleOf(m.x, m.y, m.z);
+        if (a !== null && a < feet) feet = a;
+      }
       let top = feet;
       for (const c of golem.capsules) {
         for (const q of [c.a, c.b]) {
@@ -164,8 +172,9 @@ export class CameraRig {
       const fov = clamp(needFov / DEG, FOV_MIN, FOV_MAX) * DEG;
       const lo = top - fov * (0.5 - TOP_MARGIN);
       const hi = feet + fov * (0.5 - BOTTOM_MARGIN);
-      const pitch = lo <= hi ? clamp((lo + hi) / 2, lo, hi) : (lo + hi) / 2;
-      if (needFov > FOV_MAX * DEG * 1.02) this.pullBack = Math.min(6, this.pullBack + dt * 3);
+      // when both cannot fit, the ground around the warrior wins and the camera pulls back
+      const pitch = lo <= hi ? (lo + hi) / 2 : hi;
+      if (needFov > FOV_MAX * DEG * 1.02) this.pullBack = Math.min(10, this.pullBack + dt * 4);
       else if (needFov < FOV_MAX * DEG * 0.85) this.pullBack = Math.max(0, this.pullBack - dt * 1.2);
       this.lockPitch = damp(this.lockPitch, pitch, 7, dt);
       this.lockFov = damp(this.lockFov, fov / DEG, 5, dt);

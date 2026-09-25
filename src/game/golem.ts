@@ -297,7 +297,10 @@ export class Golem {
         dur: S.rise * 0.75,
         pose: P.pushUp,
         ease: 'inOutSine',
-        enter: () => bus.emit('golemWindup', { attack: 'rise', duration: S.rise * 0.75, pos: this.pos }),
+        enter: () => {
+          bus.emit('golemWindup', { attack: 'rise', duration: S.rise * 0.75, pos: this.pos });
+          this.riseTele = this.pos.clone();
+        },
       },
       {
         name: 'push',
@@ -343,12 +346,15 @@ export class Golem {
     const P = this.poses;
     bus.emit('golemDeath', { pos: this.pos.clone() });
     this.anim.play([
-      { name: 'stagger', dur: 0.45, pose: P.roarSky, ease: 'outCubic' },
+      { name: 'stagger', dur: 0.4, pose: P.pushUp, ease: 'outCubic' },
       { name: 'collapse', dur: 0.8, pose: P.kneel, ease: 'inQuad' },
       { name: 'slump', dur: 1.6, pose: P.dormant, ease: 'inOutSine' },
       { name: 'still', dur: 1000, pose: P.dormant },
     ]);
   }
+
+  /** Set when a rise push starts so the director can draw its warning ring. */
+  riseTele: THREE.Vector3 | null = null;
 
   private pushWave(radius: number, force: number, damage: number): void {
     bus.emit('pushWave', { pos: this.pos.clone(), radius });
@@ -992,6 +998,7 @@ export class Golem {
     const hi = this.rig.i(`hand_${side}`);
     const fi = this.rig.i(`forearm_${side}`);
     const windDur = (second ? (this.A.sweepCombo.between ?? 0.45) : S.windup) * k;
+    let tele: { set: (p: THREE.Vector3) => void; kill: () => void } | null = null;
     const steps: Step[] = [
       {
         name: 'windup',
@@ -1004,6 +1011,9 @@ export class Golem {
           if (t < 0.75) {
             const want = Math.atan2(ctx.player.pos.x - this.pos.x, ctx.player.pos.z - this.pos.z);
             this.yaw = rotateToward(this.yaw, want, 70 * DEG * dt);
+          }
+          if (!tele && t > (second ? 0 : 0.35)) {
+            tele = ctx.threats.sector(this.pos, 4.2, R + 2.2, this.yaw + a0, this.yaw + a1, windDur * (1 - t) + S.strike * k * 0.5);
           }
           arcPoint(0, 1.6, goal.target);
           goal.weight = ease.inQuad(t) * 0.6;
@@ -1018,6 +1028,7 @@ export class Golem {
         enter: () => bus.emit('sweepWhoosh', { pos: this.pos }),
         update: (t) => {
           const u = ease.inOutSine(t);
+          if (t > 0.6) tele?.kill();
           arcPoint(u, 1.2 - 0.9 * u * u, goal.target);
           goal.weight = 0.6 + 0.4 * Math.min(1, t * 3);
           if (!hit && ctx.player.alive) {
@@ -1069,6 +1080,8 @@ export class Golem {
     const k = this.k;
     const P = this.poses;
     const wind = second ? this.A.doubleStomp.between : chained ? this.A.doubleStomp.windup : S.windup;
+    let tele: { set: (p: THREE.Vector3) => void; kill: () => void } | null = null;
+    const footSpot = new THREE.Vector3();
     const steps: Step[] = [
       {
         name: 'windup',
@@ -1076,9 +1089,14 @@ export class Golem {
         pose: P[`stompRaise_${side}`],
         ease: 'outCubic',
         enter: () => bus.emit('golemWindup', { attack: 'stomp', duration: wind * k, pos: this.pos }),
-        update: (_t, dt) => {
+        update: (t, dt) => {
           this.faceToward(ctx.player.pos, dt, 0.35);
+          const foot = this.capsules[this.rig.i(`foot_${side}`)];
+          footSpot.addVectors(foot.a, foot.b).multiplyScalar(0.5).setY(0);
+          if (!tele && t > 0.25) tele = ctx.threats.telegraph(footSpot, S.directRadius, wind * k * (1 - t) + S.strike * k, 'stomp');
+          tele?.set(footSpot);
         },
+        exit: () => tele?.kill(),
       },
       {
         name: 'strike',
@@ -1283,21 +1301,27 @@ export class Golem {
     const k = this.k;
     const P = this.poses;
     let spawned = 0;
+    const placed: THREE.Vector3[] = [];
     const spawnAt = (i: number) => {
       const pl = ctx.player.pos;
       const p = new THREE.Vector3();
-      if (i < M.nearPlayer) {
-        const r = i === 0 ? 0 : rng.range(2.5, 6);
-        const a = rng.range(0, Math.PI * 2);
-        p.set(pl.x + Math.cos(a) * r, 0, pl.z + Math.sin(a) * r);
-      } else {
-        const r = rng.range(4, 30);
-        const a = rng.range(0, Math.PI * 2);
-        p.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+      // rejection-sample so warning rings never overlap
+      for (let tries = 0; tries < 12; tries++) {
+        if (i < M.nearPlayer) {
+          const r = i === 0 ? 0 : rng.range(M.radius * 2.2, M.radius * 3.4);
+          const a = rng.range(0, Math.PI * 2);
+          p.set(pl.x + Math.cos(a) * r, 0, pl.z + Math.sin(a) * r);
+        } else {
+          const r = rng.range(6, 30);
+          const a = rng.range(0, Math.PI * 2);
+          p.set(Math.cos(a) * r, 0, Math.sin(a) * r);
+        }
+        const d = Math.hypot(p.x, p.z);
+        if (d > 34) p.multiplyScalar(34 / d);
+        if (placed.every((q) => q.distanceTo(p) > M.radius * 2.2)) break;
       }
-      const d = Math.hypot(p.x, p.z);
-      if (d > 34) p.multiplyScalar(34 / d);
-      ctx.threats.meteor(p, M.warn, M.damage, M.radius, M.knockback);
+      placed.push(p.clone());
+      ctx.threats.meteor(p, M.warn, M.damage, M.radius, M.knockback, this.pos);
     };
     return [
       {
