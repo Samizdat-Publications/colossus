@@ -123,8 +123,8 @@ def build_list():
     # ---- forearm: elbow boulder, three blocks swelling toward the wrist, a dressed cuff
     add('forearm_L', 'rock', along('forearm_L', 0.02), (0.92, 0.85, 0.95), mat='rock', n=22)
     for i, (t, sz) in enumerate(((0.26, (2.2, 1.35, 2.2)), (0.52, (2.4, 1.4, 2.4)), (0.78, (2.6, 1.4, 2.6)))):
-        add('forearm_L', 'block', along('forearm_L', t), sz, bone_rot('forearm_L', C.rot_y(i * 17 - 10)), chips=3,
-            name=f'g_forearm_L_{i}')
+        add('forearm_L', 'rock', along('forearm_L', t), (sz[0] * 0.52, sz[1] * 0.56, sz[2] * 0.52),
+            bone_rot('forearm_L', C.rot_y(i * 17 - 10)), mat='rock', blocky=0.55, n=22, name=f'g_forearm_L_{i}')
     for i in range(4):
         a = i / 4 * math.tau + math.pi / 4
         off = Vector((math.cos(a) * 1.2, 0.0, math.sin(a) * 1.2))

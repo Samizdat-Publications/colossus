@@ -58,7 +58,8 @@ void main() {
   // stay on the arena floor
   if (length(p.xz) > 44.0) vT = 1.0;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
-  gl_PointSize = (0.08 + 0.22 * vT) * uScale / max(0.1, -mv.z);
+  // small rings; never large blobs right in front of the lens
+  gl_PointSize = min(9.0, (0.06 + 0.16 * vT) * uScale / max(0.1, -mv.z));
   gl_Position = projectionMatrix * mv;
 }`;
 const SPLASH_FRAG = /* glsl */ `
@@ -170,10 +171,10 @@ export class Weather {
     const u = this.rainMat.uniforms;
     u.uTime.value = time;
     u.uCenter.value.copy(camera.position);
-    u.uOpacity.value = 0.32 * this.rain;
+    u.uOpacity.value = 0.24 * this.rain;
     this.splashMat.uniforms.uTime.value = time;
     this.splashMat.uniforms.uFocus.value.copy(focus);
-    this.splashMat.uniforms.uOpacity.value = 0.5 * this.rain;
+    this.splashMat.uniforms.uOpacity.value = 0.38 * this.rain;
     // lightning
     this.nextStrike -= dt * frequency;
     if (this.nextStrike <= 0 && this.strikeT < 0) {

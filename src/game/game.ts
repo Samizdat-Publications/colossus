@@ -27,6 +27,10 @@ import { makeEnvironment } from '../render/environment';
 import { waterUniforms } from '../render/models';
 import { Cape } from '../render/cloth';
 import { AudioEngine } from '../audio/audio';
+import { Fx } from '../render/fx';
+import { Weather } from '../render/weather';
+import { Flames } from '../render/flames';
+import { SwordTrail } from '../render/trail';
 import { Hud, Tips } from '../ui/hud';
 import { Screens, type EndStats } from '../ui/screens';
 
@@ -91,6 +95,14 @@ export class Game {
   private heatShown = 0;
 
   readonly audio: AudioEngine;
+  readonly fx: Fx;
+  readonly weather = new Weather();
+  private flames: Flames | null = null;
+  private trail: SwordTrail | null = null;
+  private readonly golemPoints: THREE.Vector3[] = [];
+  private readonly meteorPoints: THREE.Vector3[] = [];
+  private moonBase = 2.3;
+  private hemiBase = 1.35;
   /** The warrior's cloth cape (Blender assets only). */
   private cape: Cape | null = null;
   private readonly wind = new THREE.Vector3();
@@ -122,7 +134,10 @@ export class Game {
     this.scene.fog = new THREE.FogExp2(0x1e2838, 0.0105);
     this.scene.add(createSky());
     golemLook.uCrackMap.value = assets ? assets.tex.crack : makeVeinTexture();
-    if (assets) golemLook.uRim.value = 0.14; // textured stone needs only a hint of the greybox's silhouette rim
+    if (assets) {
+      golemLook.uRim.value = 0.1; // textured stone needs only a hint of the greybox's silhouette rim
+      golemLook.uCrackScale.value = 0.15; // larger vein cells: the phase 2 cracks read from across the arena
+    }
     this.hemi = new THREE.HemisphereLight(0x8196bb, 0x2c2723, 1.35);
     this.scene.add(this.hemi);
     this.moon = new THREE.DirectionalLight(0xc4d2ee, 2.3);
@@ -144,15 +159,26 @@ export class Game {
 
     if (assets) {
       this.arenaModel = buildArenaModel(this.scene, assets);
-      addBrazierFlames(this.scene, this.arenaModel.braziers);
+      this.flames = new Flames(this.arenaModel.braziers.map((b) => b.clone().setY(2.02)));
+      this.scene.add(this.flames.group);
       this.threatView.setRockLook(this.arenaModel.rockGeo, this.arenaModel.meteorGeo, this.arenaModel.rockMat);
-    } else buildGreyboxArena(this.scene);
+    } else {
+      buildGreyboxArena(this.scene);
+      addBrazierFlames(this.scene, []);
+    }
+    // effects and the storm
+    this.fx = new Fx(this.arenaModel?.debrisGeo ?? null, this.arenaModel?.debrisMat ?? null);
+    this.scene.add(this.fx.group);
+    this.scene.add(this.weather.group);
+    this.weather.onStrike = (strength, distance) => bus.emit('lightning', { strength, distance });
     this.scene.add(this.threatView.group);
 
     let pRig: Rig;
     if (assets) {
       const wm = buildWarriorModel(assets);
       pRig = wm.rig;
+      this.trail = new SwordTrail(wm.sword);
+      this.scene.add(this.trail.mesh);
       if (wm.cape) {
         const r = pRig;
         const spheres = [
@@ -252,6 +278,7 @@ export class Game {
     bus.on('roar', () => this.cam.shake(0.45));
     bus.on('pushWave', () => this.cam.shake(0.35));
     bus.on('coreHit', (e) => {
+      this.golem.flinch(e.core, e.heavy || e.crit);
       this.hitstop = Math.max(this.hitstop, e.crit ? 0.1 : e.heavy ? 0.085 : 0.06);
       this.cam.shake(e.heavy ? 0.22 : 0.14);
     });
@@ -279,6 +306,7 @@ export class Game {
     });
     bus.on('phaseChange', (e) => {
       if (e.phase >= 3) this.burstPlates();
+      this.weather.strike(1);
       this.hud.bossVisible = true;
       if (e.phase === 2) this.tips.show('phase2', 'The Ruin cracks open. It is faster now.', 1, 4);
       if (e.phase === 3) this.tips.show('phase3', 'Its heart burns in its chest: bring it to its <b>knees</b> before you strike it. Watch the sky.', 1, 5);
@@ -328,6 +356,7 @@ export class Game {
     this.golem.reset(home[0], home[1], 0);
     this.restorePlates();
     this.cape?.reset();
+    this.fx.clear();
     this.assembler.reset();
     this.assembler.apply(0, 0);
     this.fightTime = 0;
@@ -416,6 +445,7 @@ export class Game {
   private onGolemDeath(): void {
     if (this.flow !== 'fight') return;
     bus.emit('victory', {});
+    this.weather.strike(1);
     this.setFlow('victoryCine');
     this.slowmo = 0.3;
     this.slowmoTimer = 1.6;
@@ -734,6 +764,47 @@ export class Game {
   private heroLight: THREE.PointLight | null = null;
   private heldRockMesh: THREE.Mesh | null = null;
 
+  private updateStorm(dt: number): void {
+    const cam = this.cam.camera;
+    const h = this.renderer.renderer.domElement.height;
+    this.fx.setViewport(h, cam.fov);
+    this.weather.setViewport(h, cam.fov);
+    const g = this.golem;
+    // lightning more often in phase 3
+    this.weather.update(dt, this.ctx.time, cam, this.player.pos, g.phase >= 3 ? 1.7 : 1);
+    const f = this.weather.flash;
+    skyUniforms.uFlash.value = f;
+    this.moon.intensity = this.moonBase + f * 5;
+    this.hemi.intensity = this.hemiBase + f * 1.4;
+    this.flames?.update(this.ctx.time);
+    // embers from the golem's cracks: sample its body
+    if (this.golemPoints.length !== g.capsules.length) {
+      this.golemPoints.length = 0;
+      for (let i = 0; i < g.capsules.length; i++) this.golemPoints.push(new THREE.Vector3());
+    }
+    g.capsules.forEach((c, i) => this.golemPoints[i].lerpVectors(c.a, c.b, Math.random()));
+    let mi = 0;
+    for (const r of this.threats.rocks) {
+      if (!r.meteor || r.t < 0) continue;
+      if (!this.meteorPoints[mi]) this.meteorPoints[mi] = new THREE.Vector3();
+      this.meteorPoints[mi++].copy(r.pos);
+    }
+    this.meteorPoints.length = mi;
+    const active = g.state !== 'dormant' && g.state !== 'dead';
+    this.fx.update(dt, this.ctx.time, {
+      hazards: this.threats.hazards,
+      braziers: this.arenaModel?.braziers ?? [],
+      golemPoints: active ? this.golemPoints : [],
+      phase: g.phase,
+      meteors: this.meteorPoints,
+    });
+    if (this.trail) {
+      const a = this.player.atk;
+      const striking = !!a && this.player.anim.seq?.stepName === 'strike';
+      this.trail.update(dt, striking, !!a?.heavy);
+    }
+  }
+
   private updateAudio(): void {
     const p = this.player.pos;
     // fire: the nearest brazier or burning patch
@@ -940,6 +1011,7 @@ export class Game {
     this.updatePlates(dt);
     waterUniforms.uWaterTime.value = this.ctx.time;
     this.updateAudio();
+    this.updateStorm(dt);
     if (this.cape) {
       // gusty storm wind from the north-west, plus the air the warrior runs through
       const t = this.ctx.time;
@@ -950,7 +1022,7 @@ export class Game {
     // the seal wakes with the golem: its runes burn while it assembles, then settle to an ember
     if (this.arenaModel?.runes) {
       const gs = this.golem.state;
-      const want = gs === 'assemble' ? 2.4 : gs === 'dormant' ? 0.35 : gs === 'dead' ? 0.15 : 0.7;
+      const want = gs === 'assemble' ? 2.0 : gs === 'dormant' ? 0.3 : gs === 'dead' ? 0.05 : 0.12;
       const r = this.arenaModel.runes;
       r.emissiveIntensity += (want - r.emissiveIntensity) * Math.min(1, dt * 2);
     }
@@ -986,7 +1058,7 @@ export class Game {
     this.heroLight.position.set(this.player.pos.x, this.player.y + 2.8, this.player.pos.z);
     // phase look: veins crack open in phase 2, molten in phase 3; the arena takes the lava light
     const dormant = g.state === 'dormant' || g.state === 'assemble';
-    const crackWant = g.state === 'dead' ? 0 : dormant ? 0 : g.phase >= 3 ? 1.0 : g.phase >= 2 ? 0.6 : 0;
+    const crackWant = g.state === 'dead' ? 0 : dormant ? 0 : g.phase >= 3 ? 1.0 : g.phase >= 2 ? 0.8 : 0;
     const heatWant = g.state === 'dead' ? 0 : g.phase >= 3 ? 1 : 0;
     this.crackShown += (crackWant - this.crackShown) * Math.min(1, dt * (g.state === 'transition' ? 1.4 : 3));
     this.heatShown += (heatWant - this.heatShown) * Math.min(1, dt * 1.2);
@@ -995,7 +1067,7 @@ export class Game {
     golemLook.uTime.value = this.ctx.time;
     skyUniforms.uTime.value = this.ctx.time;
     skyUniforms.uLava.value = this.heatShown;
-    this.hemi.color.setRGB(0.506 + 0.12 * this.heatShown, 0.588 - 0.06 * this.heatShown, 0.733 - 0.2 * this.heatShown);
+    this.hemi.color.setRGB(0.54 + 0.1 * this.heatShown, 0.58 - 0.05 * this.heatShown, 0.66 - 0.16 * this.heatShown);
     // phase 3: lava light from the cracks warms the floor and the air
     this.hemi.groundColor.setRGB(0.173 + 0.16 * this.heatShown, 0.153 + 0.05 * this.heatShown, 0.137 - 0.03 * this.heatShown);
     (this.scene.fog as THREE.FogExp2).color.setRGB(0.118 + 0.13 * this.heatShown, 0.157 - 0.05 * this.heatShown, 0.22 - 0.14 * this.heatShown);

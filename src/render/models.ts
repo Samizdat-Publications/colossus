@@ -83,7 +83,7 @@ export function buildGolemModel(assets: Assets): GolemModel {
     } else {
       const rock = matName(m).includes('rock');
       // one material per piece (the camera fade dims whole pieces); they share one shader program
-      m.material = makeGolemStoneMaterial(rock ? stoneParams(tex, 'rock', 0xd6d8dd, 1.0) : stoneParams(tex, 'ashlar', 0xc9c4ba, 1.0));
+      m.material = makeGolemStoneMaterial({ ...(rock ? stoneParams(tex, 'rock', 0xd6d8dd, 1.0) : stoneParams(tex, 'ashlar', 0xc9c4ba, 1.0)), envMapIntensity: 0.3 });
       parts.push(m);
       if (name.startsWith('chestplate')) plates.push(m);
     }
@@ -148,15 +148,17 @@ export interface ArenaModel {
   rockGeo: THREE.BufferGeometry | null;
   meteorGeo: THREE.BufferGeometry | null;
   rockMat: THREE.MeshStandardMaterial | null;
+  debrisGeo: THREE.BufferGeometry | null;
+  debrisMat: THREE.MeshStandardMaterial | null;
 }
 
 /** arena.glb, the colonnade (pillars.glb) and rubble (rubble.glb) placed from arena_layout.json. */
 export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel {
   const tex = assets.tex;
-  const runes = new THREE.MeshStandardMaterial({ color: 0x1a0c04, emissive: 0xff9a4a, emissiveIntensity: 0.5, roughness: 0.6 });
+  const runes = new THREE.MeshStandardMaterial({ color: 0x0a0c10, emissive: 0x9fb4d8, emissiveIntensity: 0.3, roughness: 0.6 });
   const water = makeWater();
   const mats: Record<string, THREE.Material> = {
-    floor_stone: new THREE.MeshStandardMaterial({ ...stoneParams(tex, 'ashlar', 0x959aa4, 0.52), envMapIntensity: 1.3 }),
+    floor_stone: new THREE.MeshStandardMaterial({ ...stoneParams(tex, 'ashlar', 0x959aa4, 0.6), envMapIntensity: 0.85 }),
     floor_water: water,
     seal_stone: new THREE.MeshStandardMaterial(stoneParams(tex, 'ashlar', 0x8e9098, 0.8)),
     seal_rune: runes,
@@ -234,6 +236,8 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
     rockGeo: firstGeometry(rockMesh),
     meteorGeo: firstGeometry(meteorMesh),
     rockMat,
+    debrisGeo: firstGeometry(proto(assets.models.rubble, 'debris_0')),
+    debrisMat: new THREE.MeshStandardMaterial(stoneParams(tex, 'rock', 0x9a9ca2, 1.0)),
   };
 }
 

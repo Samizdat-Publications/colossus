@@ -481,6 +481,7 @@ export class Golem {
       golemWalk(out, this.poses.idle, this.rig, this.gait, this.walkAmount, this.turnAmount);
       golemBreath(out, this.rig, this.time, 1);
     });
+    this.applyFlinch(dt, ctx);
     this.syncRig();
     this.applyIK();
     this.updateDerived();
@@ -499,6 +500,46 @@ export class Golem {
           source: 'push',
         });
       }
+    }
+  }
+
+  // ---- hit feedback: the struck arm jerks back, the whole body shudders; the head tracks the warrior
+  private flinchT = 0;
+  private flinchSide: Side | '' = '';
+  private flinchAmt = 0;
+  private headYaw = 0;
+
+  /** Called when a core takes a blow: kicks the arm (or the whole body for the back and chest cores). */
+  flinch(core: string, heavy: boolean): void {
+    this.flinchT = 0;
+    this.flinchAmt = heavy ? 1 : 0.6;
+    this.flinchSide = core === 'core_arm_L' ? 'L' : core === 'core_arm_R' ? 'R' : '';
+  }
+
+  private applyFlinch(dt: number, ctx: FightContext): void {
+    const rig = this.rig;
+    this.flinchT += dt;
+    const k = this.flinchAmt * Math.exp(-this.flinchT * 9) * Math.sin(Math.min(Math.PI, this.flinchT * 30));
+    if (Math.abs(k) > 1e-3) {
+      if (this.flinchSide) {
+        rig.bones[rig.i(`forearm_${this.flinchSide}`)].rotateX(-0.12 * k);
+        rig.bones[rig.i(`hand_${this.flinchSide}`)].rotateX(-0.18 * k);
+      } else {
+        rig.bones[rig.i('spine')].rotateX(-0.05 * k);
+        rig.bones[rig.i('chest')].rotateZ(0.04 * k);
+      }
+    }
+    // the head turns toward the warrior (within its neck's reach) when it is not busy roaring
+    const live = this.state === 'combat' || this.state === 'transition';
+    let want = 0;
+    if (live && ctx.live) {
+      const to = Math.atan2(ctx.player.pos.x - this.pos.x, ctx.player.pos.z - this.pos.z);
+      want = clamp(angleDiff(this.yaw, to), -0.6, 0.6);
+    }
+    this.headYaw += (want - this.headYaw) * Math.min(1, dt * 3);
+    if (Math.abs(this.headYaw) > 1e-3) {
+      rig.bones[rig.i('neck')].rotateY(this.headYaw * 0.4);
+      rig.bones[rig.i('head')].rotateY(this.headYaw * 0.6);
     }
   }
 

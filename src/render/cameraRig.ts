@@ -157,7 +157,7 @@ export class CameraRig {
       const wantDist = 8.6 + close * 1.6 + this.pullBack + this.wideNow;
       this.lockDist = damp(this.lockDist, wantDist, 3, dt);
       this.riseNow = damp(this.riseNow, this.rise, 2.5, dt);
-      const camH = Math.max(1.3, this.pivot.y + 1.1 + close * 1.4 + (this.pullBack + this.wideNow) * 0.35 + this.riseNow);
+      const camH = Math.max(1.3, this.pivot.y + 1.1 - close * 0.9 + (this.pullBack + this.wideNow) * 0.35 + this.riseNow);
       _lockPos.set(this.pivot.x - _f.x * this.lockDist, camH, this.pivot.z - _f.z * this.lockDist);
       this.collide(world, _t.set(this.pivot.x, camH, this.pivot.z), _lockPos);
 

@@ -50,8 +50,8 @@ void main() {
   float moon = max(dot(d, uMoonDir), 0.0);
   vec3 moonGlow = vec3(0.55, 0.65, 0.85) * (pow(moon, 60.0) * 1.2 + pow(moon, 6.0) * 0.18);
   // clouds are lit from behind by the moon, darker elsewhere
-  vec3 cloudCol = mix(vec3(0.05, 0.07, 0.1), vec3(0.28, 0.34, 0.46), pow(moon, 3.0) * 0.8 + 0.12);
-  col = mix(col + moonGlow, cloudCol, cloud * 0.85 * smoothstep(-0.05, 0.25, d.y));
+  vec3 cloudCol = mix(vec3(0.085, 0.1, 0.135), vec3(0.28, 0.34, 0.46), pow(moon, 3.0) * 0.8 + 0.12);
+  col = mix(col + moonGlow, cloudCol, cloud * 0.7 * smoothstep(-0.05, 0.25, d.y));
   // lightning lights the cloud deck
   col += vec3(0.55, 0.62, 0.8) * uFlash * (0.35 + cloud * 0.9) * smoothstep(-0.1, 0.3, d.y);
   // lava reflected on the low clouds in phase 3

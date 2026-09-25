@@ -46,7 +46,7 @@ if (flag('preview')) {
 } else {
   // Random port: a port the local Chromium refuses (seen with 5619) must never block the self-test.
   const port = 5630 + Math.floor(Math.random() * 60);
-  server = await createServer({ root, server: { port, strictPort: false }, logLevel: 'warn' });
+  server = await createServer({ root, server: { port, strictPort: false, hmr: false }, logLevel: 'warn' }); // no hot reload in tests (its socket failed on some ports)
   await server.listen();
   baseUrl = server.resolvedUrls.local[0];
 }

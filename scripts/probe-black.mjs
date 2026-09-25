@@ -11,7 +11,7 @@ const attack = process.argv[2] ?? 'stomp';
 const out = path.resolve(root, 'test-output/probe-black');
 fs.mkdirSync(out, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const server = await createServer({ root, server: { port: 5739, strictPort: false }, logLevel: 'warn' });
+const server = await createServer({ root, server: { port: 5739, strictPort: false, hmr: false }, logLevel: 'warn' });
 await server.listen();
 const browser = await chromium.launch({ args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
