@@ -85,6 +85,9 @@ body {
 }
 .hud.cine .boss,
 .hud.cine .player,
+.hud.cine .reticle,
+.hud.cine .core-marker,
+.hud.cine .floaters,
 .hud.cine .controls,
 .hud.cine .controls-pill {
   opacity: 0;
@@ -765,7 +768,7 @@ input[type='checkbox'] {
   gap: 12px 24px;
   margin-top: 24px;
   padding: 10px 16px;
-  background: rgba(8, 9, 12, 0.72);
+  background: rgba(8, 9, 12, 0.9);
 }
 .stats div {
   display: flex;

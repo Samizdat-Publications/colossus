@@ -205,7 +205,7 @@ export class Hud {
         this.pending.splice(i, 1);
         continue;
       }
-      f.el.style.transform = `translate(${((p.x + 1) / 2) * width}px, ${((1 - p.y) / 2) * height}px) translate(-50%, -50%)`;
+      f.el.style.transform = `translate(${((p.x + 1) / 2) * width + 58}px, ${((1 - p.y) / 2) * height}px) translate(-50%, -50%)`;
       f.el.style.opacity = String(Math.min(1, (1.1 - f.t) * 3));
     }
   }

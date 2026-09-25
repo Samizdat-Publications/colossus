@@ -47,6 +47,7 @@ uniform vec3 uFocus;
 uniform float uRadius;
 uniform float uScale;
 varying float vT;
+varying float vNear;
 float h1(float n) { return fract(sin(n) * 43758.5453); }
 void main() {
   float period = 0.45 + aSeed.x * 0.5;
@@ -59,18 +60,20 @@ void main() {
   if (length(p.xz) > 44.0) vT = 1.0;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   // small rings; never large blobs right in front of the lens
-  gl_PointSize = min(9.0, (0.06 + 0.16 * vT) * uScale / max(0.1, -mv.z));
+  gl_PointSize = min(9.0, (0.05 + (0.1 + 0.1 * aSeed.z) * vT) * uScale / max(0.1, -mv.z));
+  vNear = 1.0 - smoothstep(5.0, 13.0, -mv.z);
   gl_Position = projectionMatrix * mv;
 }`;
 const SPLASH_FRAG = /* glsl */ `
 uniform float uOpacity;
 varying float vT;
+varying float vNear;
 void main() {
   vec2 d = gl_PointCoord - 0.5;
   float r = length(d) * 2.0;
   // a thin expanding ring, squashed onto the floor by the view (good enough at a distance)
   float ring = smoothstep(0.15, 0.0, abs(r - 0.75)) ;
-  float a = ring * (1.0 - vT) * uOpacity;
+  float a = ring * (1.0 - vT) * uOpacity * vNear;
   if (a < 0.004) discard;
   gl_FragColor = vec4(0.72, 0.8, 0.92, a);
 }`;
@@ -174,7 +177,7 @@ export class Weather {
     u.uOpacity.value = 0.24 * this.rain;
     this.splashMat.uniforms.uTime.value = time;
     this.splashMat.uniforms.uFocus.value.copy(focus);
-    this.splashMat.uniforms.uOpacity.value = 0.38 * this.rain;
+    this.splashMat.uniforms.uOpacity.value = 0.26 * this.rain;
     // lightning
     this.nextStrike -= dt * frequency;
     if (this.nextStrike <= 0 && this.strikeT < 0) {

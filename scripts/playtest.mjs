@@ -465,9 +465,17 @@ try {
   } else if (scenario === 'feelcritic') {
     // Bursts of consecutive frames around hits, impacts and weather, for the milestone 3 (feel) critic.
     // The golem's own attack choice is held, so each beat is forced and nothing else interferes.
+    // a screenshot takes about a second here, so the simulation is frozen while each frame is captured:
+    // consecutive frames are really `gap` ms of game time apart
+    const frozenShot = async (label) => {
+      await page.evaluate(() => window.__CO.setTimeScale(0));
+      await sleep(60);
+      await shot(label);
+      await page.evaluate(() => window.__CO.setTimeScale(1));
+    };
     const burst = async (label, n, gap) => {
       for (let i = 0; i < n; i++) {
-        await shot(`${label}_${String.fromCharCode(97 + i)}`);
+        await frozenShot(`${label}_${String.fromCharCode(97 + i)}`);
         if (i < n - 1) await sleep(gap);
       }
     };
@@ -481,39 +489,51 @@ try {
       window.__game.hud.showControls = false;
     });
     await idle();
-    await key('KeyQ');
-    // deflect: a light attack on the stone shin
+    // deflect: a light attack on the stone shin, from 1 m away, facing it
     await page.evaluate(() => {
-      const g = window.__game.golem.pos;
-      window.__CO.teleportPlayer(g.x + 2.0, g.z + 3.2);
+      const game = window.__game;
+      const g = game.golem;
+      const shin = g.capsules.find((c) => c.name === 'shin_L');
+      const mx = (shin.a.x + shin.b.x) / 2;
+      const mz = (shin.a.z + shin.b.z) / 2;
+      let dx = game.player.pos.x - mx;
+      let dz = game.player.pos.z - mz;
+      const l = Math.hypot(dx, dz) || 1;
+      dx /= l;
+      dz /= l;
+      game.player.locked = false;
+      game.player.pos.set(mx + dx * (shin.r + 1.0), 0, mz + dz * (shin.r + 1.0));
+      game.player.yaw = Math.atan2(-dx, -dz);
     });
-    await sleep(900);
+    await sleep(500);
+    const sinceD = (await state()).time;
     await click('left');
-    await sleep(190);
+    await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'deflect'), 1500, sinceD).catch(() => log('warn: no deflect'));
     await burst('deflect_on_stone', 2, 90);
     await sleep(700);
+    await key('KeyQ');
     // three-hit combo in the open
     await page.evaluate(() => window.__CO.teleportPlayer(0, 14));
     await sleep(700);
     await click('left');
     await sleep(130);
-    await shot('combo_swing_1');
+    await frozenShot('combo_swing_1');
     await sleep(250);
     await click('left');
     await sleep(170);
-    await shot('combo_swing_2');
+    await frozenShot('combo_swing_2');
     await sleep(280);
     await click('left');
     await sleep(210);
-    await shot('combo_swing_3');
+    await frozenShot('combo_swing_3');
     await sleep(700);
     // heavy charge
     await page.mouse.down({ button: 'right' });
     await sleep(700);
-    await shot('heavy_charging');
+    await frozenShot('heavy_charging');
     await page.mouse.up({ button: 'right' });
     await sleep(220);
-    await shot('heavy_release');
+    await frozenShot('heavy_release');
     await sleep(900);
     // slam impact near the warrior
     await idle();
@@ -566,7 +586,7 @@ try {
     await page.evaluate(() => window.__CO.forceAttack('slam', 'R'));
     await waitFor(() => window.__CO.state().threats.hazards.length > 0, 10000).catch(() => {});
     await sleep(3400);
-    await shot('burning_ground');
+    await frozenShot('burning_ground');
     // lightning
     await page.evaluate(() => window.__game.weather.strike(1));
     await sleep(80);

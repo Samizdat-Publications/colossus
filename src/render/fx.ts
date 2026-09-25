@@ -235,9 +235,9 @@ export class Fx {
     for (const h of ctx.hazards) {
       if (h.t < h.arm - 1 || h.dur - h.t < 0.3) continue;
       const burning = h.t >= h.arm;
-      this.rate(`hz${h.seed}`, (burning ? 10 : 4) * h.radius * 0.4, dt, () => this.embers(h.pos, 1, h.radius * 0.85, burning ? 2 : 1));
+      this.rate(`hz${h.seed}`, (burning ? 6 : 2) * h.radius * 0.4, dt, () => this.embers(h.pos, 1, h.radius * 0.85, burning ? 2 : 1));
       if (burning) {
-        this.rate(`hs${h.seed}`, 2.2, dt, () => this.smoke(h.pos, 1, h.radius * 0.7));
+        this.rate(`hs${h.seed}`, 4.5, dt, () => this.smoke(h.pos, 1, h.radius * 0.7));
         this.rate(`hf${h.seed}`, 7 * h.radius, dt, () => this.flameLick(h.pos, h.radius * 0.8));
       }
     }

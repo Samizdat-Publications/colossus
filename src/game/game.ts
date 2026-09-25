@@ -32,7 +32,7 @@ import { AudioEngine } from '../audio/audio';
 import { loadSettings, saveSettings, type Settings } from '../core/settings';
 import { Fx } from '../render/fx';
 import { Weather } from '../render/weather';
-import { Flames } from '../render/flames';
+import { FirePool, Flames } from '../render/flames';
 import { SwordTrail } from '../render/trail';
 import { Hud, Tips } from '../ui/hud';
 import { Screens, type EndStats } from '../ui/screens';
@@ -146,9 +146,9 @@ export class Game {
       golemLook.uRim.value = 0.1; // textured stone needs only a hint of the greybox's silhouette rim
       golemLook.uCrackScale.value = 0.15; // larger vein cells: the phase 2 cracks read from across the arena
     }
-    this.hemi = new THREE.HemisphereLight(0x8196bb, 0x2c2723, 1.15);
+    this.hemi = new THREE.HemisphereLight(0x8196bb, 0x2c2723, 0.95);
     this.scene.add(this.hemi);
-    this.moon = new THREE.DirectionalLight(0xc4d2ee, 2.3);
+    this.moon = new THREE.DirectionalLight(0xc4d2ee, 1.85);
     this.moon.position.set(-16, 40, -44);
     this.moon.castShadow = true;
     this.moon.shadow.mapSize.set(2048, 2048);
@@ -163,6 +163,7 @@ export class Game {
     this.scene.add(this.moon.target);
     this.quality = new QualityGovernor((level) => this.applyQuality(level), new URLSearchParams(location.search).get('quality'));
     this.scene.add(this.heroLight);
+    this.scene.add(this.firePool.group);
     for (const l of this.fireLights) this.scene.add(l);
     // image-based light from a moonlit night sky: steel, wet stone and water get something to reflect
     this.scene.environment = makeEnvironment(this.renderer.renderer, this.moon.position.clone().normalize());
@@ -189,6 +190,7 @@ export class Game {
       const wm = buildWarriorModel(assets);
       pRig = wm.rig;
       this.trail = new SwordTrail(wm.sword);
+      this.swordMat = wm.swordMat;
       this.scene.add(this.trail.mesh);
       if (wm.cape) {
         const r = pRig;
@@ -462,6 +464,7 @@ export class Game {
     if (this.flow !== 'fight') return;
     this.tips.dismiss('lock');
     this.hitstop = Math.max(this.hitstop, 0.12);
+    this.deathSide = 0;
     this.setFlow('dying');
     this.slowmo = 0.55;
     this.slowmoTimer = 1.0;
@@ -754,6 +757,10 @@ export class Game {
   }
 
   private readonly blockedPivots = new Set<THREE.Object3D>();
+  private readonly firePool = new FirePool(24);
+  private readonly fireSpots: { x: number; z: number; size: number }[] = [];
+  private swordMat: THREE.MeshStandardMaterial | null = null;
+  private chargeFlashed = false;
 
   /** Golem bones whose capsule cuts the camera's line of sight to the warrior's chest or feet. */
   private findBlockers(cam: THREE.Vector3): Set<THREE.Object3D> {
@@ -772,6 +779,7 @@ export class Game {
     return out;
   }
 
+  private deathSide = 0;
   private phaseCineT = -1;
   private readonly phaseCamDir = new THREE.Vector3();
 
@@ -812,7 +820,7 @@ export class Game {
     const g = this.golem.pos;
     const u = Math.min(1, t / 3);
     const r = this.phaseCamDist - 1.5 * u;
-    const camY = 2.2 + 0.6 * u;
+    const camY = 4.5 + 1.2 * u;
     c.pos.set(g.x + this.phaseCamDir.x * r, camY, g.z + this.phaseCamDir.z * r);
     // frame from the feet to above the raised fists (about 21 m) whatever the distance
     const top = Math.atan2(21.5 - camY, r);
@@ -833,8 +841,28 @@ export class Game {
     dx /= l;
     dz /= l;
     const t = Math.min(1, this.flowTime / 5);
-    // behind the body and off to one side: the warrior in the foreground, the golem above them
-    const a = 0.7 + 0.15 * t;
+    // behind the body and off to one side: the warrior in the foreground, the golem above them; pick the side
+    // with fewer golem limbs near the lens (chosen once per death)
+    if (this.flowTime < 0.05 || this.deathSide === 0) {
+      let best = 1;
+      let bestClear = -1;
+      for (const side of [1, -1]) {
+        const aa = 0.75 * side;
+        const cx = p.x + (dx * Math.cos(aa) - dz * Math.sin(aa)) * 6;
+        const cz = p.z + (dx * Math.sin(aa) + dz * Math.cos(aa)) * 6;
+        let clear = 99;
+        for (const cap of this.golem.capsules) {
+          const d = segSegDist(_v3.set(cx, 2, cz), _v2.set(p.x, 0.8, p.z), cap.a, cap.b) - cap.r;
+          clear = Math.min(clear, d);
+        }
+        if (clear > bestClear) {
+          bestClear = clear;
+          best = side;
+        }
+      }
+      this.deathSide = best;
+    }
+    const a = (0.7 + 0.15 * t) * this.deathSide;
     const rx = dx * Math.cos(a) - dz * Math.sin(a);
     const rz = dx * Math.sin(a) + dz * Math.cos(a);
     const back = 5.2 + 2.2 * t;
@@ -971,6 +999,20 @@ export class Game {
       const a = this.player.atk;
       const striking = !!a && this.player.anim.seq?.stepName === 'strike';
       this.trail.update(dt, striking, !!a?.heavy);
+      // a held heavy attack heats the blade; a full charge flashes once and burns bright into the strike
+      if (this.swordMat) {
+        const charging = !!a?.heavy && !a.chargeDone;
+        const want = charging ? 0.3 + 2.2 * a.charge : a?.heavy && a.charged && striking ? 2.8 : 0;
+        const k = this.swordMat.emissiveIntensity;
+        this.swordMat.emissiveIntensity = k + (want - k) * Math.min(1, dt * (want > k ? 14 : 5));
+        if (a?.charged && !this.chargeFlashed) {
+          this.chargeFlashed = true;
+          this.player.rig.worldPos(this.player.rig.i('hand_R'), _v3);
+          this.fx.flash(_v3, new THREE.Color(1, 0.8, 0.5), 1.1, 0.14);
+          this.fx.sparks(_v3, null, 16, new THREE.Color(1, 0.75, 0.4), 4, 0.4, 0.07);
+        }
+        if (!a?.heavy) this.chargeFlashed = false;
+      }
     }
   }
 
@@ -1194,7 +1236,10 @@ export class Game {
       // gusty storm wind from the north-west, plus the air the warrior runs through
       const t = this.ctx.time;
       const gust = 0.6 + 0.4 * Math.sin(t * 0.7) * Math.sin(t * 1.9 + 1.3);
-      this.wind.set(0.8 * gust, 0.0, 1.15 * gust).addScaledVector(this.player.vel, -1.0);
+      const v = this.player.vel;
+      const vl = Math.hypot(v.x, v.z);
+      const vk = vl > 4 ? 4 / vl : 1;
+      this.wind.set(0.8 * gust - v.x * vk, 0.0, 1.15 * gust - v.z * vk);
       this.cape.update(dt, this.wind);
     }
     // the seal wakes with the golem: its runes burn while it assembles, then settle to an ember
@@ -1232,6 +1277,22 @@ export class Game {
     }
     // a soft light that follows the warrior so they never vanish into the dark
     this.heroLight.position.set(this.player.pos.x, this.player.y + 2.8, this.player.pos.z);
+    // burning ground: flames licking up from each patch (a few per patch, placed by its seed)
+    this.fireSpots.length = 0;
+    for (const hz of this.threats.hazards) {
+      const armed = hz.t >= hz.arm;
+      const warm = armed ? 1 : Math.max(0, 1 - (hz.arm - hz.t) / 1.0) * 0.35;
+      const left = Math.min(1, Math.max(0, (hz.dur - hz.t - 0.3) / 0.7));
+      const k = warm * left;
+      if (k <= 0.02) continue;
+      const n = Math.min(6, 2 + Math.round(hz.radius * 1.2));
+      for (let j = 0; j < n && this.fireSpots.length < 24; j++) {
+        const a = hz.seed * 3.7 + j * 2.399;
+        const r = hz.radius * 0.62 * Math.sqrt(((hz.seed * 7.3 + j * 0.618) % 1 + 1) % 1);
+        this.fireSpots.push({ x: hz.pos.x + Math.cos(a) * r, z: hz.pos.z + Math.sin(a) * r, size: (0.9 + 0.35 * ((j * 0.37) % 1)) * k * (j === 0 ? 1.35 : 1) });
+      }
+    }
+    this.firePool.update(this.ctx.time, this.fireSpots);
     // burning ground casts real firelight on the stone, the golem and the warrior
     const burning = this.threats.hazards
       .filter((hz) => hz.t >= hz.arm - 1 && hz.dur - hz.t > 0.2)
@@ -1267,10 +1328,8 @@ export class Game {
     golemLook.uTime.value = this.ctx.time;
     skyUniforms.uTime.value = this.ctx.time;
     skyUniforms.uLava.value = this.heatShown;
-    waterUniforms.uWaterHeat.value = this.heatShown;
-    waterUniforms.uHeatCenter.value.set(this.golem.pos.x, this.golem.pos.z);
     const h = this.heatShown;
-    this.hemi.color.setRGB(0.54 - 0.04 * h, 0.58 - 0.16 * h, 0.66 - 0.3 * h);
+    this.hemi.color.setRGB(0.5 - 0.02 * h, 0.54 - 0.14 * h, 0.64 - 0.3 * h);
     // phase 3: lava light from below (the molten water) warms everything from the ground up
     this.hemi.groundColor.setRGB(0.173 + 0.3 * h, 0.153 + 0.02 * h, 0.137 - 0.08 * h);
     (this.scene.fog as THREE.FogExp2).color.setRGB(0.118 - 0.085 * h, 0.157 - 0.14 * h, 0.22 - 0.205 * h);
@@ -1282,7 +1341,7 @@ export class Game {
     const gs = this.golem.state;
     const merged = !!this.golemMerge && (this.flow === 'fight' || this.flow === 'dying' || this.flow === 'dead') && gs !== 'dormant' && gs !== 'assemble' && gs !== 'dead';
     this.golemMerge?.use(merged);
-    const fadeOn = gameplayCam && this.cam.cineBlend < 0.5;
+    const fadeOn = (gameplayCam && this.cam.cineBlend < 0.5) || this.flow === 'dying' || this.flow === 'dead';
     (merged && this.faderMerged ? this.faderMerged : this.fader).update(this.cam.camera.position, _v, dt, fadeOn, fadeOn ? this.findBlockers(this.cam.camera.position) : undefined);
     // teach the punish window the first few times it opens (never while a warning covers the warrior)
     const underThreat = this.threats.fissures.length > 0 || this.threats.telegraphs.some((t) => {

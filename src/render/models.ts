@@ -98,6 +98,8 @@ export function buildGolemModel(assets: Assets): GolemModel {
 export interface WarriorModel {
   rig: Rig;
   sword: THREE.Object3D;
+  /** the blade's own material: it glows while a heavy attack charges */
+  swordMat: THREE.MeshStandardMaterial;
   cape: THREE.Mesh | null;
   flask: THREE.Object3D | null;
 }
@@ -137,10 +139,18 @@ export function buildWarriorModel(assets: Assets): WarriorModel {
     m.castShadow = true;
   }
   const sword = rig.root.getObjectByName('sword') ?? new THREE.Group();
+  const swordMat = (mats.warrior_steel as THREE.MeshStandardMaterial).clone();
+  swordMat.onBeforeCompile = mats.warrior_steel.onBeforeCompile;
+  swordMat.customProgramCacheKey = mats.warrior_steel.customProgramCacheKey;
+  swordMat.emissive.setHex(0xffc27a);
+  swordMat.emissiveIntensity = 0;
+  sword.traverse((o) => {
+    if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).material = swordMat;
+  });
   const cape = (rig.root.getObjectByName('cape') as THREE.Mesh | undefined) ?? null;
   if (cape) cape.material = pleated(mats.warrior_cloth as THREE.MeshStandardMaterial);
   const flask = rig.root.getObjectByName('flask') ?? null;
-  return { rig, sword, cape, flask };
+  return { rig, sword, swordMat, cape, flask };
 }
 
 /** Rough, dull bevels on floor stones: any face tilted away from straight up gets a matte finish. */
@@ -309,7 +319,7 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
 }
 
 /** Uniforms the game animates: time (ripples) and rain (how hard it falls). */
-export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 }, uWaterHeat: { value: 0 }, uHeatCenter: { value: new THREE.Vector2() } };
+export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 } };
 
 /** Dark water with a real sheen and raindrop ripples (normals perturbed in the shader). */
 function makeWater(): THREE.MeshStandardMaterial {
@@ -326,15 +336,7 @@ function makeWater(): THREE.MeshStandardMaterial {
 varying vec3 vWaterWorld;
 uniform float uWaterTime;
 uniform float uRain;
-uniform float uWaterHeat;
-uniform vec2 uHeatCenter;
 float wHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-float wNoise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  vec2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(wHash(i), wHash(i + vec2(1.0, 0.0)), u.x), mix(wHash(i + vec2(0.0, 1.0)), wHash(i + vec2(1.0, 1.0)), u.x), u.y);
-}
 // expanding rings from raindrops on a jittered grid
 vec2 ripples(vec2 p, float t) {
   vec2 g = floor(p);
@@ -359,19 +361,6 @@ vec2 ripples(vec2 p, float t) {
   vec2 rp = ripples(vWaterWorld.xz * 2.2, uWaterTime) * 0.18 * uRain + ripples(vWaterWorld.xz * 3.7 + 11.0, uWaterTime * 1.3) * 0.12 * uRain;
   vec3 nW = normalize(vec3(-rp.x, 1.0, -rp.y));
   normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
-}`,
-      )
-      .replace(
-        '#include <emissivemap_fragment>',
-        `#include <emissivemap_fragment>
-// phase 3: the golem's heat turns the flooded joints into slow-churning molten light
-float heatHere = uWaterHeat * (1.0 - smoothstep(7.0, 19.0, distance(vWaterWorld.xz, uHeatCenter)));
-if (heatHere > 0.001) {
-  vec2 q = vWaterWorld.xz * 0.35;
-  float churn = wNoise(q + vec2(uWaterTime * 0.07, -uWaterTime * 0.05)) * 0.6 + wNoise(q * 2.7 - uWaterTime * 0.11) * 0.4;
-  float hot = smoothstep(0.45, 0.9, churn);
-  // a dim deep-red seep, far below the amber of burning ground: light from beneath, not fire on the floor
-  totalEmissiveRadiance += mix(vec3(0.3, 0.05, 0.008), vec3(0.95, 0.3, 0.04), hot) * (0.3 + 0.8 * hot) * heatHere;
 }`,
       );
   };
