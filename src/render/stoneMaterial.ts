@@ -135,7 +135,7 @@ const FRAG_EMISSIVE = /* glsl */ `
   float v = veins(vStonePos, normalize(vStoneNrm));
   float pulse = 0.78 + 0.22 * sin(uTime * 2.3 + vStonePos.y * 0.9 + vStonePos.x * 0.6);
   // patchy coverage: phase 2 splits some stones, phase 3 most of them
-  float stonePatch = stoneNoise(vStonePos * 0.22 + 3.1);
+  float stonePatch = stoneNoise((vStonePos + uStoneSeed * 3.0) * 0.22 + 3.1);
   float cover = smoothstep(0.78 - 0.34 * uCrack, 0.9 - 0.3 * uCrack, stonePatch);
   float vein = smoothstep(0.4, 0.95, v) * cover * clamp(uCrack, 0.0, 2.0) * pulse;
   vec3 veinCol = mix(uCrackColor, vec3(1.0, 0.72, 0.35), uHeat * 0.5);

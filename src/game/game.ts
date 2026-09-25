@@ -805,6 +805,57 @@ export class Game {
   }
 
   private strikeSpot: THREE.Group | null = null;
+  private coreBeam: THREE.Mesh | null = null;
+
+  private updateCoreBeam(core: { pos: THREE.Vector3 } | null): void {
+    if (!this.coreBeam) {
+      const geo = new THREE.CylinderGeometry(0.35, 1.1, 14, 24, 1, true);
+      geo.translate(0, 7, 0);
+      const mat = new THREE.ShaderMaterial({
+        vertexShader: /* glsl */ `
+          varying float vH;
+          varying vec3 vN;
+          varying vec3 vV;
+          void main() {
+            vH = position.y / 14.0;
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            vN = normalize(normalMatrix * normal);
+            vV = normalize(-mv.xyz);
+            gl_Position = projectionMatrix * mv;
+          }`,
+        fragmentShader: /* glsl */ `
+          uniform float uAlpha;
+          uniform float uTime;
+          varying float vH;
+          varying vec3 vN;
+          varying vec3 vV;
+          void main() {
+            float edge = pow(1.0 - abs(dot(vN, vV)), 1.5);
+            float soft = 1.0 - abs(dot(vN, vV));
+            float fade = (1.0 - vH) * smoothstep(0.0, 0.08, vH);
+            float band = 0.75 + 0.25 * sin(vH * 30.0 - uTime * 6.0);
+            float a = uAlpha * fade * band * (0.25 + 0.75 * soft) * (1.0 - edge * 0.6);
+            gl_FragColor = vec4(vec3(0.45, 0.95, 1.0) * 1.6, a);
+          }`,
+        uniforms: { uAlpha: { value: 0 }, uTime: { value: 0 } },
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+      });
+      this.coreBeam = new THREE.Mesh(geo, mat);
+      this.coreBeam.frustumCulled = false;
+      this.coreBeam.renderOrder = 5;
+      this.scene.add(this.coreBeam);
+    }
+    const beam = this.coreBeam;
+    const mat = beam.material as THREE.ShaderMaterial;
+    const want = core ? 0.55 : 0;
+    mat.uniforms.uAlpha.value += (want - mat.uniforms.uAlpha.value) * 0.12;
+    mat.uniforms.uTime.value = this.ctx.time;
+    beam.visible = mat.uniforms.uAlpha.value > 0.01;
+    if (core) beam.position.copy(core.pos).setY(core.pos.y - 0.4);
+  }
 
   /** While the golem is down: a cyan ring on the floor under the core to go for ("stand here"). */
   private updateStrikeSpot(core: { pos: THREE.Vector3 } | null, dt: number): void {
@@ -982,6 +1033,7 @@ export class Game {
       }
     } else this.hud.markCore = null;
     this.updateStrikeSpot(g.staggered && this.flow === 'fight' ? this.hud.markCore : null, dt);
+    this.updateCoreBeam(g.staggered && this.flow === 'fight' ? this.hud.markCore : null);
     // death: the Ruin falls back into rubble
     if (g.state === 'dead') {
       if (this.crumbleT < 0 && g.stateTime > 0.8) {
@@ -1001,7 +1053,7 @@ export class Game {
       let base = t.kind === 'back' ? (t.open ? 2.4 : 0) : !lit ? 0 : 1.1 + 0.25 * (g.phase - 1);
       if (t.kind === 'arm' && g.staggered) base *= 0.35; // the back core is the one to go for
       const marked = this.hud.markCore === t;
-      if (t.kind === 'arm' && !g.staggered) base *= marked ? 1.8 : t.pos.y < REACH ? 1.05 : 0.8; // STRIKE: bright pulse; otherwise steady
+      if (t.kind === 'arm' && !g.staggered) base *= marked ? 1.45 : t.pos.y < REACH ? 1.0 : 0.8; // STRIKE: bright pulse; otherwise steady
       if (g.state === 'dead') base = Math.max(0.0, base * (1 - g.stateTime / 0.25));
       const low = marked || (t.kind !== 'arm' && t.open && g.state !== 'dead');
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;

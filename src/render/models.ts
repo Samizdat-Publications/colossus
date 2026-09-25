@@ -83,7 +83,7 @@ export function buildGolemModel(assets: Assets): GolemModel {
     } else {
       const rock = matName(m).includes('rock');
       // one material per piece (the camera fade dims whole pieces); they share one shader program
-      m.material = makeGolemStoneMaterial(rock ? stoneParams(tex, 'rock', 0xb4b6bb, 1.0) : stoneParams(tex, 'ashlar', 0xc9c4ba, 1.0));
+      m.material = makeGolemStoneMaterial(rock ? stoneParams(tex, 'rock', 0xd6d8dd, 1.0) : stoneParams(tex, 'ashlar', 0xc9c4ba, 1.0));
       parts.push(m);
       if (name.startsWith('chestplate')) plates.push(m);
     }

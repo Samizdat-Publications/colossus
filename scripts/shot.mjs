@@ -22,7 +22,7 @@ const width = Number(opt('w', 1600));
 const height = Number(opt('h', 1000));
 const wait = Number(opt('wait', 300));
 
-const server = await createServer({ root, server: { port: 5519, strictPort: false }, logLevel: 'warn' });
+const server = await createServer({ root, server: { port: 5630 + Math.floor(Math.random() * 60), strictPort: false }, logLevel: 'warn' });
 await server.listen();
 const base = server.resolvedUrls.local[0];
 const browser = await chromium.launch({ args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist'] });

@@ -346,22 +346,22 @@ const ROAR_SKY: PoseDef = mergeDefs(ROAR, {
   head: [-40, 0, 0],
 });
 
-// ---- stagger: knees down, sitting back, slumped forward on its hands ----
+// ---- stagger: a giant on its knees, torso still up, head bowed, fists planted in front ----
 const KNEEL: PoseDef = {
-  $pos: [0, -4.4, 0.2],
-  hips: [-15, 0, 0],
-  spine: [44, 0, 0],
-  chest: [30, 0, 0],
-  neck: [-8, 0, 0],
-  head: [14, 0, 0],
-  shoulder_L: [6, 0, -6],
-  shoulder_R: [6, 0, 6],
-  upperarm_L: [-66, 0, 16],
-  upperarm_R: [-66, 0, -16],
-  forearm_L: [-34, 0, 0],
-  forearm_R: [-34, 0, 0],
-  hand_L: [60, 0, 0],
-  hand_R: [60, 0, 0],
+  $pos: [0, -4.2, 0.3],
+  hips: [-12, 0, 0],
+  spine: [20, 0, 0],
+  chest: [12, 0, 0],
+  neck: [6, 0, 0],
+  head: [16, 0, 0],
+  shoulder_L: [0, 0, -8],
+  shoulder_R: [0, 0, 8],
+  upperarm_L: [-48, 0, 18],
+  upperarm_R: [-48, 0, -18],
+  forearm_L: [-18, 0, 0],
+  forearm_R: [-18, 0, 0],
+  hand_L: [50, 0, 0],
+  hand_R: [50, 0, 0],
   thigh_L: [-47, 0, 9],
   thigh_R: [-47, 0, -9],
   shin_L: [152, 0, 0],
@@ -371,10 +371,10 @@ const KNEEL: PoseDef = {
 };
 
 const KNEEL_SLUMP: PoseDef = mergeDefs(KNEEL, {
-  $pos: [0, -4.55, 0.3],
-  spine: [48, 0, 0],
-  chest: [34, 0, 0],
-  head: [22, 0, 0],
+  $pos: [0, -4.35, 0.35],
+  spine: [25, 0, 0],
+  chest: [16, 0, 0],
+  head: [24, 0, 0],
 });
 
 const PUSH_UP: PoseDef = mergeDefs(IDLE, {

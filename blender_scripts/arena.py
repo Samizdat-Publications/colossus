@@ -310,25 +310,33 @@ def build_tiers(rng):
 
 
 def build_cliffs(rng):
+    """Two rings of jagged rock close the horizon: a near wall and a taller, broken ridge behind it."""
     bm = bmesh.new()
-    n, rows = 96, 7
-    verts = []
-    for j in range(rows):
-        t = j / (rows - 1)
-        row = []
-        for i in range(n):
-            a = i / n * TAU
-            base = 74 + 10 * noise.noise(Vector((math.cos(a) * 1.5, math.sin(a) * 1.5, 0.3)))
-            h = 16 + 22 * (0.5 + 0.5 * noise.noise(Vector((math.cos(a) * 2.2, math.sin(a) * 2.2, 5.1))))
-            h += 8 * noise.noise(Vector((math.cos(a) * 7, math.sin(a) * 7, 2.0)))
-            y = -2 + h * t
-            r = base + 6 * t * t + 2.5 * noise.noise(Vector((math.cos(a) * 9, math.sin(a) * 9, t * 3)))
-            row.append(bm.verts.new(polar(r, a, y)))
-        verts.append(row)
-    for j in range(rows - 1):
-        for i in range(n):
-            i2 = (i + 1) % n
-            bm.faces.new((verts[j][i], verts[j][i2], verts[j + 1][i2], verts[j + 1][i]))
+
+    def ring(base_r, base_h, var_h, n, rows, seed):
+        verts = []
+        for j in range(rows):
+            t = j / (rows - 1)
+            row = []
+            for i in range(n):
+                a = i / n * TAU
+                ca, sa = math.cos(a), math.sin(a)
+                base = base_r + 10 * noise.noise(Vector((ca * 1.5, sa * 1.5, seed)))
+                h = base_h + var_h * (0.5 + 0.5 * noise.noise(Vector((ca * 2.2, sa * 2.2, seed + 5.1))))
+                h += var_h * 0.35 * noise.noise(Vector((ca * 7, sa * 7, seed + 2.0)))
+                h += var_h * 0.15 * noise.noise(Vector((ca * 19, sa * 19, seed + 9.0)))
+                y = -2 + h * t
+                r = base + 7 * t * t + 3.5 * noise.noise(Vector((ca * 9, sa * 9, seed + t * 3)))
+                r += 1.5 * noise.noise(Vector((ca * 23, sa * 23, seed + t * 5)))
+                row.append(bm.verts.new(polar(r, a, y)))
+            verts.append(row)
+        for j in range(rows - 1):
+            for i in range(n):
+                i2 = (i + 1) % n
+                bm.faces.new((verts[j][i], verts[j][i2], verts[j + 1][i2], verts[j + 1][i]))
+
+    ring(74, 16, 22, 160, 10, 0.3)
+    ring(118, 34, 34, 128, 9, 7.7)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     # faces point inward (toward the arena)
     for f in bm.faces:
@@ -336,7 +344,7 @@ def build_cliffs(rng):
         if f.normal.dot(Vector((-c.x, 0, -c.z))) < 0:
             f.normal_flip()
     C.box_uv(bm, 12.0)
-    C.paint_bm(bm, lambda p, n: (0.55 + 0.25 * C.smoothstep(0, 30, p.y),) * 3)
+    C.paint_bm(bm, lambda p, n: (0.5 + 0.3 * C.smoothstep(0, 40, p.y),) * 3)
     return bm
 
 

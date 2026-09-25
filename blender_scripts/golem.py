@@ -100,10 +100,11 @@ def build_list():
 
     # ---- neck and head: a heavy brow over glowing eyes, broken column stubs as horns
     add('neck', 'rock', (0.0, 12.8, 1.6), (0.95, 0.6, 0.95), mat='rock')
-    add('head', 'block', (0.0, 13.75, 2.3), (2.3, 2.0, 2.3), euler(-10, 0, 0), chips=3)
-    add('head', 'block', (0.0, 14.3, 3.25), (2.8, 0.6, 1.05), euler(14, 0, 0), chips=2, name='g_head_brow')
-    add('head', 'rock', (0.0, 13.0, 3.05), (0.95, 0.45, 0.7), mat='rock', name='g_head_jaw')
-    add('head', 'rock', (1.05, 13.55, 3.0), (0.35, 0.45, 0.45), mat='rock', mirror=True, name='g_head_cheek')
+    add('head', 'rock', (0.0, 13.8, 2.2), (1.25, 1.1, 1.25), euler(-10, 0, 0), mat='rock', blocky=0.35, n=26, name='g_head_skull')
+    add('head', 'rock', (0.0, 14.35, 3.15), (1.45, 0.38, 0.62), euler(14, 0, 0), mat='rock', blocky=0.5, n=20, name='g_head_brow')
+    add('head', 'rock', (0.0, 13.0, 3.0), (0.9, 0.42, 0.72), mat='rock', name='g_head_jaw')
+    add('head', 'rock', (1.02, 13.5, 2.95), (0.38, 0.5, 0.48), mat='rock', mirror=True, name='g_head_cheek')
+    add('head', 'rock', (0.55, 14.75, 2.1), (0.5, 0.45, 0.6), mat='rock', mirror=True, name='g_head_crown')
     add('head', 'drum', (0.8, 14.6, 1.7), (0.38, 1.4), euler(-32, 0, -22), mat='ashlar', flutes=10, top_break=0.35,
         mirror=True, name='g_head_horn')
 
