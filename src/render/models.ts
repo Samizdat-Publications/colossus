@@ -146,15 +146,38 @@ export function buildWarriorModel(assets: Assets): WarriorModel {
 /** Rough, dull bevels on floor stones: any face tilted away from straight up gets a matte finish. */
 function matteBevels(m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
   m.onBeforeCompile = (shader) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <roughnessmap_fragment>',
-      `#include <roughnessmap_fragment>
-{
-  vec3 upV = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
-  float level = smoothstep(0.9, 0.985, dot(normalize(vNormal), upV));
-  roughnessFactor = mix(0.97, roughnessFactor, level);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vFloorWorld;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvFloorWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vFloorWorld;
+float pHash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+float pNoise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(pHash(i), pHash(i + vec2(1.0, 0.0)), u.x), mix(pHash(i + vec2(0.0, 1.0)), pHash(i + vec2(1.0, 1.0)), u.x), u.y);
 }`,
-    );
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        `#include <roughnessmap_fragment>
+vec3 floorUpV = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+float floorLevel = smoothstep(0.9, 0.985, dot(normalize(vNormal), floorUpV));
+// standing water: shallow puddles on the flat tops, mirror-smooth and darker
+float puddle = floorLevel * smoothstep(0.58, 0.68, pNoise(vFloorWorld.xz * 0.16) * 0.7 + pNoise(vFloorWorld.xz * 0.5 + 7.0) * 0.3);
+roughnessFactor = mix(0.97, roughnessFactor, floorLevel);
+roughnessFactor = mix(roughnessFactor, 0.05, puddle);
+diffuseColor.rgb *= 1.0 - 0.45 * puddle;`,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+normal = normalize(mix(normal, floorUpV, puddle * 0.85));`,
+      );
   };
   m.customProgramCacheKey = () => 'floor-matte-bevels';
   return m;
@@ -172,7 +195,7 @@ function pleated(base: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
 #ifdef USE_NORMALMAP_TANGENTSPACE
 {
   float pleat = sin(vNormalMapUv.x * 6.2831853 * 4.5);
-  normal = normalize(normal + tbn[0] * pleat * 0.55);
+  normal = normalize(normal + tbn[0] * pleat * 0.3);
 }
 #endif`,
     );
@@ -286,7 +309,7 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
 }
 
 /** Uniforms the game animates: time (ripples) and rain (how hard it falls). */
-export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 }, uWaterHeat: { value: 0 } };
+export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 }, uWaterHeat: { value: 0 }, uHeatCenter: { value: new THREE.Vector2() } };
 
 /** Dark water with a real sheen and raindrop ripples (normals perturbed in the shader). */
 function makeWater(): THREE.MeshStandardMaterial {
@@ -304,6 +327,7 @@ varying vec3 vWaterWorld;
 uniform float uWaterTime;
 uniform float uRain;
 uniform float uWaterHeat;
+uniform vec2 uHeatCenter;
 float wHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 float wNoise(vec2 p) {
   vec2 i = floor(p);
@@ -341,12 +365,13 @@ vec2 ripples(vec2 p, float t) {
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
 // phase 3: the golem's heat turns the flooded joints into slow-churning molten light
-if (uWaterHeat > 0.001) {
+float heatHere = uWaterHeat * (1.0 - smoothstep(7.0, 19.0, distance(vWaterWorld.xz, uHeatCenter)));
+if (heatHere > 0.001) {
   vec2 q = vWaterWorld.xz * 0.35;
   float churn = wNoise(q + vec2(uWaterTime * 0.07, -uWaterTime * 0.05)) * 0.6 + wNoise(q * 2.7 - uWaterTime * 0.11) * 0.4;
   float hot = smoothstep(0.45, 0.9, churn);
   // a dim deep-red seep, far below the amber of burning ground: light from beneath, not fire on the floor
-  totalEmissiveRadiance += mix(vec3(0.16, 0.012, 0.003), vec3(0.55, 0.07, 0.012), hot) * (0.2 + 0.5 * hot) * uWaterHeat;
+  totalEmissiveRadiance += mix(vec3(0.3, 0.05, 0.008), vec3(0.95, 0.3, 0.04), hot) * (0.3 + 0.8 * hot) * heatHere;
 }`,
       );
   };

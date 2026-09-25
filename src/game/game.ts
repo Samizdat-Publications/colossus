@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { balance } from '../core/balance';
 import { bus } from '../core/events';
 import { Input, type InputFrame } from '../core/input';
-import { clamp, damp, ease, lerp, smoothstep } from '../core/math';
+import { clamp, damp, ease, lerp, segSegDist, smoothstep } from '../core/math';
 import { Rig } from '../anim/rig';
 import GOLEM_RIG from '../data/golem_rig.json';
 import WARRIOR_RIG from '../data/warrior_rig.json';
@@ -163,6 +163,7 @@ export class Game {
     this.scene.add(this.moon.target);
     this.quality = new QualityGovernor((level) => this.applyQuality(level), new URLSearchParams(location.search).get('quality'));
     this.scene.add(this.heroLight);
+    for (const l of this.fireLights) this.scene.add(l);
     // image-based light from a moonlit night sky: steel, wet stone and water get something to reflect
     this.scene.environment = makeEnvironment(this.renderer.renderer, this.moon.position.clone().normalize());
     this.scene.environmentIntensity = 0.55;
@@ -231,15 +232,13 @@ export class Game {
     }
     this.scene.add(gRig.root);
     this.golem = new Golem(gRig);
-    for (const [name, mesh] of this.coreMeshes) {
-      // the molten heart lights the arena floor in phase 3; the cyan cores light only their surroundings
-      // lights live in the scene, not under the core meshes: a core hiding would drop its light from the
-      // scene, and any change in the light count recompiles every shader (a 1-2 s freeze)
-      const light = name === 'core_chest' ? new THREE.PointLight(0xff6a20, 0, 46, 1.6) : new THREE.PointLight(0x5fe8ff, 0, 14, 2);
-      this.scene.add(light);
-      this.coreLights.set(name, light);
-      void mesh;
-    }
+    // the molten heart lights the arena floor in phase 3; one pooled cyan light follows whichever weak point
+    // matters most right now (every point light costs every lit pixel). Lights live in the scene, never under
+    // a core mesh: a core hiding would drop its light, and any change in the light count recompiles every
+    // shader (a 1-2 s freeze).
+    this.coreLights.set('core_chest', new THREE.PointLight(0xff6a20, 0, 46, 1.6));
+    this.coreLights.set('cyan', new THREE.PointLight(0x5fe8ff, 0, 14, 2));
+    for (const l of this.coreLights.values()) this.scene.add(l);
     const home = new THREE.Vector3(ARENA.golemHome[0], 0, ARENA.golemHome[1]);
     this.golem.reset(home.x, home.z, 0);
     this.assembler = new Assembler([...this.golemParts, ...this.coreMeshes.values()], home);
@@ -720,7 +719,11 @@ export class Game {
           const hold = balance.golem.transition.duration - 0.7;
           this.phaseShot(this.phaseCineT);
           cam.cineBlend = this.phaseCineT < hold ? 1 : damp(cam.cineBlend, 0, 3.2, rawDt);
-          if (this.phaseCineT > hold + 1.6) this.phaseCineT = -1;
+          this.hud.cine = this.phaseCineT < hold;
+          if (this.phaseCineT > hold + 1.6) {
+            this.phaseCineT = -1;
+            this.hud.cine = false;
+          }
         } else cam.cineBlend = damp(cam.cineBlend, 0, 3, rawDt);
         cam.update(rawDt, f.lookX, f.lookY, this.player, this.golem, this.world);
         if (this.flow !== 'fight') {
@@ -750,30 +753,56 @@ export class Game {
     void dt;
   }
 
+  private readonly blockedPivots = new Set<THREE.Object3D>();
+
+  /** Golem bones whose capsule cuts the camera's line of sight to the warrior's chest or feet. */
+  private findBlockers(cam: THREE.Vector3): Set<THREE.Object3D> {
+    const out = this.blockedPivots;
+    out.clear();
+    const p = this.player;
+    const caps = this.golem.capsules;
+    const bones = this.golem.rig.bones;
+    for (const h of [1.25, 0.3]) {
+      _v3.set(p.pos.x, p.y + h, p.pos.z);
+      for (let i = 0; i < caps.length; i++) {
+        const c = caps[i];
+        if (segSegDist(cam, _v3, c.a, c.b) < c.r * 0.85 + 0.3) out.add(bones[i]);
+      }
+    }
+    return out;
+  }
+
   private phaseCineT = -1;
   private readonly phaseCamDir = new THREE.Vector3();
 
-  /** Pick a clear three-quarter angle on the golem for the phase-change roar. */
+  private phaseCamDist = 20;
+
+  /**
+   * Pick the camera for the phase-change roar: in front of the golem's face (three-quarter), as far out as
+   * the pillar ring allows (up to 21 m), with a clear line to the golem.
+   */
   private startPhaseCine(): void {
     const g = this.golem.pos;
-    const p = this.player.pos;
-    const base = Math.atan2(p.x - g.x, p.z - g.z);
-    let best = base + 0.55;
-    for (const off of [0.55, -0.55, 0.9, -0.9, 0.25, -0.25]) {
+    const base = this.golem.yaw;
+    let best = base + 0.5;
+    let bestD = 0;
+    for (const off of [0.5, -0.5, 0.85, -0.85, 0.2, -0.2, 1.2, -1.2]) {
       const a = base + off;
-      let clear = true;
-      for (let i = 1; i <= 8 && clear; i++) {
-        const r = (21 * i) / 8;
-        const x = g.x + Math.sin(a) * r;
-        const z = g.z + Math.cos(a) * r;
-        if (this.world.blocked(x, 2.5, z, 0.8) || Math.hypot(x, z) > 28) clear = false;
+      let d = 0;
+      for (let i = 1; i <= 21; i++) {
+        const x = g.x + Math.sin(a) * i;
+        const z = g.z + Math.cos(a) * i;
+        if (Math.hypot(x, z) > 28 || (i > 6 && this.world.blocked(x, 2.5, z, 0.8))) break;
+        d = i;
       }
-      if (clear) {
+      if (d > bestD + 1.5) {
         best = a;
-        break;
+        bestD = d;
       }
+      if (d >= 20) break;
     }
     this.phaseCamDir.set(Math.sin(best), 0, Math.cos(best));
+    this.phaseCamDist = Math.max(12, bestD);
     this.phaseCineT = 0;
   }
 
@@ -782,20 +811,15 @@ export class Game {
     const c = this.cam.cine;
     const g = this.golem.pos;
     const u = Math.min(1, t / 3);
-    let r = 21 - 2 * u;
-    let px = g.x + this.phaseCamDir.x * r;
-    let pz = g.z + this.phaseCamDir.z * r;
-    const d = Math.hypot(px, pz);
-    const lim = 28; // inside the pillar ring
-    if (d > lim) {
-      px *= lim / d;
-      pz *= lim / d;
-      r = Math.hypot(px - g.x, pz - g.z);
-    }
-    c.pos.set(px, 2.2 + 0.8 * u, pz);
-    c.look.set(g.x, 8.6 + 0.4 * u, g.z);
-    c.fov = 62;
-    void r;
+    const r = this.phaseCamDist - 1.5 * u;
+    const camY = 2.2 + 0.6 * u;
+    c.pos.set(g.x + this.phaseCamDir.x * r, camY, g.z + this.phaseCamDir.z * r);
+    // frame from the feet to above the raised fists (about 21 m) whatever the distance
+    const top = Math.atan2(21.5 - camY, r);
+    const bottom = Math.atan2(-camY + 0.2, r - 3);
+    const pitch = (top + bottom) / 2;
+    c.look.set(g.x, camY + Math.tan(pitch) * r, g.z);
+    c.fov = Math.min(80, ((top - bottom) * 1.12 * 180) / Math.PI);
   }
 
   /** After death: a low view over the fallen warrior, the Ruin looming behind, rising slowly. */
@@ -902,6 +926,8 @@ export class Game {
   private readonly airborneParts = new Set(['hips', 'spine', 'chest', 'neck', 'head', 'shoulder_L', 'shoulder_R']);
   private readonly leapParts = new Set([...this.airborneParts, 'hand_L', 'hand_R']);
   private readonly heroLight = new THREE.PointLight(0xc8d8ff, 3.5, 7, 2);
+  /** Two pooled fire lights for the burning ground nearest the warrior (always in the scene: constant light count). */
+  private readonly fireLights = [new THREE.PointLight(0xff8a2a, 0, 9, 2), new THREE.PointLight(0xff8a2a, 0, 9, 2)];
   private roarFlare = 0;
   private heldRockMesh: THREE.Mesh | null = null;
 
@@ -1168,7 +1194,7 @@ export class Game {
       // gusty storm wind from the north-west, plus the air the warrior runs through
       const t = this.ctx.time;
       const gust = 0.6 + 0.4 * Math.sin(t * 0.7) * Math.sin(t * 1.9 + 1.3);
-      this.wind.set(1.4 * gust, 0.0, 2.0 * gust).addScaledVector(this.player.vel, -1.1);
+      this.wind.set(0.8 * gust, 0.0, 1.15 * gust).addScaledVector(this.player.vel, -1.0);
       this.cape.update(dt, this.wind);
     }
     // the seal wakes with the golem: its runes burn while it assembles, then settle to an ember
@@ -1193,7 +1219,7 @@ export class Game {
     const shoving = this.flow === 'fight' && g.attack?.name === 'meteor' && (g.step === 'windup' || g.step === 'rain');
     this.cam.snappy = leaping ? 1 : shoving ? 0.6 : 0;
     // the telegraph is the golem's body: extra room while a big blow is wound up or a rock is in the air
-    const bigWindup = this.flow === 'fight' && !!g.attack && g.step === 'windup' && ['slam', 'doubleSlam', 'throw', 'volley'].includes(g.attack.name);
+    const bigWindup = this.flow === 'fight' && !!g.attack && ((g.step === 'windup' && ['slam', 'doubleSlam', 'throw', 'volley'].includes(g.attack.name)) || g.attack.name === 'meteor');
     this.cam.maxPull = leaping ? 9 : bigWindup || this.threats.rocks.length > 0 ? 4.5 : 3;
     this.prevGolemY = g.pos.y;
     if (g.pushTele) {
@@ -1206,6 +1232,23 @@ export class Game {
     }
     // a soft light that follows the warrior so they never vanish into the dark
     this.heroLight.position.set(this.player.pos.x, this.player.y + 2.8, this.player.pos.z);
+    // burning ground casts real firelight on the stone, the golem and the warrior
+    const burning = this.threats.hazards
+      .filter((hz) => hz.t >= hz.arm - 1 && hz.dur - hz.t > 0.2)
+      .sort((a, b) => a.pos.distanceToSquared(this.player.pos) - b.pos.distanceToSquared(this.player.pos));
+    this.fireLights.forEach((l, i) => {
+      const hz = burning[i];
+      if (!hz) {
+        l.intensity = 0;
+        return;
+      }
+      const lit = hz.t >= hz.arm ? 1 : 0.35 * (1 - (hz.arm - hz.t));
+      const fade = Math.min(1, (hz.dur - hz.t) / 0.6);
+      const flick = 0.82 + 0.18 * Math.sin(this.ctx.time * 17 + i * 2.1) * Math.sin(this.ctx.time * 7.3 + i);
+      l.position.set(hz.pos.x, 1.6, hz.pos.z);
+      l.intensity = 12 * hz.radius * lit * fade * flick;
+      l.distance = 5 + hz.radius * 3;
+    });
     const camPos = this.cam.camera.position;
     setHeroLight(Math.hypot(camPos.x - this.player.pos.x, camPos.z - this.player.pos.z), this.flow === 'dying' || this.flow === 'dead' ? 1.3 : 1);
     // phase look: veins crack open in phase 2, molten in phase 3; the arena takes the lava light
@@ -1225,6 +1268,7 @@ export class Game {
     skyUniforms.uTime.value = this.ctx.time;
     skyUniforms.uLava.value = this.heatShown;
     waterUniforms.uWaterHeat.value = this.heatShown;
+    waterUniforms.uHeatCenter.value.set(this.golem.pos.x, this.golem.pos.z);
     const h = this.heatShown;
     this.hemi.color.setRGB(0.54 - 0.04 * h, 0.58 - 0.16 * h, 0.66 - 0.3 * h);
     // phase 3: lava light from below (the molten water) warms everything from the ground up
@@ -1238,7 +1282,8 @@ export class Game {
     const gs = this.golem.state;
     const merged = !!this.golemMerge && (this.flow === 'fight' || this.flow === 'dying' || this.flow === 'dead') && gs !== 'dormant' && gs !== 'assemble' && gs !== 'dead';
     this.golemMerge?.use(merged);
-    (merged && this.faderMerged ? this.faderMerged : this.fader).update(this.cam.camera.position, _v, dt, gameplayCam);
+    const fadeOn = gameplayCam && this.cam.cineBlend < 0.5;
+    (merged && this.faderMerged ? this.faderMerged : this.fader).update(this.cam.camera.position, _v, dt, fadeOn, fadeOn ? this.findBlockers(this.cam.camera.position) : undefined);
     // teach the punish window the first few times it opens (never while a warning covers the warrior)
     const underThreat = this.threats.fissures.length > 0 || this.threats.telegraphs.some((t) => {
       if (t.kind === 'sector') return true;
@@ -1281,6 +1326,9 @@ export class Game {
         this.assembler.apply(1 - Math.min(1, this.crumbleT / 2.4), this.ctx.time);
       }
     } else this.crumbleT = -1;
+    let cyanBest: THREE.Mesh | null = null;
+    let cyanWant = 0;
+    let cyanPrio = -1;
     for (const t of g.targets) {
       const mesh = this.coreMeshes.get(t.name);
       if (!mesh) continue;
@@ -1298,11 +1346,20 @@ export class Game {
       mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x80848c);
       mesh.visible = t.kind === 'back' ? t.open || t.flash > 0.05 : lit && !g.staggered;
       if (g.state === 'dead' && g.stateTime > 0.3) mesh.visible = false; // spent cores crumble with the body
-      const light = this.coreLights.get(t.name);
-      if (light) {
-        light.intensity = mesh.visible ? (base * pulse * 0.6 + t.flash * 1.5) * 6 : 0;
-        mesh.getWorldPosition(light.position);
+      if (t.kind !== 'chest' && mesh.visible) {
+        const want = (base * pulse * 0.6 + t.flash * 1.5) * 6;
+        const prio = (marked ? 4 : 0) + (t.kind === 'back' && t.open ? 3 : 0) + t.flash * 2 + 1 / (1 + t.pos.distanceTo(this.player.pos));
+        if (want > 0 && prio > cyanPrio) {
+          cyanPrio = prio;
+          cyanWant = want;
+          cyanBest = mesh;
+        }
       }
+    }
+    const cyan = this.coreLights.get('cyan');
+    if (cyan) {
+      cyan.intensity = cyanWant;
+      if (cyanBest) cyanBest.getWorldPosition(cyan.position);
     }
     const eyeMat = this.golemEyes[0]?.material as THREE.MeshStandardMaterial | undefined;
     const eyeOn = this.assets ? 3.2 : 2.2;
@@ -1324,7 +1381,7 @@ export class Game {
       if (l) {
         chest.getWorldPosition(l.position);
         l.color.setHex(0xff6a20);
-        l.intensity = on * (ct?.open ? 200 : 140) * (0.9 + 0.1 * Math.sin(this.ctx.time * 5));
+        l.intensity = on * (ct?.open ? 260 : 210) * (0.9 + 0.1 * Math.sin(this.ctx.time * 5));
       }
     }
     void dt;

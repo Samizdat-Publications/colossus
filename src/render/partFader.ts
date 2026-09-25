@@ -29,13 +29,15 @@ export class PartFader {
     }
   }
 
-  update(cam: THREE.Vector3, focus: THREE.Vector3, dt: number, enabled: boolean): void {
+  /** blocked: bone pivots whose capsule cuts the camera's view of the warrior (their pieces fade). */
+  update(cam: THREE.Vector3, focus: THREE.Vector3, dt: number, enabled: boolean, blocked?: Set<THREE.Object3D>): void {
     _d.subVectors(focus, cam);
     const len = _d.length();
     _d.divideScalar(Math.max(len, 1e-3));
     for (const p of this.parts) {
       let want = 1;
       if (enabled && p.mesh.visible) {
+        if (blocked && p.mesh.parent && blocked.has(p.mesh.parent)) want = 0.22;
         _c.copy(p.center).applyMatrix4(p.mesh.matrixWorld);
         p.mesh.matrixWorld.decompose(_s, _q, _s);
         const r = p.radius * Math.max(_s.x, _s.y, _s.z);

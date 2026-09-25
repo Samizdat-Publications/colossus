@@ -81,7 +81,7 @@ export class Weather {
   private readonly splashMat: THREE.ShaderMaterial;
   private readonly bolt: THREE.Mesh;
   private readonly boltMat: THREE.MeshBasicMaterial;
-  private nextStrike = 5 + Math.random() * 6;
+  private nextStrike = 3 + Math.random() * 4;
   private strikeT = -1;
   private strikeStrength = 1;
   /** 0..1 light from the current lightning flash */
@@ -179,7 +179,7 @@ export class Weather {
     this.nextStrike -= dt * frequency;
     if (this.nextStrike <= 0 && this.strikeT < 0) {
       this.strikeT = 0;
-      this.nextStrike = 7 + Math.random() * 12;
+      this.nextStrike = 4.5 + Math.random() * 8;
       this.buildBolt(camera);
       const dist = 60 + Math.random() * 90;
       this.onStrike?.(this.strikeStrength, dist);

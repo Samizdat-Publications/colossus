@@ -53,6 +53,8 @@ export class Hud {
   private stFlash = 0;
   bossVisible = false;
   showControls = true;
+  /** a cinematic has the camera: hide the bars (tips stay) */
+  cine = false;
 
   constructor(parent: HTMLElement) {
     this.root = el('div', 'hud hidden', parent);
@@ -189,6 +191,7 @@ export class Hud {
       if (this.tipTimer <= 0) this.tip.classList.remove('on');
     }
     this.controls.classList.toggle('hidden', !this.showControls);
+    this.root.classList.toggle('cine', this.cine);
     this.controlsPill.classList.toggle('hidden', this.showControls);
 
     for (let i = this.pending.length - 1; i >= 0; i--) {

@@ -109,7 +109,7 @@ export class Fx {
     const r = spread * Math.sqrt(Math.random());
     _p.set(pos.x + Math.cos(a) * r, 0.15, pos.z + Math.sin(a) * r);
     _v.set(rnd(-0.2, 0.2), rnd(1.4, 2.4), rnd(-0.2, 0.2));
-    this.glow.emit({ pos: _p, vel: _v, life: rnd(0.35, 0.6), size: rnd(0.45, 0.8), grow: 0.3, color: Math.random() < 0.5 ? EMBER : EMBER_HOT, alpha: 0.55, drag: 0.5, flicker: 0.4 });
+    this.glow.emit({ pos: _p, vel: _v, life: rnd(0.4, 0.7), size: rnd(0.6, 1.1), grow: 0.25, color: Math.random() < 0.5 ? EMBER : EMBER_HOT, alpha: 0.7, drag: 0.5, flicker: 0.4 });
   }
 
   smoke(pos: THREE.Vector3, count: number, spread: number): void {

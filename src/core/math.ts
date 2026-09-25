@@ -106,6 +106,45 @@ const _ab = new THREE.Vector3();
 const _ap = new THREE.Vector3();
 
 /** Closest point to p on segment ab. */
+/** Shortest distance between segments p0-p1 and q0-q1 (Ericson, Real-Time Collision Detection). */
+export function segSegDist(p0: Vec3Like, p1: Vec3Like, q0: Vec3Like, q1: Vec3Like): number {
+  const d1x = p1.x - p0.x, d1y = p1.y - p0.y, d1z = p1.z - p0.z;
+  const d2x = q1.x - q0.x, d2y = q1.y - q0.y, d2z = q1.z - q0.z;
+  const rx = p0.x - q0.x, ry = p0.y - q0.y, rz = p0.z - q0.z;
+  const a = d1x * d1x + d1y * d1y + d1z * d1z;
+  const e = d2x * d2x + d2y * d2y + d2z * d2z;
+  const f = d2x * rx + d2y * ry + d2z * rz;
+  const eps = 1e-8;
+  let s = 0;
+  let t = 0;
+  if (a <= eps && e <= eps) return Math.hypot(rx, ry, rz);
+  if (a <= eps) t = Math.min(1, Math.max(0, f / e));
+  else {
+    const c = d1x * rx + d1y * ry + d1z * rz;
+    if (e <= eps) s = Math.min(1, Math.max(0, -c / a));
+    else {
+      const b = d1x * d2x + d1y * d2y + d1z * d2z;
+      const denom = a * e - b * b;
+      s = denom > eps ? Math.min(1, Math.max(0, (b * f - c * e) / denom)) : 0;
+      t = (b * s + f) / e;
+      if (t < 0) {
+        t = 0;
+        s = Math.min(1, Math.max(0, -c / a));
+      } else if (t > 1) {
+        t = 1;
+        s = Math.min(1, Math.max(0, (b - c) / a));
+      }
+    }
+  }
+  return Math.hypot(p0.x + d1x * s - (q0.x + d2x * t), p0.y + d1y * s - (q0.y + d2y * t), p0.z + d1z * s - (q0.z + d2z * t));
+}
+
+interface Vec3Like {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export function closestOnSegment(a: THREE.Vector3, b: THREE.Vector3, p: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
   _ab.subVectors(b, a);
   const len2 = _ab.lengthSq();
