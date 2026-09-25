@@ -473,10 +473,19 @@ export class Golem {
     this.rig.update();
   }
 
+  private readonly groundGoal: IKGoal = { target: new THREE.Vector3(), weight: 1 };
+
   private applyIK(): void {
     for (const side of ['L', 'R'] as Side[]) {
-      const g = this.ik[side];
-      if (!g || g.weight <= 0) continue;
+      let g = this.ik[side];
+      if (!g || g.weight <= 0) {
+        // no scripted goal: keep the fist from sinking through the floor
+        const hi = this.rig.i(`hand_${side}`);
+        this.rig.tailWorld(hi, _v);
+        if (_v.y >= 0.12 || this.state === 'dormant') continue;
+        this.groundGoal.target.set(_v.x, 0.12, _v.z);
+        g = this.groundGoal;
+      }
       const up = this.rig.bone(`upperarm_${side}`);
       const fore = this.rig.bone(`forearm_${side}`);
       const hand = this.rig.bone(`hand_${side}`);
@@ -528,7 +537,11 @@ export class Golem {
 
   /** Where the lock-on camera looks: the torso, but never up in the sky during a leap. */
   lockPoint(out: THREE.Vector3): THREE.Vector3 {
-    if (this.leapTarget) return out.set(this.leapTarget.x, 3.5, this.leapTarget.z);
+    if (this.leapTarget) {
+      // frame the airborne golem and its landing ring together
+      const chest = this.capsules[this.rig.i('chest')].a;
+      return out.set(this.leapTarget.x, 2, this.leapTarget.z).lerp(chest, 0.4);
+    }
     const hips = this.capsules[this.rig.i('hips')].a;
     const chest = this.capsules[this.rig.i('chest')].a;
     out.lerpVectors(hips, chest, 0.55);
@@ -1111,7 +1124,7 @@ export class Golem {
         to.x += (-dz / l) * offset;
         to.z += (dx / l) * offset;
       }
-      ctx.threats.rock(from, to, T.flightTime, T.damage, T.radius, !!T.knockdown, volley ? this.A.volley.knockback : 8, volley ? 0.8 : 1.2);
+      ctx.threats.rock(from, to, T.flightTime, T.damage, T.radius, !!T.knockdown, volley ? this.A.volley.knockback : 8, volley ? 1.05 : 1.5);
       bus.emit('rockThrow', { pos: from });
     };
     return [

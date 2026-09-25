@@ -299,8 +299,13 @@ try {
     };
     await force('slam', 'L', 'windup', 'slam_windup', 700);
     await waitFor(() => window.__CO.state().golem.step === 'stuck', 8000).catch(() => {});
-    await sleep(900);
+    await sleep(700);
     await shot('slam_stuck_punish');
+    // the bot punishes the stuck fist: capture the moment a core is struck
+    const since = (await state()).time;
+    await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'coreHit'), 6000, since).catch(() => {});
+    await sleep(120);
+    await shot('core_hit');
     await force('sweep', 'R', 'strike', 'sweep_strike', 150);
     await force('stomp', 'L', 'strike', 'stomp_ring', 350);
     await page.evaluate(() => window.__CO.teleportPlayer(4, 24));
@@ -339,13 +344,21 @@ try {
     await waitFor(() => window.__CO.state().flow === 'victory', 20000);
     await sleep(700);
     await shot('victory_screen');
-    // death
+    // death: a real one, by slam
     await page.click('button[data-act="retry"]');
     await waitFor(() => window.__CO.state().flow === 'fight', 20000);
     await page.evaluate(() => window.__CO.stopBot());
     await page.evaluate(() => window.__CO.god(false));
-    await page.evaluate(() => window.__CO.killPlayer());
-    await sleep(900);
+    await sleep(2500);
+    await page.evaluate(() => {
+      window.__game.player.hp = 12;
+      window.__CO.teleportPlayer(0, 8);
+    });
+    await key('KeyQ');
+    await idle();
+    await page.evaluate(() => window.__CO.forceAttack('slam', 'R'));
+    await waitFor(() => window.__CO.state().flow === 'dying', 12000).catch(() => {});
+    await sleep(500);
     await shot('player_dying');
     await waitFor(() => window.__CO.state().flow === 'dead', 15000);
     await sleep(700);

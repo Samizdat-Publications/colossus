@@ -115,8 +115,8 @@ export class ThreatView {
   private readonly spikeGeo = new THREE.ConeGeometry(0.7, 2.6, 5);
   private readonly stripGeo = new THREE.PlaneGeometry(1, 1);
   private readonly crackTex = crackTexture();
-  private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x5a5550, roughness: 0.9, flatShading: true, emissive: 0xff5a14, emissiveIntensity: 0.45 });
-  private readonly trailMat = new THREE.MeshBasicMaterial({ color: 0xff7a2a, transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x6a645c, roughness: 0.9, flatShading: true, emissive: 0xff5a14, emissiveIntensity: 1.1 });
+  private readonly trailMat = new THREE.MeshBasicMaterial({ color: 0xff8a3a, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
   private time = 0;
 
   constructor() {
@@ -270,7 +270,7 @@ export class ThreatView {
       const speed = v.length();
       if (speed > 0.1) {
         trail.quaternion.setFromUnitVectors(up, v.normalize());
-        trail.scale.set(r.size * 0.9, Math.min(9, 1.5 + speed * 0.22) * (r.meteor ? 1.4 : 1), r.size * 0.9);
+        trail.scale.set(r.size * 0.95, Math.min(14, 2.5 + speed * 0.35) * (r.meteor ? 1.6 : 1), r.size * 0.95);
       }
     }
   }

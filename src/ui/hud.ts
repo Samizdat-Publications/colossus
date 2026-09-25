@@ -77,7 +77,7 @@ export class Hud {
       'div',
       'controls',
       this.root,
-      `<b>WASD</b> move · <b>Mouse</b> camera · <b>LMB</b> light · <b>RMB</b> heavy (hold) · <b>Shift</b> block · <b>Space</b> roll · <b>F</b> jump · <b>Q</b> lock on · <b>R</b> flask · <b>H</b> hide`,
+      `<div><b>WASD</b> move</div><div><b>Mouse</b> camera</div><div><b>LMB</b> light attack</div><div><b>RMB</b> heavy (hold to charge)</div><div><b>Shift</b> block</div><div><b>Space</b> roll</div><div><b>F</b> jump</div><div><b>Q</b> lock on</div><div><b>R</b> flask</div><div class="dim"><b>H</b> hide this card</div>`,
     );
 
     bus.on('noStamina', () => (this.stFlash = 1));
@@ -109,6 +109,11 @@ export class Hud {
     this.tipTimer = seconds;
   }
 
+  hideTip(): void {
+    this.tipTimer = 0;
+    this.tip.classList.remove('on');
+  }
+
   setVisible(v: boolean): void {
     this.root.classList.toggle('hidden', !v);
   }
@@ -133,7 +138,7 @@ export class Hud {
 
     const hf = player.healthFrac;
     this.hpFill.style.width = `${hf * 100}%`;
-    if (this.hpTrailFrac < hf) this.hpTrailFrac = hf;
+    if (this.hpTrailFrac < hf || !player.alive) this.hpTrailFrac = hf;
     else this.hpTrailFrac = Math.max(hf, this.hpTrailFrac - dt * 0.4);
     this.hpTrail.style.width = `${this.hpTrailFrac * 100}%`;
     this.stFill.style.width = `${(player.stamina / player.B.maxStamina) * 100}%`;
@@ -209,12 +214,27 @@ export class Tips {
     this.perAttempt.clear();
   }
 
+  private current = '';
+
   show(id: string, text: string, maxTotal = 2, seconds = 4.5): void {
     if (!this.enabled) return;
     const n = this.shown.get(id) ?? 0;
     if (n >= maxTotal || this.perAttempt.has(id)) return;
     this.shown.set(id, n + 1);
     this.perAttempt.add(id);
+    this.current = id;
     this.hud.showTip(text, seconds);
+  }
+
+  /** Hide the tip if it is still the one on screen (e.g. "press Q" once the player has locked on). */
+  dismiss(id: string): void {
+    if (this.current === id) {
+      this.hud.hideTip();
+      this.current = '';
+    }
+  }
+
+  wasShown(id: string): boolean {
+    return (this.shown.get(id) ?? 0) > 0;
   }
 }

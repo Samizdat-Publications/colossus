@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import type { Rig } from '../anim/rig';
 import { addCameraFade } from './fade';
+import { makeGolemStoneMaterial } from './stoneMaterial';
 import GOLEM_RIG from '../data/golem_rig.json';
 import WARRIOR_RIG from '../data/warrior_rig.json';
 
@@ -8,8 +9,8 @@ const _up = new THREE.Vector3(0, 1, 0);
 
 /** Primitive stand-ins for the golem: a stone block per bone, glowing core spheres, eyes. */
 export function buildGreyboxGolem(rig: Rig): { cores: Map<string, THREE.Mesh>; eyes: THREE.Mesh[]; parts: THREE.Mesh[] } {
-  const stone = addCameraFade(new THREE.MeshStandardMaterial({ color: 0x6d7078, roughness: 0.85, metalness: 0.0, flatShading: true }));
-  const stoneDark = addCameraFade(new THREE.MeshStandardMaterial({ color: 0x55585f, roughness: 0.9, flatShading: true }));
+  const stone = makeGolemStoneMaterial({ color: 0x9a9ea6, roughness: 0.82, metalness: 0.0, flatShading: true });
+  const stoneDark = makeGolemStoneMaterial({ color: 0x80848c, roughness: 0.88, flatShading: true });
   const parts: THREE.Mesh[] = [];
   for (let i = 0; i < rig.count; i++) {
     const name = rig.names[i];

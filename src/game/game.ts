@@ -18,6 +18,8 @@ import { buildGreyboxArena } from '../render/arenaGreybox';
 import { buildGreyboxGolem, buildGreyboxWarrior } from '../render/greybox';
 import { Assembler } from '../render/assembler';
 import { setFade } from '../render/fade';
+import { golemLook, makeVeinTexture } from '../render/stoneMaterial';
+import { createSky, skyUniforms } from '../render/sky';
 import { Hud, Tips } from '../ui/hud';
 import { Screens, type EndStats } from '../ui/screens';
 
@@ -71,6 +73,9 @@ export class Game {
   private fpsEl: HTMLDivElement | null = null;
   onFrame: ((dt: number, f: InputFrame) => void) | null = null;
   readonly moon: THREE.DirectionalLight;
+  readonly hemi: THREE.HemisphereLight;
+  private crackShown = 0;
+  private heatShown = 0;
 
   constructor(
     readonly container: HTMLElement,
@@ -80,13 +85,15 @@ export class Game {
     this.renderer = new Renderer(container, this.scene, this.cam.camera);
     this.input = new Input(this.renderer.canvas);
 
-    // atmosphere (greybox level)
-    this.scene.background = new THREE.Color(0x141a24);
-    this.scene.fog = new THREE.FogExp2(0x1a2230, 0.012);
-    const hemi = new THREE.HemisphereLight(0x8ea3c4, 0x2a2622, 1.1);
-    this.scene.add(hemi);
-    this.moon = new THREE.DirectionalLight(0xbccbe8, 2.0);
-    this.moon.position.set(-22, 48, 18);
+    // atmosphere: moon behind the golem (rim light, shadow toward the player), cool fill, sky dome
+    this.scene.background = new THREE.Color(0x0a0e16);
+    this.scene.fog = new THREE.FogExp2(0x1e2838, 0.0105);
+    this.scene.add(createSky());
+    golemLook.uCrackMap.value = makeVeinTexture();
+    this.hemi = new THREE.HemisphereLight(0x8196bb, 0x2c2723, 1.35);
+    this.scene.add(this.hemi);
+    this.moon = new THREE.DirectionalLight(0xc4d2ee, 2.3);
+    this.moon.position.set(-16, 40, -44);
     this.moon.castShadow = true;
     this.moon.shadow.mapSize.set(2048, 2048);
     const sc = this.moon.shadow.camera;
@@ -171,6 +178,9 @@ export class Game {
       this.cam.shake(e.heavy ? 0.22 : 0.14);
     });
     bus.on('bodyHit', () => (this.hitstop = Math.max(this.hitstop, 0.05)));
+    bus.on('coreHit', () => {
+      this.tips.show('break', 'Core hits fill <b class="core">BREAK</b>. Fill it and the Ruin falls to its knees.', 2, 4.5);
+    });
     bus.on('deflect', () => {
       this.hitstop = Math.max(this.hitstop, 0.05);
       this.cam.shake(0.1);
@@ -252,8 +262,8 @@ export class Game {
     this.golem.beginAssemble(quick ? 1.2 : 5.4, quick);
     this.setFlow('intro');
     this.screens.show('none');
-    this.hud.setVisible(true);
-    this.hud.showControls = this.attempt <= 2;
+    this.hud.setVisible(false);
+    this.hud.showControls = false;
     this.ctx.live = false;
     if (!this.opts.test) this.input.requestPointerLock();
     if (this.opts.startPhase > 1) {
@@ -277,11 +287,13 @@ export class Game {
     this.player.control = true;
     this.ctx.live = true;
     this.hud.bossVisible = true;
+    this.hud.setVisible(true);
+    this.hud.showControls = this.attempt === 1;
+    this.controlsTimer = this.attempt === 1 ? 45 : 0;
     bus.emit('fightStart', { attempt: this.attempt });
-    if (this.attempt === 1) {
-      this.tips.show('start', 'Lock on with <b>Q</b>. Only the <b class="core">glowing cores</b> can be harmed.', 1, 6);
-    }
+    if (this.attempt === 1) this.tips.show('start', 'Only the <b class="core">glowing cores</b> can be harmed.', 1, 4);
   }
+  private controlsTimer = 0;
 
   pause(): void {
     if (this.paused) return;
@@ -439,13 +451,19 @@ export class Game {
           this.player.locked = false;
           cam.update(rawDt, 0, 0, this.player, this.golem, this.world);
           this.assembler.apply(clamp(t / 1.2, 0, 1), this.ctx.time);
-          if (t >= L * 0.7) this.hud.bossVisible = true;
+          if (t >= L * 0.6) {
+            this.hud.bossVisible = true;
+            this.hud.setVisible(true);
+          }
         } else {
           this.assembler.apply(clamp((t - 0.4) / 5.0, 0, 1), this.ctx.time);
           this.introShot(t);
           cam.cineBlend = 1 - smoothstep(L - 1.4, L, t);
           cam.update(rawDt, 0, 0, this.player, this.golem, this.world);
-          if (t >= 8.2) this.hud.bossVisible = true;
+          if (t >= 8.2) {
+            this.hud.bossVisible = true;
+            this.hud.setVisible(true);
+          }
         }
         if (t >= L) this.startFight();
         break;
@@ -453,7 +471,20 @@ export class Game {
       case 'fight':
       case 'dying':
       case 'victoryCine': {
-        cam.cineBlend = damp(cam.cineBlend, 0, 3, rawDt);
+        if (this.flow === 'fight') {
+          if (this.controlsTimer > 0) {
+            this.controlsTimer -= rawDt;
+            if (this.controlsTimer <= 0) this.hud.showControls = false;
+          }
+          if (!this.player.locked && this.flowTime > 4.5 && this.flowTime < 30) {
+            this.tips.show('lock', 'Press <b>Q</b> (or middle click) to lock on to the Ruin.', 2, 5);
+          }
+          if (this.player.locked) this.tips.dismiss('lock');
+        }
+        if (this.flow === 'victoryCine') {
+          this.victoryShot();
+          cam.cineBlend = damp(cam.cineBlend, 1, 2.2, rawDt);
+        } else cam.cineBlend = damp(cam.cineBlend, 0, 3, rawDt);
         cam.update(rawDt, f.lookX, f.lookY, this.player, this.golem, this.world);
         if (this.flow !== 'fight') {
           this.screenDelay -= rawDt;
@@ -479,6 +510,32 @@ export class Game {
         break;
     }
     void dt;
+  }
+
+  /** Pull back to watch the Ruin collapse (from the player's side, three-quarter view). */
+  private victoryShot(): void {
+    const c = this.cam.cine;
+    const g = this.golem.pos;
+    const p = this.player.pos;
+    let dx = p.x - g.x;
+    let dz = p.z - g.z;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l;
+    dz /= l;
+    // swing 35 degrees off the player's line so the collapse reads in three quarters
+    const a = 0.6;
+    const rx = dx * Math.cos(a) - dz * Math.sin(a);
+    const rz = dx * Math.sin(a) + dz * Math.cos(a);
+    let px = g.x + rx * 30;
+    let pz = g.z + rz * 30;
+    const d = Math.hypot(px, pz);
+    if (d > 36) {
+      px *= 36 / d;
+      pz *= 36 / d;
+    }
+    c.pos.set(px, 8.5, pz);
+    c.look.set(g.x, 4.5, g.z);
+    c.fov = 50;
   }
 
   /** Scripted camera for the first intro: circle the gathering rubble, look up as it rises, settle behind the player. */
@@ -513,6 +570,18 @@ export class Game {
   private updateVisuals(dt: number): void {
     this.threatView.update(this.threats, this.ctx.time);
     const g = this.golem;
+    // phase look: veins crack open in phase 2, molten in phase 3; the arena takes the lava light
+    const dormant = g.state === 'dormant' || g.state === 'assemble';
+    const crackWant = g.state === 'dead' ? 0 : dormant ? 0 : g.phase >= 3 ? 1.15 : g.phase >= 2 ? 0.8 : 0;
+    const heatWant = g.state === 'dead' ? 0 : g.phase >= 3 ? 1 : 0;
+    this.crackShown += (crackWant - this.crackShown) * Math.min(1, dt * (g.state === 'transition' ? 1.4 : 3));
+    this.heatShown += (heatWant - this.heatShown) * Math.min(1, dt * 1.2);
+    golemLook.uCrack.value = this.crackShown;
+    golemLook.uHeat.value = this.heatShown;
+    golemLook.uTime.value = this.ctx.time;
+    skyUniforms.uTime.value = this.ctx.time;
+    skyUniforms.uLava.value = this.heatShown;
+    this.hemi.color.setRGB(0.506 + 0.25 * this.heatShown, 0.588 - 0.15 * this.heatShown, 0.733 - 0.35 * this.heatShown);
     // camera-occlusion fade on the golem (off in cinematics and on the title)
     const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
     setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), gameplayCam);

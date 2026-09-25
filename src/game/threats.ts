@@ -176,7 +176,7 @@ export class Threats {
       radius,
       knockdown: false,
       knockback,
-      size: 1.0,
+      size: 1.4,
       spin: new THREE.Vector3(rng.range(-5, 5), rng.range(-5, 5), rng.range(-5, 5)),
       tele,
       hit: false,
