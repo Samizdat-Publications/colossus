@@ -62,70 +62,80 @@ def add(bone, kind, pos, size, rot=None, mat='ashlar', name=None, mirror=None, *
 
 
 def build_list():
-    # ---- hips: pelvis blocks, hip joints, back core socket
-    add('hips', 'block', (1.05, 7.25, -0.55), (2.2, 1.7, 3.3), euler(0, 4, -3), chips=3, mirror=True, name='g_hips_side')
-    add('hips', 'block', (0.0, 6.55, 0.35), (2.4, 0.8, 1.9), euler(-6, 0, 0), chips=2)
-    add('hips', 'rock', (1.75, 6.75, -0.6), (0.95, 0.95, 1.05), mat='rock', mirror=True, name='g_hips_joint')
-    for i in range(5):
-        a = i / 5 * math.tau + 0.4
-        p = Vector((math.cos(a) * 0.95, 7.2 + math.sin(a) * 0.95, -2.35))
-        add('hips', 'rock', p, (0.42, 0.42, 0.5), mat='rock', seedx=i, name=f'g_hips_socket{i}', mirror=False)
+    # Sizes follow the collision capsules in golem_rig.json (block sizes are full extents, rock sizes are
+    # semi-axes), so blows that land on the capsules land on stone. Filler rubble closes the joints.
 
-    # ---- spine: a cairn of stacked stones
-    add('spine', 'block', (-0.95, 8.85, -0.4), (2.0, 1.15, 2.8), euler(0, -6, 3), chips=2)
-    add('spine', 'block', (1.0, 8.95, -0.3), (2.0, 1.25, 2.7), euler(0, 8, -4), chips=3)
-    add('spine', 'block', (0.0, 9.8, 0.0), (3.6, 1.05, 3.1), euler(-4, 3, 0), chips=2)
-    add('spine', 'rock', (1.75, 9.2, -0.9), (0.6, 0.7, 0.7), mat='rock', mirror=True, name='g_spine_side')
-    add('spine', 'rock', (0.0, 9.0, -1.9), (0.9, 0.8, 0.55), mat='rock')
+    # ---- hips: pelvis blocks, hip joints, back core socket
+    add('hips', 'block', (1.15, 7.3, -0.55), (2.4, 1.9, 3.6), euler(0, 4, -3), chips=3, mirror=True, name='g_hips_side')
+    add('hips', 'block', (0.0, 6.6, 0.55), (2.8, 0.9, 2.0), euler(-6, 0, 0), chips=2)
+    add('hips', 'block', (0.0, 6.4, -1.95), (2.7, 0.85, 1.3), euler(4, 0, 0), chips=2, name='g_hips_backbelt')
+    add('hips', 'rock', (1.8, 6.7, -0.6), (1.1, 1.1, 1.2), mat='rock', mirror=True, name='g_hips_joint')
+    add('hips', 'rock', (1.45, 7.95, -2.0), (0.45, 0.4, 0.4), mat='rock', mirror=True, name='g_hips_rubble')
+    for i in range(6):
+        a = i / 6 * math.tau + 0.3
+        p = Vector((math.cos(a) * 1.0, 7.2 + math.sin(a) * 1.0, -2.4))
+        add('hips', 'rock', p, (0.42, 0.42, 0.52), mat='rock', seedx=i, name=f'g_hips_socket{i}', mirror=False)
+
+    # ---- spine: a cairn of stacked stones with rubble packed between them
+    add('spine', 'block', (-1.1, 8.85, -0.35), (2.3, 1.2, 3.2), euler(0, -6, 3), chips=2)
+    add('spine', 'block', (1.15, 8.95, -0.3), (2.3, 1.3, 3.1), euler(0, 8, -4), chips=3)
+    add('spine', 'block', (0.0, 9.8, 0.0), (4.3, 1.1, 3.5), euler(-4, 3, 0), chips=2)
+    add('spine', 'rock', (0.0, 8.95, 1.35), (1.05, 0.62, 0.62), mat='rock', name='g_spine_belly')
+    add('spine', 'rock', (2.05, 9.3, -0.6), (0.7, 0.8, 0.85), mat='rock', mirror=True, name='g_spine_side')
+    add('spine', 'rock', (0.0, 9.1, -2.05), (1.05, 0.8, 0.6), mat='rock', name='g_spine_back')
 
     # ---- chest: a barrel of dressed blocks around a cavity that holds the molten heart
-    add('chest', 'block', (0.0, 11.3, 0.35), (4.9, 2.7, 2.8), euler(-8, 0, 0), chips=4)
-    add('chest', 'block', (2.05, 11.05, 1.75), (1.5, 2.5, 3.0), euler(-6, 14, 2), chips=3, mirror=True, name='g_chest_side')
-    add('chest', 'block', (0.0, 12.45, 0.9), (4.7, 0.95, 2.6), euler(-12, 0, 0), chips=3)
-    add('chest', 'block', (0.0, 10.05, 1.05), (3.8, 0.8, 2.6), euler(6, 0, 0), chips=2)
-    add('chest', 'rock', (1.2, 12.1, -1.1), (1.2, 1.0, 0.9), mat='rock', mirror=True, name='g_chest_back')
+    add('chest', 'block', (0.0, 11.3, 0.3), (5.4, 2.9, 3.0), euler(-8, 0, 0), chips=4)
+    add('chest', 'block', (2.35, 11.05, 1.7), (1.6, 2.7, 3.2), euler(-6, 14, 2), chips=3, mirror=True, name='g_chest_side')
+    add('chest', 'block', (0.0, 12.5, 0.9), (5.2, 1.0, 2.8), euler(-12, 0, 0), chips=3)
+    add('chest', 'block', (0.0, 10.05, 1.1), (4.2, 0.85, 2.8), euler(6, 0, 0), chips=2)
+    add('chest', 'rock', (1.3, 12.0, -1.3), (1.3, 1.1, 1.0), mat='rock', mirror=True, name='g_chest_back')
+    add('chest', 'rock', (0.0, 10.9, -1.55), (1.4, 1.2, 0.9), mat='rock', name='g_chest_backmid')
+    add('chest', 'rock', (0.85, 13.15, 0.35), (0.42, 0.34, 0.4), mat='rock', mirror=True, name='g_chest_rubble')
+    add('chest', 'rock', (2.0, 11.4, -1.45), (0.5, 0.45, 0.4), mat='rock', mirror=True, name='g_chest_rubble2')
     # chest plates: the breastplate that bursts off in phase 3
-    add('chest', 'plate', (0.0, 11.05, 3.72), (2.15, 2.45, 0.62), euler(-10, 0, 0), name='chestplate_0', mirror=False)
-    add('chest', 'plate', (1.3, 10.95, 3.35), (1.25, 2.25, 0.6), euler(-8, 28, 0), name='chestplate_1', mirror=False)
-    add('chest', 'plate', (-1.3, 10.95, 3.35), (1.25, 2.25, 0.6), euler(-8, -28, 0), name='chestplate_2', mirror=False)
+    add('chest', 'plate', (0.0, 11.05, 3.72), (2.4, 2.6, 0.65), euler(-10, 0, 0), name='chestplate_0', mirror=False)
+    add('chest', 'plate', (1.4, 10.95, 3.3), (1.35, 2.4, 0.62), euler(-8, 28, 0), name='chestplate_1', mirror=False)
+    add('chest', 'plate', (-1.4, 10.95, 3.3), (1.35, 2.4, 0.62), euler(-8, -28, 0), name='chestplate_2', mirror=False)
 
     # ---- neck and head: a heavy brow over glowing eyes, broken column stubs as horns
-    add('neck', 'rock', (0.0, 12.75, 1.65), (0.85, 0.55, 0.85), mat='rock')
-    add('head', 'block', (0.0, 13.75, 2.3), (2.1, 1.85, 2.2), euler(-10, 0, 0), chips=3)
-    add('head', 'block', (0.0, 14.25, 3.25), (2.55, 0.55, 0.95), euler(14, 0, 0), chips=2, name='g_head_brow')
-    add('head', 'rock', (0.0, 13.05, 3.05), (0.85, 0.42, 0.62), mat='rock', name='g_head_jaw')
-    add('head', 'rock', (0.98, 13.55, 3.0), (0.32, 0.42, 0.42), mat='rock', mirror=True, name='g_head_cheek')
-    add('head', 'drum', (0.75, 14.55, 1.75), (0.34, 1.25), euler(-32, 0, -22), mat='ashlar', flutes=10, top_break=0.35,
+    add('neck', 'rock', (0.0, 12.8, 1.6), (0.95, 0.6, 0.95), mat='rock')
+    add('head', 'block', (0.0, 13.75, 2.3), (2.3, 2.0, 2.3), euler(-10, 0, 0), chips=3)
+    add('head', 'block', (0.0, 14.3, 3.25), (2.8, 0.6, 1.05), euler(14, 0, 0), chips=2, name='g_head_brow')
+    add('head', 'rock', (0.0, 13.0, 3.05), (0.95, 0.45, 0.7), mat='rock', name='g_head_jaw')
+    add('head', 'rock', (1.05, 13.55, 3.0), (0.35, 0.45, 0.45), mat='rock', mirror=True, name='g_head_cheek')
+    add('head', 'drum', (0.8, 14.6, 1.7), (0.38, 1.4), euler(-32, 0, -22), mat='ashlar', flutes=10, top_break=0.35,
         mirror=True, name='g_head_horn')
 
     # ---- shoulder: a great boulder pauldron and a jutting shard
-    add('shoulder_L', 'rock', (3.3, 12.75, 0.55), (1.5, 1.15, 1.55), mat='rock', blocky=0.45, n=24)
-    add('shoulder_L', 'rock', (2.2, 11.85, 0.6), (0.85, 0.85, 0.95), mat='rock')
-    add('shoulder_L', 'rock', (3.05, 13.95, 0.2), (0.38, 0.75, 0.42), euler(-10, 0, -25), mat='rock', blocky=0.1, n=14)
+    add('shoulder_L', 'rock', (3.35, 12.8, 0.55), (1.65, 1.25, 1.7), mat='rock', blocky=0.45, n=24)
+    add('shoulder_L', 'rock', (2.3, 11.9, 0.6), (0.95, 0.95, 1.05), mat='rock')
+    add('shoulder_L', 'rock', (3.1, 14.05, 0.2), (0.4, 0.8, 0.45), euler(-10, 0, -25), mat='rock', blocky=0.1, n=14)
+    add('shoulder_L', 'rock', (3.65, 12.35, -0.75), (0.8, 0.7, 0.7), mat='rock', name='g_shoulder_L_back')
 
     # ---- upper arm: two fluted column drums
-    add('upperarm_L', 'drum', along('upperarm_L', 0.07), (1.02, 1.95), bone_rot('upperarm_L', C.rot_y(10)), flutes=14,
-        bottom_break=0.0, top_break=0.0, stack=True)
-    add('upperarm_L', 'drum', along('upperarm_L', 0.52), (0.96, 1.9), bone_rot('upperarm_L', C.rot_y(-7)), flutes=14,
+    add('upperarm_L', 'drum', along('upperarm_L', 0.06), (1.18, 1.95), bone_rot('upperarm_L', C.rot_y(10)), flutes=14,
+        stack=True)
+    add('upperarm_L', 'drum', along('upperarm_L', 0.51), (1.12, 1.95), bone_rot('upperarm_L', C.rot_y(-7)), flutes=14,
         top_break=0.18, stack=True)
 
     # ---- forearm: elbow boulder, three blocks swelling toward the wrist, a dressed cuff
-    add('forearm_L', 'rock', along('forearm_L', 0.02), (0.78, 0.72, 0.82), mat='rock', n=22)
-    for i, (t, s) in enumerate(((0.26, (1.85, 1.3, 1.85)), (0.52, (2.05, 1.35, 2.05)), (0.78, (2.25, 1.35, 2.25)))):
-        add('forearm_L', 'block', along('forearm_L', t), s, bone_rot('forearm_L', C.rot_y(i * 17 - 10)), chips=3,
+    add('forearm_L', 'rock', along('forearm_L', 0.02), (0.92, 0.85, 0.95), mat='rock', n=22)
+    for i, (t, sz) in enumerate(((0.26, (2.2, 1.35, 2.2)), (0.52, (2.4, 1.4, 2.4)), (0.78, (2.6, 1.4, 2.6)))):
+        add('forearm_L', 'block', along('forearm_L', t), sz, bone_rot('forearm_L', C.rot_y(i * 17 - 10)), chips=3,
             name=f'g_forearm_L_{i}')
     for i in range(4):
         a = i / 4 * math.tau + math.pi / 4
-        off = Vector((math.cos(a) * 1.05, 0.0, math.sin(a) * 1.05))
-        add('forearm_L', 'block', along('forearm_L', 0.97) + off, (0.55, 0.7, 1.1),
+        off = Vector((math.cos(a) * 1.2, 0.0, math.sin(a) * 1.2))
+        add('forearm_L', 'block', along('forearm_L', 0.97) + off, (0.6, 0.75, 1.2),
             bone_rot('forearm_L', C.rot_y(math.degrees(-a) + 90)), chips=1, name=f'g_forearm_L_cuff{i}')
 
     # ---- hand: a fist of boulders, the arm core set in its outer face
-    add('hand_L', 'rock', along('hand_L', 0.5, (0.0, 0.0, 0.1)), (1.12, 1.25, 1.1), mat='rock', blocky=0.45, n=24)
-    for i, x in enumerate((-0.62, -0.2, 0.22, 0.64)):
-        add('hand_L', 'rock', along('hand_L', 1.0, (x, 0.2, 0.62)), (0.42, 0.4, 0.44), mat='rock', n=16,
+    add('hand_L', 'rock', along('hand_L', 0.5, (0.0, 0.0, 0.1)), (1.25, 1.35, 1.2), mat='rock', blocky=0.45, n=24)
+    for i, x in enumerate((-0.66, -0.22, 0.22, 0.66)):
+        add('hand_L', 'rock', along('hand_L', 1.0, (x, 0.2, 0.66)), (0.46, 0.44, 0.48), mat='rock', n=16,
             name=f'g_hand_L_knuckle{i}')
-    add('hand_L', 'rock', along('hand_L', 0.55, (-0.95, 0.0, 0.55)), (0.38, 0.55, 0.4), euler(0, 0, 15), mat='rock',
+    add('hand_L', 'rock', along('hand_L', 0.55, (-1.02, 0.0, 0.58)), (0.42, 0.6, 0.44), euler(0, 0, 15), mat='rock',
         name='g_hand_L_thumb')
     core = C.v3(CORES['core_arm_L']['pos'])
     for i in range(5):
@@ -134,16 +144,16 @@ def build_list():
         add('hand_L', 'block', core + off, (0.32, 0.46, 0.46), C.rot_x(math.degrees(a)), chips=1, name=f'g_hand_L_socket{i}')
 
     # ---- legs
-    add('thigh_L', 'rock', along('thigh_L', 0.48), (1.25, 1.45, 1.3), bone_rot('thigh_L'), mat='rock', blocky=0.4, n=24)
-    add('thigh_L', 'block', along('thigh_L', 0.35, (0.95, 0.0, 0.0)), (0.55, 2.1, 1.7), bone_rot('thigh_L', C.rot_y(8)),
+    add('thigh_L', 'rock', along('thigh_L', 0.48), (1.4, 1.55, 1.45), bone_rot('thigh_L'), mat='rock', blocky=0.4, n=24)
+    add('thigh_L', 'block', along('thigh_L', 0.35, (1.05, 0.0, 0.0)), (0.6, 2.3, 1.9), bone_rot('thigh_L', C.rot_y(8)),
         chips=2, name='g_thigh_L_plate')
-    add('shin_L', 'rock', along('shin_L', 0.0, (0.0, 0.1, 0.75)), (0.68, 0.62, 0.55), mat='rock', name='g_shin_L_knee')
-    add('shin_L', 'block', along('shin_L', 0.3), (2.05, 1.35, 2.05), bone_rot('shin_L', C.rot_y(12)), chips=3)
-    add('shin_L', 'block', along('shin_L', 0.72), (2.2, 1.45, 2.2), bone_rot('shin_L', C.rot_y(-9)), chips=3)
-    add('foot_L', 'block', (2.1, 0.45, 0.4), (2.3, 0.9, 3.2), euler(0, 3, 0), chips=3, name='g_foot_L_slab')
-    for i, x in enumerate((-0.62, 0.0, 0.62)):
-        add('foot_L', 'rock', (2.1 + x, 0.36, 1.95), (0.36, 0.34, 0.4), mat='rock', n=14, name=f'g_foot_L_toe{i}')
-    add('foot_L', 'rock', (2.1, 0.5, -1.1), (0.55, 0.5, 0.5), mat='rock', name='g_foot_L_heel')
+    add('shin_L', 'rock', along('shin_L', 0.0, (0.0, 0.1, 0.8)), (0.75, 0.68, 0.6), mat='rock', name='g_shin_L_knee')
+    add('shin_L', 'block', along('shin_L', 0.3), (2.3, 1.4, 2.3), bone_rot('shin_L', C.rot_y(12)), chips=3)
+    add('shin_L', 'block', along('shin_L', 0.72), (2.4, 1.5, 2.4), bone_rot('shin_L', C.rot_y(-9)), chips=3)
+    add('foot_L', 'block', (2.1, 0.47, 0.4), (2.5, 0.95, 3.4), euler(0, 3, 0), chips=3, name='g_foot_L_slab')
+    for i, x in enumerate((-0.66, 0.0, 0.66)):
+        add('foot_L', 'rock', (2.1 + x, 0.38, 2.05), (0.4, 0.37, 0.44), mat='rock', n=14, name=f'g_foot_L_toe{i}')
+    add('foot_L', 'rock', (2.1, 0.52, -1.2), (0.6, 0.55, 0.55), mat='rock', name='g_foot_L_heel')
 
 
 # ------------------------------------------------------------------ geometry
@@ -235,7 +245,7 @@ def core_bm(rng, kind, radius):
 def main():
     C.reset()
     mats = {
-        'ashlar': C.material('golem_ashlar', color=(0.78, 0.74, 0.68), rough=0.85, tex='ashlar'),
+        'ashlar': C.material('golem_ashlar', color=(0.74, 0.73, 0.72), rough=0.85, tex='ashlar'),
         'rock': C.material('golem_rock', color=(0.72, 0.71, 0.72), rough=0.88, tex='rock'),
         'core': C.material('golem_core', color=(0.04, 0.16, 0.18), rough=0.25, emission=(0.37, 0.94, 1.0), strength=6,
                            use_vcol=False),
@@ -262,7 +272,7 @@ def main():
             rng = random.Random(seed)
             bm = piece_bm(p, rng, mirrored)
             kind_mat = 'rock' if p['mat'] == 'rock' else 'ashlar'
-            tint = (0.8, 0.8, 0.83) if kind_mat == 'rock' else (0.95, 0.9, 0.84)
+            tint = (0.8, 0.8, 0.83) if kind_mat == 'rock' else (0.92, 0.9, 0.88)
             if p['kind'] == 'plate':
                 tint = (1.02, 0.97, 0.9)
             ob = finish(bm, name, mats[kind_mat], tint, arm, bone, rng, 3.0 if kind_mat == 'rock' else 4.0)

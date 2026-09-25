@@ -255,12 +255,18 @@ export class ThreatView {
           blending: THREE.AdditiveBlending,
         }),
       );
+      const cold = new THREE.Mesh(
+        this.discGeo,
+        new THREE.MeshBasicMaterial({ color: 0x0d0a08, alphaMap: this.crackTex, transparent: true, opacity: 0, depthWrite: false }),
+      );
+      cold.position.y = -0.01;
+      cold.renderOrder = 1;
       const edge = new THREE.Mesh(
         this.hazardEdgeGeo,
         new THREE.MeshBasicMaterial({ color: EMBER, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
       );
       edge.position.y = 0.01;
-      m.add(edge);
+      m.add(edge, cold);
       m.position.copy(h.pos).setY(0.05);
       m.rotation.y = h.seed;
       m.renderOrder = 2;
@@ -271,27 +277,36 @@ export class ThreatView {
       const grow = Math.min(1, h.t / 0.3);
       const fade = Math.min(1, (h.dur - h.t) / 1.2);
       const armed = h.t >= h.arm;
-      const warn = Math.max(0, 1 - (h.arm - h.t) / 0.5); // last 0.5 s before burning
+      const warn = Math.max(0, 1 - (h.arm - h.t) / 1.0); // the last second before it burns: fire creeps outward
       // it burns while glowing; in its last 0.3 s it no longer burns (see Threats) and goes dark
       const left = h.dur - h.t;
       const burning = armed && left > 0.3;
       const glow = Math.max(0, Math.min(1, (left - 0.3) / 0.7));
       const edgeMat = (m.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial;
-      if (!burning && (armed || warn <= 0)) {
-        // cold cracks: dark fissures in the stone, safe to stand on
-        mat.blending = THREE.NormalBlending;
-        mat.color.setRGB(0.05, 0.04, 0.035);
-        mat.opacity = 0.75 * (armed ? Math.min(1, left / 0.3) : fade);
+      const cold = m.children[1] as THREE.Mesh;
+      const coldMat = cold.material as THREE.MeshBasicMaterial;
+      const size = h.radius * (0.35 + 0.65 * grow);
+      m.scale.setScalar(size);
+      // cold cracks (dark, safe) at full size until it burns and again once it stops burning
+      coldMat.opacity = burning ? 0 : 0.75 * (armed ? Math.min(1, left / 0.3) : fade);
+      if (!burning && !(warn > 0 && !armed)) {
+        mat.opacity = 0;
         edgeMat.opacity = 0;
       } else {
-        mat.blending = THREE.AdditiveBlending;
         mat.color.copy(h.kind === 'lava' ? LAVA : EMBER);
-        const flick = armed ? 0.85 + 0.15 * Math.sin(this.time * 7 + h.seed) : 0.5 + 0.5 * Math.sin(this.time * 26 + h.seed);
-        mat.opacity = Math.max(0, armed ? flick * (0.35 + 0.65 * glow) : 0.35 * warn * flick);
+        const flick = armed ? 0.85 + 0.15 * Math.sin(this.time * 7 + h.seed) : 0.75 + 0.25 * Math.sin(this.time * 26 + h.seed);
+        mat.opacity = Math.max(0, armed ? flick * (0.35 + 0.65 * glow) : (0.35 + 0.5 * warn) * flick);
         edgeMat.color.copy(mat.color);
-        edgeMat.opacity = armed ? 0.8 * (0.35 + 0.65 * glow) : 0.3 * warn;
+        edgeMat.opacity = armed ? 0.8 * (0.35 + 0.65 * glow) : 0;
       }
-      m.scale.setScalar(h.radius * (0.35 + 0.65 * grow));
+      // before it burns, the fire creeps out from the centre and reaches the rim exactly when it ignites
+      const spread = armed ? 1 : 0.15 + 0.85 * warn;
+      const inv = 1 / Math.max(0.05, spread);
+      // the glowing disc is drawn at spread size; its children (edge, cold cracks) stay at full size
+      m.scale.setScalar(size * spread);
+      edgeMat.opacity *= armed ? 1 : 0;
+      (m.children[0] as THREE.Mesh).scale.setScalar(inv);
+      cold.scale.setScalar(inv);
     }
   }
 

@@ -212,7 +212,7 @@ export class Game {
     bus.on('phaseChange', (e) => {
       this.hud.bossVisible = true;
       if (e.phase === 2) this.tips.show('phase2', 'The Ruin cracks open. It is faster now.', 1, 4);
-      if (e.phase === 3) this.tips.show('phase3', 'Its core is molten. Watch the sky.', 1, 4);
+      if (e.phase === 3) this.tips.show('phase3', 'Its heart burns in its chest: bring it to its <b>knees</b> before you strike it. Watch the sky.', 1, 5);
     });
     bus.on('hazardBurn', () => this.tips.show('burn', 'The cracked floor <b>burns</b>. Step out of it.', 2, 3.5));
     bus.on('shockwave', () => this.tips.showNow('wave', 'Shockwave: <b>roll</b> (Space) or <b>jump</b> (F) through the ring.', 2, 3));
