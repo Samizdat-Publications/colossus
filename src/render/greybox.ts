@@ -9,8 +9,6 @@ const _up = new THREE.Vector3(0, 1, 0);
 
 /** Primitive stand-ins for the golem: a stone block per bone, glowing core spheres, eyes. */
 export function buildGreyboxGolem(rig: Rig): { cores: Map<string, THREE.Mesh>; eyes: THREE.Mesh[]; parts: THREE.Mesh[] } {
-  const stone = makeGolemStoneMaterial({ color: 0x9a9ea6, roughness: 0.82, metalness: 0.0, flatShading: true });
-  const stoneDark = makeGolemStoneMaterial({ color: 0x80848c, roughness: 0.88, flatShading: true });
   const parts: THREE.Mesh[] = [];
   for (let i = 0; i < rig.count; i++) {
     const name = rig.names[i];
@@ -22,7 +20,10 @@ export function buildGreyboxGolem(rig: Rig): { cores: Map<string, THREE.Mesh>; e
     else if (name.startsWith('hand')) geo = new THREE.BoxGeometry(r * 1.9, len + r * 0.6, r * 1.7);
     else if (name.startsWith('foot')) geo = new THREE.BoxGeometry(r * 1.9, r * 1.2, len + r * 0.6);
     else geo = new THREE.BoxGeometry(r * 1.8, len + r * 0.4, r * 1.6);
-    const mesh = new THREE.Mesh(geo, i % 2 ? stone : stoneDark);
+    const mesh = new THREE.Mesh(
+      geo,
+      makeGolemStoneMaterial(i % 2 ? { color: 0x9a9ea6, roughness: 0.82, flatShading: true } : { color: 0x80848c, roughness: 0.88, flatShading: true }),
+    );
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     mesh.position.copy(tail).multiplyScalar(0.5);

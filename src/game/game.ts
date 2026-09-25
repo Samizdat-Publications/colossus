@@ -19,6 +19,7 @@ import { buildGreyboxGolem, buildGreyboxWarrior } from '../render/greybox';
 import { Assembler } from '../render/assembler';
 import { setFade } from '../render/fade';
 import { golemLook, makeVeinTexture } from '../render/stoneMaterial';
+import { PartFader } from '../render/partFader';
 import { createSky, skyUniforms } from '../render/sky';
 import { Hud, Tips } from '../ui/hud';
 import { Screens, type EndStats } from '../ui/screens';
@@ -56,6 +57,7 @@ export class Game {
   private readonly coreMeshes: Map<string, THREE.Mesh>;
   private readonly coreLights = new Map<string, THREE.PointLight>();
   private readonly golemParts: THREE.Mesh[];
+  private readonly fader: PartFader;
   flow: Flow = 'loading';
   flowTime = 0;
   paused = false;
@@ -128,6 +130,7 @@ export class Game {
     const home = new THREE.Vector3(ARENA.golemHome[0], 0, ARENA.golemHome[1]);
     this.golem.reset(home.x, home.z, 0);
     this.assembler = new Assembler([...this.golemParts, ...this.coreMeshes.values()], home);
+    this.fader = new PartFader(this.golemParts);
 
     this.ctx = {
       time: 0,
@@ -289,7 +292,7 @@ export class Game {
     this.hud.bossVisible = true;
     this.hud.setVisible(true);
     this.hud.showControls = this.attempt === 1;
-    this.controlsTimer = this.attempt === 1 ? 45 : 0;
+    this.controlsTimer = this.attempt === 1 ? 25 : 0;
     bus.emit('fightStart', { attempt: this.attempt });
     if (this.attempt === 1) this.tips.show('start', 'Only the <b class="core">glowing cores</b> can be harmed.', 1, 4);
   }
@@ -312,6 +315,7 @@ export class Game {
 
   private onPlayerDeath(): void {
     if (this.flow !== 'fight') return;
+    this.tips.dismiss('lock');
     this.setFlow('dying');
     this.slowmo = 0.35;
     this.slowmoTimer = 1.3;
@@ -328,6 +332,7 @@ export class Game {
     this.ctx.live = false;
     this.player.locked = false;
     this.threats.clear();
+    this.hud.bossVisible = false;
     this.screenDelay = balance.fight.victoryScreenDelay;
   }
 
@@ -344,7 +349,7 @@ export class Game {
         return 'Shockwave rings can be jumped (F) or rolled through (Space). Time it as the ring reaches you.';
       case 'rock':
       case 'meteor':
-        return 'Watch for orange landing rings. Roll out of them, or put a pillar between you and the Ruin.';
+        return 'Watch for red landing rings. Roll out of them, or put a pillar between you and the Ruin.';
       case 'hazard':
         return 'Glowing cracks burn. Keep off them until they cool.';
       case 'fissure':
@@ -476,7 +481,7 @@ export class Game {
             this.controlsTimer -= rawDt;
             if (this.controlsTimer <= 0) this.hud.showControls = false;
           }
-          if (!this.player.locked && this.flowTime > 4.5 && this.flowTime < 30) {
+          if (!this.player.locked && this.player.alive && this.flowTime > 4.5 && this.flowTime < 30) {
             this.tips.show('lock', 'Press <b>Q</b> (or middle click) to lock on to the Ruin.', 2, 5);
           }
           if (this.player.locked) this.tips.dismiss('lock');
@@ -484,6 +489,9 @@ export class Game {
         if (this.flow === 'victoryCine') {
           this.victoryShot();
           cam.cineBlend = damp(cam.cineBlend, 1, 2.2, rawDt);
+        } else if (this.flow === 'dying') {
+          this.deathShot();
+          cam.cineBlend = damp(cam.cineBlend, 1, 1.2, rawDt);
         } else cam.cineBlend = damp(cam.cineBlend, 0, 3, rawDt);
         cam.update(rawDt, f.lookX, f.lookY, this.player, this.golem, this.world);
         if (this.flow !== 'fight') {
@@ -504,12 +512,39 @@ export class Game {
       }
       case 'dead':
       case 'victory':
+        if (this.flow === 'dead') this.deathShot();
         cam.update(rawDt, 0, 0, this.player, this.golem, this.world);
         break;
       default:
         break;
     }
     void dt;
+  }
+
+  /** After death: rise slowly over the fallen warrior with the Ruin looming behind. */
+  private deathShot(): void {
+    const c = this.cam.cine;
+    const p = this.player.pos;
+    const g = this.golem.pos;
+    let dx = p.x - g.x;
+    let dz = p.z - g.z;
+    const l = Math.hypot(dx, dz) || 1;
+    dx /= l;
+    dz /= l;
+    const t = Math.min(1, this.flowTime / 4);
+    const a = 0.5 + 0.25 * t;
+    const rx = dx * Math.cos(a) - dz * Math.sin(a);
+    const rz = dx * Math.sin(a) + dz * Math.cos(a);
+    let px = p.x + rx * (6 + 3 * t);
+    let pz = p.z + rz * (6 + 3 * t);
+    const d = Math.hypot(px, pz);
+    if (d > 36) {
+      px *= 36 / d;
+      pz *= 36 / d;
+    }
+    c.pos.set(px, 3.2 + 3 * t, pz);
+    c.look.set(p.x - dx * 3, 1.5 + 2.5 * t, p.z - dz * 3);
+    c.fov = 55;
   }
 
   /** Pull back to watch the Ruin collapse (from the player's side, three-quarter view). */
@@ -581,10 +616,11 @@ export class Game {
     golemLook.uTime.value = this.ctx.time;
     skyUniforms.uTime.value = this.ctx.time;
     skyUniforms.uLava.value = this.heatShown;
-    this.hemi.color.setRGB(0.506 + 0.25 * this.heatShown, 0.588 - 0.15 * this.heatShown, 0.733 - 0.35 * this.heatShown);
+    this.hemi.color.setRGB(0.506 + 0.12 * this.heatShown, 0.588 - 0.06 * this.heatShown, 0.733 - 0.2 * this.heatShown);
     // camera-occlusion fade on the golem (off in cinematics and on the title)
     const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
-    setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), gameplayCam);
+    setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), false);
+    this.fader.update(this.cam.camera.position, _v, dt, gameplayCam);
     // teach the punish window the first few times it opens
     if (this.flow === 'fight' && g.windowOpen) {
       if (g.staggered) this.hud.markCore = g.targets.find((t) => t.kind === 'back') ?? null;
@@ -609,7 +645,7 @@ export class Game {
       const mesh = this.coreMeshes.get(t.name);
       if (!mesh) continue;
       const mat = mesh.material as THREE.MeshStandardMaterial;
-      let base = t.kind === 'back' ? (t.open ? 2.2 : 0.2) : g.state === 'dormant' ? 0.12 : 1.5;
+      let base = t.kind === 'back' ? (t.open ? 2.2 : 0.2) : g.state === 'dormant' ? 0.12 : 1.5 + 0.35 * (g.phase - 1);
       if (g.state === 'dead') base = Math.max(0.02, base * (1 - g.stateTime / 1.2));
       const low = t.open && t.pos.y < 3.4 && g.state !== 'dead';
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;

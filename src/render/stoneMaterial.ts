@@ -15,11 +15,11 @@ export const golemLook = {
   uRim: { value: 0.55 },
   uTime: { value: 0 },
   uCrackMap: { value: null as THREE.Texture | null },
-  uCrackScale: { value: 0.34 },
+  uCrackScale: { value: 0.2 },
 };
 
 /** Tileable vein network (Voronoi cell edges on a torus) used until the Blender-baked mask exists. */
-export function makeVeinTexture(size = 256, cells = 22, seed = 5): THREE.DataTexture {
+export function makeVeinTexture(size = 256, cells = 10, seed = 5): THREE.DataTexture {
   let s = seed;
   const rnd = () => {
     s = (s * 16807) % 2147483647;
@@ -46,8 +46,8 @@ export function makeVeinTexture(size = 256, cells = 22, seed = 5): THREE.DataTex
         } else if (d < f2) f2 = d;
       }
       const edge = f2 - f1;
-      const w = Math.max(0, 1 - edge / 0.018);
-      const glow = Math.max(0, 1 - edge / 0.06) * 0.35;
+      const w = Math.max(0, 1 - edge / 0.022);
+      const glow = Math.max(0, 1 - edge / 0.07) * 0.3;
       const val = Math.min(1, w * w + glow);
       const i = (y * size + x) * 4;
       data[i] = data[i + 1] = data[i + 2] = Math.round(val * 255);
@@ -94,6 +94,15 @@ float stoneBayer(vec2 p) {
   float m[16] = float[16](0., 8., 2., 10., 12., 4., 14., 6., 3., 11., 1., 9., 15., 7., 13., 5.);
   return (m[i] + 0.5) / 16.0;
 }
+float stoneHash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float stoneNoise(vec3 p) {
+  vec3 i = floor(p);
+  vec3 f = fract(p);
+  vec3 u = f * f * (3.0 - 2.0 * f);
+  float n000 = stoneHash(i), n100 = stoneHash(i + vec3(1, 0, 0)), n010 = stoneHash(i + vec3(0, 1, 0)), n110 = stoneHash(i + vec3(1, 1, 0));
+  float n001 = stoneHash(i + vec3(0, 0, 1)), n101 = stoneHash(i + vec3(1, 0, 1)), n011 = stoneHash(i + vec3(0, 1, 1)), n111 = stoneHash(i + vec3(1, 1, 1));
+  return mix(mix(mix(n000, n100, u.x), mix(n010, n110, u.x), u.y), mix(mix(n001, n101, u.x), mix(n011, n111, u.x), u.y), u.z);
+}
 float veins(vec3 p, vec3 n) {
   vec3 w = pow(abs(n), vec3(4.0));
   w /= (w.x + w.y + w.z + 1e-4);
@@ -124,10 +133,12 @@ const FRAG_EMISSIVE = /* glsl */ `
   // glowing veins (phase 2/3) - brighter where the vein texture is strongest, slow pulse
   float v = veins(vStonePos, normalize(vStoneNrm));
   float pulse = 0.78 + 0.22 * sin(uTime * 2.3 + vStonePos.y * 0.9 + vStonePos.x * 0.6);
-  float vein = smoothstep(0.35, 0.95, v) * clamp(uCrack, 0.0, 2.0) * pulse;
-  vec3 veinCol = mix(uCrackColor, vec3(1.0, 0.82, 0.45), uHeat * 0.6);
-  totalEmissiveRadiance += veinCol * vein * (1.2 + uHeat * 0.5);
-  totalEmissiveRadiance += uCrackColor * uHeat * 0.05;
+  // patchy coverage: phase 2 splits some stones, phase 3 most of them
+  float stonePatch = stoneNoise(vStonePos * 0.22 + 3.1);
+  float cover = smoothstep(0.78 - 0.34 * uCrack, 0.9 - 0.3 * uCrack, stonePatch);
+  float vein = smoothstep(0.4, 0.95, v) * cover * clamp(uCrack, 0.0, 2.0) * pulse;
+  vec3 veinCol = mix(uCrackColor, vec3(1.0, 0.72, 0.35), uHeat * 0.5);
+  totalEmissiveRadiance += veinCol * vein * (1.25 + uHeat * 0.35);
   // moonlit rim
   vec3 nView = normalize(normal);
   float facing = clamp(dot(nView, normalize(vViewPosition)), 0.0, 1.0);

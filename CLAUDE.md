@@ -165,3 +165,25 @@ Newest at the bottom. Record every non-obvious choice.
 - 2026-09-24: Flasks (3 charges, R) added although not required: a three-phase fight with no healing
   is too swingy for the 3 to 6 attempt target.
 - 2026-09-24: Dev server pinned to port 5419 so tests never hit a sibling game's Vite server.
+- 2026-09-24 (M1): `public/balance.json` is fetched at runtime and also inlined as fallback defaults
+  through a tiny Vite plugin (`virtual:balance-defaults`); Vite refuses direct imports from public/.
+- 2026-09-24 (M1): In-page bot (`src/debug/bot.ts`, skills expert/decent/novice/idle) drives the same
+  virtual input a player uses; Playwright runs it at 2-4x time scale for win/balance runs and uses real
+  keyboard/mouse events for the controls smoke test.
+- 2026-09-24 (M1 bot): the slam's burning hazard sat exactly where the punish window is, so doing the
+  right thing burned you. Hazards now have an arm delay: the cracks glow dim while the fist is stuck and
+  only burn once it is pulled out.
+- 2026-09-24 (M1 bot): fissure eruptions started inside the slam radius with no warning. The fissure
+  line now glows red for 0.55 s first and erupts from just outside the slam radius.
+- 2026-09-24 (M1 bot): only one stagger in a 13-minute expert run. Break decay slowed (12 s delay,
+  1.2/s) and break per hit raised (12/12/16 light, 24/36 heavy). Stomps and the meteor rain now end in a
+  braced pose with both fists planted (a punish window), so every phase keeps readable openings.
+- 2026-09-24 (M1 critic r1): colour language fixed: cores are cyan (the only cyan in the game), incoming
+  impacts are red rings with a filling disc, burning ground is an orange crack pattern, the stomp
+  shockwave is a pale ring band. The lock-on reticle marks the best core, not the torso.
+- 2026-09-24 (M1): a NaN from `pow()` of a negative number in one shader blacked out the whole frame via
+  bloom. Added a sanitize pass before bloom (NaN/Inf to black, clamp to 48).
+- 2026-09-24 (M1 critic r2): moon placed behind the golem (rim light plus a Fresnel rim in the golem
+  shader, shadow falls toward the player), sky dome with clouds. Camera pulled back to 7.8 m and rises
+  over the golem instead of pushing in. Arm cores moved from mid-forearm to the wrist (head height in
+  every punish window), fists clamped above the floor by IK. Boss bar moved to the bottom (Souls layout).

@@ -111,12 +111,30 @@ export class ThreatView {
   private readonly quadGeo = new THREE.PlaneGeometry(2, 2);
   private readonly bandGeo = new THREE.CylinderGeometry(1, 1, 1, 96, 1, true);
   private readonly rockGeo = new THREE.IcosahedronGeometry(1, 0);
-  private readonly trailGeo = new THREE.ConeGeometry(0.7, 1, 10, 1, true);
+  private readonly trailGeo = new THREE.ConeGeometry(0.7, 1, 12, 1, true);
   private readonly spikeGeo = new THREE.ConeGeometry(0.7, 2.6, 5);
   private readonly stripGeo = new THREE.PlaneGeometry(1, 1);
   private readonly crackTex = crackTexture();
-  private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x6a645c, roughness: 0.9, flatShading: true, emissive: 0xff5a14, emissiveIntensity: 1.1 });
-  private readonly trailMat = new THREE.MeshBasicMaterial({ color: 0xff8a3a, transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x57524c, roughness: 0.92, flatShading: true, emissive: 0xff4a10, emissiveIntensity: 0.35 });
+  private readonly trailMat = new THREE.ShaderMaterial({
+    vertexShader: /* glsl */ `
+      varying float vK;
+      void main() {
+        vK = clamp(1.0 + position.y, 0.0, 1.0);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      varying float vK;
+      void main() {
+        float a = pow(vK, 2.2) * 0.75;
+        vec3 c = mix(vec3(0.55, 0.12, 0.02), vec3(1.0, 0.62, 0.25), vK);
+        gl_FragColor = vec4(c, a);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+  });
   private time = 0;
 
   constructor() {
@@ -126,7 +144,8 @@ export class ThreatView {
     this.stripGeo.rotateX(-Math.PI / 2);
     this.stripGeo.translate(0, 0, 0.5);
     this.bandGeo.translate(0, 0.5, 0);
-    // trail cone: tip at the rock, flaring backward along -Y then rotated to face -velocity
+    // comet trail: wide end at the rock, tapering away behind it (local -Y = behind)
+    this.trailGeo.rotateX(Math.PI);
     this.trailGeo.translate(0, -0.5, 0);
     this.group.name = 'threats';
   }
@@ -270,7 +289,7 @@ export class ThreatView {
       const speed = v.length();
       if (speed > 0.1) {
         trail.quaternion.setFromUnitVectors(up, v.normalize());
-        trail.scale.set(r.size * 0.95, Math.min(14, 2.5 + speed * 0.35) * (r.meteor ? 1.6 : 1), r.size * 0.95);
+        trail.scale.set(r.size * 0.95, Math.min(7, 1.8 + speed * 0.12), r.size * 0.95);
       }
     }
   }
