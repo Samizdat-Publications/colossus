@@ -379,7 +379,7 @@ export class Golem {
     // the phase-change roar has its own cinematic; this only covers the blend back
     if (this.state === 'transition') return 1.5;
     // the meteor rain: golem, sky and the rings around the warrior all at once
-    if (this.attack?.name === 'meteor') return 2.5;
+    if (this.attack?.name === 'meteor') return 4;
     return 0;
   }
 

@@ -56,6 +56,8 @@ const LEAP_APEX = 6;
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
+const _swordCold = new THREE.Color(0x8fb0d8);
+const _swordHot = new THREE.Color(0xffc27a);
 
 export class Game {
   readonly scene = new THREE.Scene();
@@ -632,6 +634,7 @@ export class Game {
       this.updateFlow(rawDt, dt, f);
       this.updateVisuals(dt);
     }
+    this.hud.dying = this.flow === 'dying';
     this.hud.update(rawDt, this.player, this.golem, this.cam.camera, window.innerWidth, window.innerHeight);
     this.renderer.render(rawDt);
     this.quality.update(rawDt, this.frameMs, !this.paused && (this.flow === 'fight' || this.flow === 'title'));
@@ -945,9 +948,9 @@ export class Game {
     } else {
       const u = clamp((t - 8.6) / 2, 0, 1);
       const p = this.player.pos;
-      c.pos.set(p.x + lerp(2.4, 0.8, u), lerp(2.0, 2.6, u), p.z + lerp(3.2, 6, u));
+      c.pos.set(p.x + lerp(1.8, 1.1, u), lerp(2.6, 3.4, u), p.z + lerp(5.2, 7.4, u));
       this.golem.lockPoint(c.look);
-      c.look.y = lerp(9, 6, u);
+      c.look.y = lerp(8.2, 5.4, u);
       c.fov = 58;
     }
   }
@@ -1005,9 +1008,12 @@ export class Game {
       // a held heavy attack heats the blade; a full charge flashes once and burns bright into the strike
       if (this.swordMat) {
         const charging = !!a?.heavy && !a.chargeDone;
-        const want = charging ? 0.3 + 2.2 * a.charge : a?.heavy && a.charged && striking ? 2.8 : 0;
+        const heat = charging ? 0.3 + 2.2 * a.charge : a?.heavy && a.charged && striking ? 2.8 : 0;
+        const want = Math.max(0.22, heat);
         const k = this.swordMat.emissiveIntensity;
         this.swordMat.emissiveIntensity = k + (want - k) * Math.min(1, dt * (want > k ? 14 : 5));
+        // cold steel glint at rest, heating to orange as a heavy attack charges
+        this.swordMat.emissive.lerpColors(_swordCold, _swordHot, Math.min(1, heat / 1.2));
         if (a?.charged && !this.chargeFlashed) {
           this.chargeFlashed = true;
           this.player.rig.worldPos(this.player.rig.i('hand_R'), _v3);
@@ -1230,6 +1236,7 @@ export class Game {
   }
 
   private updateVisuals(dt: number): void {
+    this.threatView.rimBoost = 1 + 0.9 * this.heatShown;
     this.threatView.update(this.threats, this.ctx.time);
     this.updatePlates(dt);
     waterUniforms.uWaterTime.value = this.ctx.time;
@@ -1243,6 +1250,7 @@ export class Game {
       const vl = Math.hypot(v.x, v.z);
       const vk = vl > 4 ? 4 / vl : 1;
       this.wind.set(0.8 * gust - v.x * vk, 0.0, 1.15 * gust - v.z * vk);
+      this.cape.drape = this.flow === 'dying' || this.flow === 'dead' || this.player.state === 'down';
       this.cape.update(dt, this.wind);
     }
     // the seal wakes with the golem: its runes burn while it assembles, then settle to an ember
@@ -1259,7 +1267,7 @@ export class Game {
     this.cam.rise = this.flow === 'fight' ? g.wantsRise : 0;
     // airborne golem, or arms thrown at the sky for the meteor rain: frame its torso and head, the raised
     // arms may leave the frame (keeping them in pushed the camera so far back the warrior was a speck)
-    this.cam.topParts = g.attack?.name === 'leap' ? this.leapParts : g.pos.y > 0.4 || g.attack?.name === 'meteor' ? this.airborneParts : null;
+    this.cam.topParts = g.attack?.name === 'leap' ? this.leapParts : g.pos.y > 0.4 ? this.airborneParts : null;
     // the leap: frame the apex before it happens (the solve lagged a jump that takes 0.3 s to peak)
     const leaping = this.flow === 'fight' && g.attack?.name === 'leap' && (g.step === 'windup' || g.step === 'air');
     const rising = g.pos.y >= this.prevGolemY - 1e-4;
@@ -1267,8 +1275,11 @@ export class Game {
     const shoving = this.flow === 'fight' && g.attack?.name === 'meteor' && (g.step === 'windup' || g.step === 'rain');
     this.cam.snappy = leaping ? 1 : shoving ? 0.6 : 0;
     // the telegraph is the golem's body: extra room while a big blow is wound up or a rock is in the air
-    const bigWindup = this.flow === 'fight' && !!g.attack && ((g.step === 'windup' && ['slam', 'doubleSlam', 'throw', 'volley'].includes(g.attack.name)) || g.attack.name === 'meteor');
-    this.cam.maxPull = leaping ? 9 : bigWindup || this.threats.rocks.length > 0 ? 4.5 : 3;
+    const bigWindup = this.flow === 'fight' && !!g.attack && g.step === 'windup' && ['slam', 'doubleSlam', 'throw', 'volley'].includes(g.attack.name);
+    const meteorCall = this.flow === 'fight' && g.attack?.name === 'meteor';
+    this.cam.maxPull = leaping ? 9 : meteorCall ? 6.5 : bigWindup || this.threats.rocks.length > 0 ? 4.5 : 3;
+    // the leap and the meteor call keep clear sky above the golem (they were pinned against the top edge)
+    this.cam.topMargin = leaping || meteorCall ? 0.16 : 0.1;
     this.prevGolemY = g.pos.y;
     if (g.pushTele) {
       this.threats.telegraph(g.pushTele.pos, g.pushTele.radius, g.pushTele.dur, 'push');
@@ -1324,7 +1335,7 @@ export class Game {
     const dormant = g.state === 'dormant' || g.state === 'assemble';
     // the roar flares the veins; in death the glow bleeds out while the body falls apart
     const roarFlare = g.state === 'transition' ? Math.sin(Math.min(1, g.stateTime / 2.8) * Math.PI) : 0;
-    const level = g.phase >= 3 ? 1.25 : g.phase >= 2 ? 1.0 : 0;
+    const level = g.phase >= 3 ? 0.95 : g.phase >= 2 ? 1.0 : 0;
     const dying = g.state === 'dead' ? Math.max(0, 1 - Math.max(0, g.stateTime - 1.2) / 2.4) : 1;
     const crackWant = dormant ? 0 : (level + 0.9 * roarFlare) * dying;
     const heatWant = g.phase >= 3 ? dying : 0;
@@ -1436,32 +1447,43 @@ export class Game {
     const eyeOn = this.assets ? 2.1 : 2.0;
     if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, eyeOn * (1 - Math.max(0, g.stateTime - 1.0) / 0.8)) : g.state === 'dormant' ? 0 : g.staggered ? eyeOn * (0.22 + 0.12 * Math.sin(this.ctx.time * 11) * Math.sin(this.ctx.time * 3.7)) : eyeOn * (1 + 1.4 * this.roarFlare);
     const chest = this.coreMeshes.get('core_chest');
-    // phase 3: label the sealed heart for its first half minute (it only opens when the golem is down)
+    // phase 3: while the heart burns out of reach, remind the player how to get at it (in the tip strip)
     const heartT = g.targets.find((t) => t.kind === 'chest');
-    this.hud.sealedHeart = chest && heartT && g.phase >= 3 && !heartT.open && g.state === 'combat' && this.flow === 'fight' && this.phase3Time < 30 ? heartT.pos : null;
-    if (g.phase >= 3 && this.flow === 'fight') this.phase3Time += dt;
-    else if (g.phase < 3) this.phase3Time = 0;
+    if (g.phase >= 3 && this.flow === 'fight') {
+      this.phase3Time += dt;
+      if (heartT && !heartT.open && this.player.locked && this.phase3Time > 6 && this.phase3Time < 60) {
+        this.tips.show('heart', 'Its molten <b>heart</b> burns out of reach: bring the Ruin to its <b>knees</b>, then strike it.', 2, 4.5);
+      }
+    } else if (g.phase < 3) this.phase3Time = 0;
     if (chest) {
       // in death the molten heart flares once and dies with the body
       const deadGlow = g.state === 'dead' ? Math.max(0, 1 - Math.max(0, g.stateTime - 1.0) / 1.2) : 1;
       const on = g.phase >= 3 && g.state !== 'dormant' ? deadGlow : 0;
       const ct = g.targets.find((t) => t.kind === 'chest');
       const mat = chest.material as THREE.MeshStandardMaterial;
-      // molten (orange) while sealed away up high; it turns cyan only when it can be struck
-      mat.emissive.setHex(ct?.open ? 0x5ff0ff : 0xff5a14);
-      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 0.9) + 0.15 * Math.sin(this.ctx.time * 5)) + (ct?.flash ?? 0) * 5;
+      // the burst chest shows a big molten core, white-hot at its heart; it turns cyan only when it can be struck
+      mat.emissive.setHex(ct?.open ? 0x5ff0ff : 0xffa050);
+      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 3.4) + 0.4 * Math.sin(this.ctx.time * 4.2)) + (ct?.flash ?? 0) * 5;
       chest.visible = on > 0;
-      // sealed it is a small ember deep in the chest, not a weak-point crystal; open it is the big cyan core
-      chest.scale.setScalar(ct?.open ? 1.5 : 0.55);
+      chest.scale.setScalar(ct?.open ? 1.5 : 1.3 + 0.05 * Math.sin(this.ctx.time * 4.2));
       const l = this.coreLights.get('core_chest');
       if (l) {
-        // lit from low in front of the chest, so the molten light floods the floor where the fight is
+        // the heart lights its own chest and the stone around it; the floor gets the molten pool below
         chest.getWorldPosition(l.position);
-        l.position.x += Math.sin(g.yaw) * 3.5;
-        l.position.z += Math.cos(g.yaw) * 3.5;
-        l.position.y = Math.max(3, l.position.y - 6);
+        l.position.x += Math.sin(g.yaw) * 2.5;
+        l.position.z += Math.cos(g.yaw) * 2.5;
         l.color.setHex(0xff6a20);
-        l.intensity = on * (ct?.open ? 420 : 340) * (0.9 + 0.1 * Math.sin(this.ctx.time * 5));
+        l.intensity = on * (ct?.open ? 230 : 190) * (0.9 + 0.1 * Math.sin(this.ctx.time * 4.2));
+      }
+      // molten light pooling on the floor around its feet (a soft glow, no hot spot)
+      const pool = this.threatView.lavaPool;
+      pool.visible = on > 0.01;
+      if (pool.visible) {
+        pool.position.x = g.pos.x + Math.sin(g.yaw) * 2;
+        pool.position.z = g.pos.z + Math.cos(g.yaw) * 2;
+        const pm = pool.material as THREE.ShaderMaterial;
+        pm.uniforms.uAlpha.value = 0.34 * on * this.heatShown;
+        pm.uniforms.uTime.value = this.ctx.time;
       }
     }
     void dt;

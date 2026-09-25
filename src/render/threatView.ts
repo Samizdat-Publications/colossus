@@ -123,6 +123,7 @@ uniform float uU;
 uniform float uLate;
 uniform float uTime;
 uniform float uSeed;
+uniform float uRimBoost;
 varying vec2 vP;
 varying vec2 vW;
 float th(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -146,7 +147,7 @@ void main() {
   float halo = step(1.0, r) * exp(-(r - 1.0) * 10.0) * (0.12 + 0.2 * uU);
   float ringA = ring * (0.45 + 0.45 * uU + 0.25 * uLate) * (0.75 + 0.5 * n);
   float rimA = rim * (0.3 + 0.45 * uU + 0.2 * uLate);
-  vec3 col = uColor * (ringA + fill + front + halo * (0.7 + 0.6 * n)) + vec3(1.0, 0.84, 0.8) * rimA;
+  vec3 col = uColor * (ringA + fill + front + halo * (0.7 + 0.6 * n)) + vec3(1.0, 0.84, 0.8) * rimA * uRimBoost;
   if (max(col.r, max(col.g, col.b)) < 0.004) discard;
   gl_FragColor = vec4(col, 1.0);
 }`;
@@ -200,8 +201,25 @@ void main() {
   gl_FragColor = vec4(uColor, a);
 }`;
 
+/** Phase 3: molten light pooling on the floor around the golem, a soft radial glow with no edge. */
+const POOL_FRAG = /* glsl */ `
+uniform float uAlpha;
+uniform float uTime;
+varying vec2 vP;
+varying vec2 vW;
+void main() {
+  float r = length(vP);
+  float n = 0.85 + 0.15 * sin(uTime * 1.7 + vW.x * 0.3) * sin(uTime * 1.3 + vW.y * 0.27);
+  float a = pow(max(0.0, 1.0 - r), 1.8) * uAlpha * n;
+  gl_FragColor = vec4(vec3(1.0, 0.42, 0.12) * a, 1.0);
+}`;
+
 export class ThreatView {
   readonly group = new THREE.Group();
+  /** molten light pool (phase 3), placed and faded by the game */
+  readonly lavaPool: THREE.Mesh;
+  /** brighter ring rims when the floor itself is lit orange (phase 3) */
+  rimBoost = 1;
   private readonly hazardMeshes = new Map<Hazard, THREE.Mesh>();
   private readonly waveMeshes = new Map<Wave, THREE.Group>();
   private readonly rockMeshes = new Map<Rock, THREE.Group>();
@@ -310,6 +328,24 @@ export class ThreatView {
     this.trailGeo.rotateX(Math.PI);
     this.trailGeo.translate(0, -0.5, 0);
     this.group.name = 'threats';
+    const poolGeo = new THREE.PlaneGeometry(2, 2);
+    poolGeo.rotateX(-Math.PI / 2);
+    this.lavaPool = new THREE.Mesh(
+      poolGeo,
+      new THREE.ShaderMaterial({
+        vertexShader: TELE_VERT,
+        fragmentShader: POOL_FRAG,
+        uniforms: { uAlpha: { value: 0 }, uTime: { value: 0 } },
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      }),
+    );
+    this.lavaPool.renderOrder = 1;
+    this.lavaPool.scale.setScalar(17);
+    this.lavaPool.position.y = 0.04;
+    this.lavaPool.visible = false;
+    this.group.add(this.lavaPool);
   }
 
   private sync<K extends object, V extends THREE.Object3D>(list: K[], map: Map<K, V>, make: (k: K) => V): void {
@@ -539,6 +575,7 @@ export class ThreatView {
             uLate: { value: 0 },
             uTime: { value: 0 },
             uSeed: { value: Math.random() * 50 },
+            uRimBoost: { value: 1 },
           },
           transparent: true,
           depthWrite: false,
@@ -569,6 +606,7 @@ export class ThreatView {
       tu.uU.value = u;
       tu.uLate.value = late;
       tu.uTime.value = this.time;
+      tu.uRimBoost.value = this.rimBoost;
     }
   }
 

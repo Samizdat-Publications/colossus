@@ -263,7 +263,7 @@ export interface ArenaModel {
   water: THREE.MeshStandardMaterial | null;
   rockGeo: THREE.BufferGeometry | null;
   meteorGeo: THREE.BufferGeometry | null;
-  rockMat: THREE.MeshStandardMaterial | null;
+  rockMat: THREE.Material | null;
   debrisGeo: THREE.BufferGeometry | null;
   debrisMat: THREE.MeshStandardMaterial | null;
   cliffs: THREE.MeshStandardMaterial;
@@ -355,7 +355,8 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
   // projectiles use the rubble boulders (unit radius)
   const rockMesh = proto(assets.models.rubble, 'rock_throw') as THREE.Mesh;
   const meteorMesh = proto(assets.models.rubble, 'meteor') as THREE.Mesh;
-  const rockMat = new THREE.MeshStandardMaterial({ ...stoneParams(tex, 'rock', 0x9a968f, 1.0), emissive: 0x401406, emissiveIntensity: 0.1 });
+  // pieces of the golem: its moonlit rim (so a boulder against the sky still reads as a rock) and its veins
+  const rockMat = makeGolemStoneMaterial({ ...stoneParams(tex, 'rock', 0xa39f98, 1.0) });
   return {
     braziers,
     runes,

@@ -219,19 +219,35 @@ export class Weather {
       z += (Math.random() - 0.5) * 14;
       pts.push(new THREE.Vector3(x, Math.max(30, y), z));
     }
-    // a ribbon facing the camera
+    // a ribbon facing the camera, with two or three thinner forks splitting off the main channel
     const pos: number[] = [];
-    const w = 1.1;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i];
-      const p1 = pts[i + 1];
-      const side = new THREE.Vector3().subVectors(p1, p0).cross(new THREE.Vector3().subVectors(camera.position, p0)).normalize().multiplyScalar(w * (1 - i / pts.length) + 0.3);
-      const a0 = p0.clone().add(side);
-      const b0 = p0.clone().sub(side);
-      const a1 = p1.clone().add(side);
-      const b1 = p1.clone().sub(side);
-      pos.push(a0.x, a0.y, a0.z, b0.x, b0.y, b0.z, a1.x, a1.y, a1.z);
-      pos.push(b0.x, b0.y, b0.z, b1.x, b1.y, b1.z, a1.x, a1.y, a1.z);
+    const ribbon = (line: THREE.Vector3[], w: number) => {
+      for (let i = 0; i < line.length - 1; i++) {
+        const p0 = line[i];
+        const p1 = line[i + 1];
+        const side = new THREE.Vector3().subVectors(p1, p0).cross(new THREE.Vector3().subVectors(camera.position, p0)).normalize().multiplyScalar(w * (1 - i / line.length) + 0.25);
+        const a0 = p0.clone().add(side);
+        const b0 = p0.clone().sub(side);
+        const a1 = p1.clone().add(side);
+        const b1 = p1.clone().sub(side);
+        pos.push(a0.x, a0.y, a0.z, b0.x, b0.y, b0.z, a1.x, a1.y, a1.z);
+        pos.push(b0.x, b0.y, b0.z, b1.x, b1.y, b1.z, a1.x, a1.y, a1.z);
+      }
+    };
+    ribbon(pts, 1.1);
+    const forks = 2 + Math.floor(Math.random() * 2);
+    for (let k = 0; k < forks; k++) {
+      const from = pts[1 + Math.floor(Math.random() * Math.max(1, pts.length - 3))];
+      const fork: THREE.Vector3[] = [from.clone()];
+      const dx = (Math.random() - 0.5) * 18;
+      const dz = (Math.random() - 0.5) * 18;
+      let fy = from.y;
+      for (let j = 0; j < 3 + Math.floor(Math.random() * 3); j++) {
+        fy -= 5 + Math.random() * 7;
+        const last = fork[fork.length - 1];
+        fork.push(new THREE.Vector3(last.x + dx * 0.35 + (Math.random() - 0.5) * 6, Math.max(30, fy), last.z + dz * 0.35 + (Math.random() - 0.5) * 6));
+      }
+      ribbon(fork, 0.45);
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));

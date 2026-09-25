@@ -25,6 +25,8 @@ export class Cape {
   private readonly geo: THREE.BufferGeometry;
   private ready = false;
   private topY = Infinity;
+  /** falling or lying: let the cape drape over the back instead of holding it below the shoulders */
+  drape = false;
 
   constructor(
     private readonly mesh: THREE.Mesh,
@@ -146,7 +148,7 @@ export class Cape {
             if (d < sp.r && d > 1e-5) p.addScaledVector(_d, (sp.r - d) / d);
           }
           if (p.y < 0.03) p.y = 0.03;
-          if (p.y > this.topY - 0.06) p.y = this.topY - 0.06;
+          if (!this.drape && p.y > this.topY - 0.06) p.y = this.topY - 0.06;
         }
       }
     }

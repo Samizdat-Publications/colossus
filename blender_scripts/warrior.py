@@ -157,7 +157,7 @@ def build_parts():
 def sword_bm():
     """Longsword in grip space: blade along +Z, flat in X, ridge in Y."""
     bm = bmesh.new()
-    stations = [(0.075, 0.026, 0.0065), (0.4, 0.024, 0.006), (0.85, 0.019, 0.0052), (1.05, 0.011, 0.004)]
+    stations = [(0.075, 0.036, 0.008), (0.45, 0.033, 0.0075), (0.95, 0.026, 0.0065), (1.17, 0.015, 0.005)]
     rings = []
     for z, w, t in stations:
         rings.append([bm.verts.new(p) for p in ((-w, 0, z), (0, t, z), (w, 0, z), (0, -t, z))])
@@ -165,7 +165,7 @@ def sword_bm():
         for i in range(4):
             j = (i + 1) % 4
             bm.faces.new((a[i], a[j], b[j], b[i]))
-    tip = bm.verts.new((0, 0, 1.13))
+    tip = bm.verts.new((0, 0, 1.27))
     for i in range(4):
         bm.faces.new((rings[-1][i], rings[-1][(i + 1) % 4], tip))
     bm.faces.new(list(reversed(rings[0])))
@@ -211,6 +211,8 @@ def build_cape(mats):
             u = i / (cols - 1) * 2 - 1
             x = u * half
             z = -0.2 - 0.05 * (1 - u * u) - 0.05 * t
+            if 0 < i < cols - 1:
+                z -= (0.018 + 0.035 * t) * (1 if i % 2 else -0.4)
             row.append(bm.verts.new((x, y, z)))
         grid.append(row)
     uv = bm.loops.layers.uv.verify()

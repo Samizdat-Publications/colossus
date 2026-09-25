@@ -25,7 +25,7 @@ const _camPos = new THREE.Vector3();
 const _lookPos = new THREE.Vector3();
 
 /** Fraction of the vertical field of view kept free above the golem and below the warrior's feet. */
-const TOP_MARGIN = 0.1; // leaves the top strip for tips
+const TOP_MARGIN = 0.1; // leaves the top strip for tips (the director can ask for more: topMargin)
 const BOTTOM_MARGIN = 0.16; // keeps the feet above the (see-through) boss health panel
 const FOV_MIN = 58;
 const FOV_MAX = 72; // wider lenses stretched the frame edges and shrank the warrior
@@ -118,6 +118,9 @@ export class CameraRig {
   snappy = 0;
   /** Largest automatic pull-back in metres (the director raises it for the leap). */
   maxPull = 3;
+  /** Fraction of the view kept clear above the golem's top (more for the leap and the meteor call). */
+  topMargin = TOP_MARGIN;
+  private topMarginNow = TOP_MARGIN;
 
   update(dt: number, lookX: number, lookY: number, player: Player, golem: Golem, world: World): void {
     this.time += dt;
@@ -195,10 +198,12 @@ export class CameraRig {
         const a = angleOf(n.x, n.y + 1, n.z);
         if (a !== null && a > top) top = a;
       }
+      this.topMarginNow = damp(this.topMarginNow, this.topMargin, 3, dt);
+      const tm = this.topMarginNow;
       const span = top - feet;
-      const needFov = span / (1 - TOP_MARGIN - BOTTOM_MARGIN);
+      const needFov = span / (1 - tm - BOTTOM_MARGIN);
       const fov = clamp(needFov / DEG, FOV_MIN, FOV_MAX + Math.min(4, this.wideNow)) * DEG;
-      const lo = top - fov * (0.5 - TOP_MARGIN);
+      const lo = top - fov * (0.5 - tm);
       const hi = feet + fov * (0.5 - BOTTOM_MARGIN);
       // when both cannot fit, the ground around the warrior wins and the camera pulls back
       const pitch = lo <= hi ? (lo + hi) / 2 : hi;
