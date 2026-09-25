@@ -24,6 +24,8 @@ import { createSky, skyUniforms } from '../render/sky';
 import type { Assets } from '../render/assets';
 import { addBrazierFlames, buildArenaModel, buildGolemModel, buildWarriorModel, type ArenaModel } from '../render/models';
 import { makeEnvironment } from '../render/environment';
+import { waterUniforms } from '../render/models';
+import { Cape } from '../render/cloth';
 import { Hud, Tips } from '../ui/hud';
 import { Screens, type EndStats } from '../ui/screens';
 
@@ -87,6 +89,9 @@ export class Game {
   private crackShown = 0;
   private heatShown = 0;
 
+  /** The warrior's cloth cape (Blender assets only). */
+  private cape: Cape | null = null;
+  private readonly wind = new THREE.Vector3();
   /** The Blender-made arena, when the assets loaded (null = greybox primitives). */
   private readonly arenaModel: ArenaModel | null = null;
   /** Chest plates that burst off in phase 3, with where they sit on the golem. */
@@ -106,7 +111,7 @@ export class Game {
     this.scene.fog = new THREE.FogExp2(0x1e2838, 0.0105);
     this.scene.add(createSky());
     golemLook.uCrackMap.value = assets ? assets.tex.crack : makeVeinTexture();
-    if (assets) golemLook.uRim.value = 0.3; // textured stone needs less of the greybox's silhouette rim
+    if (assets) golemLook.uRim.value = 0.14; // textured stone needs only a hint of the greybox's silhouette rim
     this.hemi = new THREE.HemisphereLight(0x8196bb, 0x2c2723, 1.35);
     this.scene.add(this.hemi);
     this.moon = new THREE.DirectionalLight(0xc4d2ee, 2.3);
@@ -134,8 +139,26 @@ export class Game {
     this.scene.add(this.threatView.group);
 
     let pRig: Rig;
-    if (assets) pRig = buildWarriorModel(assets).rig;
-    else {
+    if (assets) {
+      const wm = buildWarriorModel(assets);
+      pRig = wm.rig;
+      if (wm.cape) {
+        const r = pRig;
+        const spheres = [
+          { bone: 'hips', off: new THREE.Vector3(0, 0.05, -0.03), r: 0.2 },
+          { bone: 'spine', off: new THREE.Vector3(0, 0.1, -0.02), r: 0.19 },
+          { bone: 'chest', off: new THREE.Vector3(0, 0.08, -0.02), r: 0.21 },
+          { bone: 'thigh_L', off: new THREE.Vector3(0, -0.2, 0), r: 0.11 },
+          { bone: 'thigh_R', off: new THREE.Vector3(0, -0.2, 0), r: 0.11 },
+          { bone: 'shin_L', off: new THREE.Vector3(0, -0.15, 0), r: 0.09 },
+          { bone: 'shin_R', off: new THREE.Vector3(0, -0.15, 0), r: 0.09 },
+        ].map((s) => ({ ...s, i: r.i(s.bone), c: new THREE.Vector3() }));
+        this.cape = new Cape(wm.cape, r.bone('chest'), () => {
+          for (const s of spheres) s.c.copy(s.off).applyMatrix4(r.bones[s.i].matrixWorld); // offset from the joint, in the bone's frame
+          return spheres;
+        });
+      }
+    } else {
       pRig = Rig.fromJoints(WARRIOR_RIG.bones);
       buildGreyboxWarrior(pRig);
     }
@@ -290,6 +313,7 @@ export class Game {
     const home = ARENA.golemHome;
     this.golem.reset(home[0], home[1], 0);
     this.restorePlates();
+    this.cape?.reset();
     this.assembler.reset();
     this.assembler.apply(0, 0);
     this.fightTime = 0;
@@ -338,7 +362,7 @@ export class Game {
     this.hud.bossVisible = true;
     this.hud.setVisible(true);
     this.hud.showControls = this.attempt === 1;
-    this.controlsTimer = this.attempt === 1 ? 15 : 0;
+    this.controlsTimer = this.attempt === 1 ? 12 : 0;
     bus.emit('fightStart', { attempt: this.attempt });
     if (this.attempt === 1) this.tips.show('start', 'Only the <b class="core">glowing cores</b> can be harmed.', 1, 4);
   }
@@ -830,6 +854,14 @@ export class Game {
   private updateVisuals(dt: number): void {
     this.threatView.update(this.threats, this.ctx.time);
     this.updatePlates(dt);
+    waterUniforms.uWaterTime.value = this.ctx.time;
+    if (this.cape) {
+      // gusty storm wind from the north-west, plus the air the warrior runs through
+      const t = this.ctx.time;
+      const gust = 0.6 + 0.4 * Math.sin(t * 0.7) * Math.sin(t * 1.9 + 1.3);
+      this.wind.set(2.2 * gust, 0.3, 3.0 * gust).addScaledVector(this.player.vel, -1.6);
+      this.cape.update(dt, this.wind);
+    }
     // the seal wakes with the golem: its runes burn while it assembles, then settle to an ember
     if (this.arenaModel?.runes) {
       const gs = this.golem.state;
@@ -863,7 +895,7 @@ export class Game {
     }
     // a soft light that follows the warrior so they never vanish into the dark
     if (!this.heroLight) {
-      this.heroLight = new THREE.PointLight(0xc8d8ff, 4.5, 7, 2);
+      this.heroLight = new THREE.PointLight(0xc8d8ff, 3.5, 7, 2);
       this.scene.add(this.heroLight);
     }
     this.heroLight.position.set(this.player.pos.x, this.player.y + 2.8, this.player.pos.z);
@@ -948,7 +980,8 @@ export class Game {
       if (light) light.intensity = mesh.visible ? (base * pulse * 0.6 + t.flash * 1.5) * 6 : 0;
     }
     const eyeMat = this.golemEyes[0]?.material as THREE.MeshStandardMaterial | undefined;
-    if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, 2.2 * (1 - g.stateTime / 0.4)) : g.state === 'dormant' ? 0 : 2.2;
+    const eyeOn = this.assets ? 4.5 : 2.2;
+    if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, eyeOn * (1 - g.stateTime / 0.4)) : g.state === 'dormant' ? 0 : eyeOn;
     const chest = this.coreMeshes.get('core_chest');
     if (chest) {
       const on = g.phase >= 3 && g.state !== 'dormant' && g.state !== 'dead' ? 1 : 0;

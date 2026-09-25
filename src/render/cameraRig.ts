@@ -202,6 +202,10 @@ export class CameraRig {
       else if (needFov < FOV_MAX * DEG * 0.85) this.pullBack = Math.max(0, this.pullBack - dt * 0.8);
       this.lockPitch = damp(this.lockPitch, pitch, lerp(4, 10, this.snappy), dt);
       this.lockFov = damp(this.lockFov, fov / DEG, lerp(3, 8, this.snappy), dt);
+      // hard constraint, no lag: a knockback or a camera push must never drop the warrior's feet (or a
+      // ring they stand in) below the frame
+      const hiNow = feet + this.lockFov * DEG * (0.5 - BOTTOM_MARGIN);
+      if (this.lockPitch > hiNow) this.lockPitch = hiNow;
       _lockLook.set(
         _lockPos.x + _f.x * Math.cos(this.lockPitch) * 10,
         _lockPos.y + Math.sin(this.lockPitch) * 10,

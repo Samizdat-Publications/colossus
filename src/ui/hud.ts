@@ -86,7 +86,7 @@ export class Hud {
       'div',
       'controls',
       this.root,
-      `<div><b>WASD</b> move</div><div><b>Mouse</b> camera</div><div><b>LMB</b> light attack</div><div><b>RMB</b> heavy (hold to charge)</div><div><b>Shift</b> block</div><div><b>Space</b> roll</div><div><b>F</b> jump</div><div><b>Q</b> lock on</div><div><b>R</b> flask</div><div class="dim"><b>H</b> hide this card</div>`,
+      `<div><b>WASD</b> move</div><div><b>Mouse</b> camera</div><div><b>LMB</b> light attack</div><div><b>RMB</b> heavy (hold to charge)</div><div><b>Shift</b> block</div><div><b>Space</b> roll</div><div><b>F</b> jump</div><div><b>Q</b> lock on</div><div><b>R</b> flask</div><div><b>Esc</b> pause</div><div class="dim"><b>H</b> hide this card</div>`,
     );
 
     bus.on('noStamina', () => (this.stFlash = 1));

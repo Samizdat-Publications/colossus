@@ -85,6 +85,7 @@ uniform float uRim;
 uniform float uTime;
 uniform sampler2D uCrackMap;
 uniform float uCrackScale;
+uniform vec3 uStoneSeed;
 uniform vec3 uFadeCam;
 uniform vec3 uFadeFocus;
 uniform float uFadeOn;
@@ -106,7 +107,7 @@ float stoneNoise(vec3 p) {
 float veins(vec3 p, vec3 n) {
   vec3 w = pow(abs(n), vec3(4.0));
   w /= (w.x + w.y + w.z + 1e-4);
-  vec3 q = p * uCrackScale;
+  vec3 q = p * uCrackScale + uStoneSeed;
   float a = texture2D(uCrackMap, q.yz).r;
   float b = texture2D(uCrackMap, q.xz + 0.37).r;
   float c = texture2D(uCrackMap, q.xy + 0.71).r;
@@ -149,8 +150,10 @@ const FRAG_EMISSIVE = /* glsl */ `
 /** MeshStandardMaterial with golem veins, rim light and the camera fade. */
 export function makeGolemStoneMaterial(params: THREE.MeshStandardMaterialParameters): THREE.MeshStandardMaterial {
   const mat = new THREE.MeshStandardMaterial(params);
+  const seed = { value: new THREE.Vector3(Math.random() * 7, Math.random() * 7, Math.random() * 7) };
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, golemLook, fadeUniforms);
+    shader.uniforms.uStoneSeed = seed;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${VERT_HEAD}`)
       .replace('#include <project_vertex>', `#include <project_vertex>\n${VERT_BODY}`);

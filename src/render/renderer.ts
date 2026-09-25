@@ -55,7 +55,8 @@ export class Renderer {
     this.renderPass = new RenderPass(scene, camera);
     this.composer.addPass(this.renderPass);
     this.composer.addPass(new ShaderPass(SanitizeShader));
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.42, 0.35, 0.92);
+    // threshold above 1: only real glow (cores, fire, eyes) blooms, not every specular glint on the armour
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(size.x / 2, size.y / 2), 0.45, 0.35, 1.05);
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
 

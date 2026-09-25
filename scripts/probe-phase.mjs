@@ -17,7 +17,7 @@ const browser = await chromium.launch({ args: ['--use-angle=d3d11', '--enable-gp
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.on('pageerror', (e) => console.log('pageerror', e.message));
 await page.goto(`${server.resolvedUrls.local[0]}?test=1&god=1&nosound=1`);
-await page.waitForFunction(() => window.__CO?.ready && window.__CO.state().flow === 'title');
+await page.waitForFunction(() => window.__CO?.ready && window.__CO.state().flow === 'title', null, { timeout: 90000 });
 await page.evaluate(() => window.__CO.begin());
 await page.evaluate(() => window.__CO.skipIntro());
 await page.waitForFunction(() => window.__CO.state().flow === 'fight', null, { timeout: 20000 });

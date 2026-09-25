@@ -57,7 +57,7 @@ export function buildGolemModel(assets: Assets): GolemModel {
   const eyes: THREE.Mesh[] = [];
   const parts: THREE.Mesh[] = [];
   const plates: THREE.Mesh[] = [];
-  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffa040, emissiveIntensity: 2.2 });
+  const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: 0xffa040, emissiveIntensity: 4.5 });
   for (const m of meshes(rig.root)) {
     const name = m.name;
     m.castShadow = true;
@@ -78,6 +78,7 @@ export function buildGolemModel(assets: Assets): GolemModel {
     } else if (name.startsWith('eye_')) {
       m.material = eyeMat;
       m.castShadow = false;
+      m.scale.set(1.5, 1.4, 1.2); // eyes that read from the far end of the arena
       eyes.push(m);
     } else {
       const rock = matName(m).includes('rock');
@@ -106,17 +107,18 @@ export function buildWarriorModel(assets: Assets): WarriorModel {
     warrior_steel: new THREE.MeshStandardMaterial({
       color: 0xd2d7e0,
       metalness: 0.92,
-      roughness: 1.0,
+      roughness: 1.35,
       roughnessMap: tex.metal_rough,
       normalMap: tex.metal_normal,
       normalScale: NORMAL_SCALE(0.7),
-      envMapIntensity: 1.4,
+      envMapIntensity: 1.1,
     }),
     warrior_mail: new THREE.MeshStandardMaterial({ color: 0x6a6f78, metalness: 0.85, roughness: 0.5 }),
     warrior_leather: new THREE.MeshStandardMaterial({ color: 0x3a2a1e, roughness: 0.78 }),
-    // ivory cloth: the warrior's accent must never match a danger colour (red), fire (amber) or a core (cyan)
+    // weathered bone cloth: the warrior's accent never matches a danger colour (red), fire (amber) or a core
+    // (cyan), and it is warm against the cold stone without being the brightest thing on screen
     warrior_cloth: new THREE.MeshStandardMaterial({
-      color: 0xd9d0bb,
+      color: 0xa89a7e,
       roughness: 0.85,
       normalMap: tex.cloth_normal,
       normalScale: NORMAL_SCALE(0.6),
@@ -152,9 +154,9 @@ export interface ArenaModel {
 export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel {
   const tex = assets.tex;
   const runes = new THREE.MeshStandardMaterial({ color: 0x1a0c04, emissive: 0xff9a4a, emissiveIntensity: 0.5, roughness: 0.6 });
-  const water = new THREE.MeshStandardMaterial({ color: 0x05070b, roughness: 0.06, metalness: 0.0, envMapIntensity: 1.2 });
+  const water = makeWater();
   const mats: Record<string, THREE.Material> = {
-    floor_stone: new THREE.MeshStandardMaterial(stoneParams(tex, 'ashlar', 0x9ea3ad, 0.7)),
+    floor_stone: new THREE.MeshStandardMaterial({ ...stoneParams(tex, 'ashlar', 0x959aa4, 0.52), envMapIntensity: 1.3 }),
     floor_water: water,
     seal_stone: new THREE.MeshStandardMaterial(stoneParams(tex, 'ashlar', 0x8e9098, 0.8)),
     seal_rune: runes,
@@ -233,6 +235,56 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
     meteorGeo: firstGeometry(meteorMesh),
     rockMat,
   };
+}
+
+/** Uniforms the game animates: time (ripples) and rain (how hard it falls). */
+export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 } };
+
+/** Dark water with a real sheen and raindrop ripples (normals perturbed in the shader). */
+function makeWater(): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ color: 0x0b1016, roughness: 0.05, metalness: 0.0, envMapIntensity: 1.8 });
+  m.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, waterUniforms);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWaterWorld;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvWaterWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+varying vec3 vWaterWorld;
+uniform float uWaterTime;
+uniform float uRain;
+float wHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+// expanding rings from raindrops on a jittered grid
+vec2 ripples(vec2 p, float t) {
+  vec2 g = floor(p);
+  vec2 acc = vec2(0.0);
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 c = g + vec2(float(i), float(j));
+    float h = wHash(c);
+    vec2 o = c + vec2(wHash(c + 1.7), wHash(c + 3.1));
+    float life = fract(t * 0.9 + h);
+    vec2 d = p - o;
+    float r = length(d);
+    float ring = sin((r - life * 0.9) * 42.0) * smoothstep(0.0, 0.08, 0.9 * life + 0.06 - r) * (1.0 - life) * (1.0 - life);
+    acc += ring * d / max(r, 1e-3);
+  }
+  return acc;
+}`,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        `#include <normal_fragment_maps>
+{
+  vec2 rp = ripples(vWaterWorld.xz * 2.2, uWaterTime) * 0.35 * uRain + ripples(vWaterWorld.xz * 3.7 + 11.0, uWaterTime * 1.3) * 0.25 * uRain;
+  vec3 nW = normalize(vec3(-rp.x, 1.0, -rp.y));
+  normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
+}`,
+      );
+  };
+  m.customProgramCacheKey = () => 'arena-water';
+  return m;
 }
 
 function firstGeometry(o: THREE.Object3D): THREE.BufferGeometry | null {

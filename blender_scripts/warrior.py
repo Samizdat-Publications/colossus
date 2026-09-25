@@ -197,14 +197,14 @@ def build_flask(mats):
 
 
 def build_cape(mats):
-    """A grid (9 x 15 vertices) from shoulder to calf, curved around the back. Top row = pinned row."""
+    """A grid (9 x 13 vertices) from shoulder to mid-thigh, curved around the back. Top row = pinned row."""
     bm = bmesh.new()
-    cols, rows = 9, 15
+    cols, rows = 9, 13
     grid = []
     for j in range(rows):
         t = j / (rows - 1)
-        y = 1.47 - t * 1.02
-        half = 0.2 + 0.16 * t
+        y = 1.47 - t * 0.74  # shoulders to mid-thigh: the sword arm stays visible from behind
+        half = 0.19 + 0.12 * t
         row = []
         for i in range(cols):
             u = i / (cols - 1) * 2 - 1
