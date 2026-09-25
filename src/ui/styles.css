@@ -51,7 +51,7 @@ body {
 
 .hud .boss {
   position: absolute;
-  bottom: 26px;
+  bottom: 14px;
   left: 50%;
   transform: translateX(-50%);
   width: min(820px, 56vw);
@@ -62,16 +62,16 @@ body {
   opacity: 1;
 }
 .boss-name {
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: 0.18em;
-  margin-bottom: 4px;
-  text-shadow: 0 1px 3px #000;
+  margin-bottom: 3px;
+  text-shadow: 0 1px 3px #000, 0 0 8px #000;
 }
 .boss-bar {
   position: relative;
-  height: 10px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(230, 223, 207, 0.4);
+  height: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(230, 223, 207, 0.45);
 }
 .boss-bar .fill,
 .boss-bar .trail {
@@ -150,11 +150,7 @@ body {
   border-radius: 2px;
 }
 .hud .boss::before {
-  content: '';
-  position: absolute;
-  inset: -8px -14px -8px;
-  background: linear-gradient(rgba(8, 9, 12, 0), rgba(8, 9, 12, 0.45));
-  z-index: -1;
+  content: none;
 }
 .hurt-flash {
   position: absolute;

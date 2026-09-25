@@ -138,6 +138,7 @@ export class ThreatView {
   private readonly fissureMeshes = new Map<Fissure, THREE.Mesh>();
   private readonly discGeo = new THREE.CircleGeometry(1, 48);
   private readonly ringGeo = new THREE.RingGeometry(0.88, 1, 64);
+  private readonly rimGeo = new THREE.RingGeometry(0.975, 1, 64);
   private readonly quadGeo = new THREE.PlaneGeometry(2, 2);
   private readonly bandGeo = new THREE.CylinderGeometry(1, 1, 1, 96, 1, true);
   private readonly rockGeo = new THREE.IcosahedronGeometry(1, 0);
@@ -201,6 +202,7 @@ export class ThreatView {
   constructor() {
     this.discGeo.rotateX(-Math.PI / 2);
     this.ringGeo.rotateX(-Math.PI / 2);
+    this.rimGeo.rotateX(-Math.PI / 2);
     this.quadGeo.rotateX(-Math.PI / 2);
     this.stripGeo.rotateX(-Math.PI / 2);
     this.stripGeo.translate(0, 0, 0.5);
@@ -302,7 +304,7 @@ export class ThreatView {
           vertexShader: RING_VERT,
           fragmentShader: RING_FRAG,
           uniforms: {
-            uColor: { value: new THREE.Color(0xffc080) },
+            uColor: { value: new THREE.Color(0xbfdcff) },
             uCenter: { value: new THREE.Vector2(w.center.x, w.center.z) },
             uR: { value: w.r },
             uWidth: { value: w.width },
@@ -320,7 +322,7 @@ export class ThreatView {
         new THREE.ShaderMaterial({
           vertexShader: BAND_VERT,
           fragmentShader: BAND_FRAG,
-          uniforms: { uColor: { value: new THREE.Color(0xffe2b8) }, uAlpha: { value: 0.5 }, uTime: { value: 0 } },
+          uniforms: { uColor: { value: new THREE.Color(0xdcecff) }, uAlpha: { value: 0.5 }, uTime: { value: 0 } },
           transparent: true,
           depthWrite: false,
           side: THREE.DoubleSide,
@@ -419,7 +421,13 @@ export class ThreatView {
         this.discGeo,
         new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending }),
       );
-      g.add(ring, fill);
+      // a thin bright rim keeps the ring readable on warm (lava-lit) stone
+      const rim = new THREE.Mesh(
+        this.rimGeo,
+        new THREE.MeshBasicMaterial({ color: 0xffd6cc, transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending }),
+      );
+      rim.position.y = 0.005;
+      g.add(ring, fill, rim);
       g.renderOrder = 3;
       return g;
     });
@@ -442,6 +450,8 @@ export class ThreatView {
       const fill = g.children[1] as THREE.Mesh;
       const late = u > 0.75 ? 0.5 + 0.5 * Math.sin(this.time * 40) : 0;
       (ring.material as THREE.MeshBasicMaterial).opacity = 0.45 + 0.45 * u + 0.25 * late;
+      const rim = g.children[2] as THREE.Mesh | undefined;
+      if (rim) (rim.material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.45 * u + 0.2 * late;
       fill.scale.setScalar(Math.max(0.01, u));
       (fill.material as THREE.MeshBasicMaterial).opacity = 0.1 + 0.22 * u;
     }

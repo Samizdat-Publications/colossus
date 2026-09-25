@@ -26,7 +26,7 @@ const _lookPos = new THREE.Vector3();
 
 /** Fraction of the vertical field of view kept free above the golem and below the warrior's feet. */
 const TOP_MARGIN = 0.1; // leaves the top strip for tips
-const BOTTOM_MARGIN = 0.21; // keeps the feet above the boss health panel
+const BOTTOM_MARGIN = 0.16; // keeps the feet above the (see-through) boss health panel
 const FOV_MIN = 58;
 const FOV_MAX = 84;
 
@@ -111,6 +111,10 @@ export class CameraRig {
   private riseNow = 0;
   /** Only these golem capsules (by name) count for the top of the frame; null = all. */
   topParts: Set<string> | null = null;
+  /** Metres added to the golem's top for framing (the director anticipates a leap's apex). */
+  topBoost = 0;
+  /** 0..1: how fast pitch and field of view follow the solve (1 for fast moves like the leap). */
+  snappy = 0;
 
   update(dt: number, lookX: number, lookY: number, player: Player, golem: Golem, world: World): void {
     this.time += dt;
@@ -177,7 +181,7 @@ export class CameraRig {
       for (const c of golem.capsules) {
         if (tops && !tops.has(c.name)) continue;
         for (const q of [c.a, c.b]) {
-          const a = angleOf(q.x, q.y + c.r * 0.6, q.z);
+          const a = angleOf(q.x, q.y + c.r * 0.6 + this.topBoost, q.z);
           if (a !== null && a > top) top = a;
         }
       }
@@ -194,8 +198,8 @@ export class CameraRig {
       const pitch = lo <= hi ? (lo + hi) / 2 : hi;
       if (needFov > FOV_MAX * DEG * 1.02) this.pullBack = Math.min(4, this.pullBack + dt * 2);
       else if (needFov < FOV_MAX * DEG * 0.85) this.pullBack = Math.max(0, this.pullBack - dt * 0.8);
-      this.lockPitch = damp(this.lockPitch, pitch, 4, dt);
-      this.lockFov = damp(this.lockFov, fov / DEG, 3, dt);
+      this.lockPitch = damp(this.lockPitch, pitch, lerp(4, 10, this.snappy), dt);
+      this.lockFov = damp(this.lockFov, fov / DEG, lerp(3, 8, this.snappy), dt);
       _lockLook.set(
         _lockPos.x + _f.x * Math.cos(this.lockPitch) * 10,
         _lockPos.y + Math.sin(this.lockPitch) * 10,

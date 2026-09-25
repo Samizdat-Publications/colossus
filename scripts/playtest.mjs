@@ -322,26 +322,23 @@ try {
     await sleep(2600);
     await shot('stagger_back_core');
     await waitFor(() => window.__CO.state().golem.state === 'combat', 15000).catch(() => {});
-    // phase 2
-    await page.evaluate(() => window.__CO.setGolemPhase(2));
+    // phase 2 (forced, so the bot's damage during the stagger cannot have played the roar already)
+    await page.evaluate(() => window.__CO.forcePhase(2));
     await waitFor(() => window.__CO.state().golem.state === 'transition', 30000).catch(() => log('warn: no phase 2 transition seen'));
     await sleep(1300);
     await shot('phase2_roar');
     await force('doubleSlam', 'L', 'stuck', 'phase2_double_slam', 500);
     // phase 3
     await idle();
-    await page.evaluate(() => window.__CO.setGolemPhase(3));
-    await sleep(3500);
+    await page.evaluate(() => window.__CO.forcePhase(3));
+    await waitFor(() => window.__CO.state().golem.state === 'transition', 30000).catch(() => log('warn: no phase 3 transition seen'));
+    await waitFor(() => window.__CO.state().golem.state === 'combat', 15000).catch(() => {});
     await force('meteor', 'L', 'rain', 'phase3_meteor', 1200);
     await force('leap', 'L', 'air', 'phase3_leap', 300);
     // victory
     await idle();
-    await page.evaluate(() => window.__CO.setGolemHp(0.01));
-    await page.evaluate(() => {
-      const g = window.__game.golem;
-      g.breakMeter = 99;
-    });
-    await waitFor(() => window.__CO.state().flow === 'victoryCine', 60000).catch(() => {});
+    await page.evaluate(() => window.__CO.killGolem());
+    await waitFor(() => window.__CO.state().flow === 'victoryCine', 20000).catch(() => log('warn: no victory cinematic'));
     await sleep(1800);
     await shot('victory_collapse');
     await waitFor(() => window.__CO.state().flow === 'victory', 20000);

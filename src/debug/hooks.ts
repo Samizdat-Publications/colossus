@@ -92,6 +92,21 @@ export function installHooks(game: Game): void {
     setGolemHp: (frac: number) => {
       game.golem.hp = game.golem.maxHp * frac;
     },
+    /** Always plays the phase-change roar into phase ph (even if the fight already reached it). */
+    forcePhase: (ph: number) => {
+      const g = game.golem;
+      const th = balance.golem.phaseThresholds;
+      g.phase = ph - 1;
+      g.hp = g.maxHp * (ph === 2 ? th[0] - 0.005 : th[1] - 0.005);
+      g.pendingPhase = ph;
+    },
+    /** Kills the golem at once (victory flow). */
+    killGolem: () => {
+      const g = game.golem as unknown as { phase: number; hp: number; die: () => void };
+      g.phase = 3;
+      g.hp = 0;
+      g.die();
+    },
     setGolemPhase: (ph: number) => {
       const th = balance.golem.phaseThresholds;
       game.golem.hp = game.golem.maxHp * (ph === 2 ? th[0] - 0.005 : th[1] - 0.005);

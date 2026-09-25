@@ -36,6 +36,10 @@ export interface GameOptions {
 }
 
 const SIM_STEP = 1 / 60;
+/** Arm cores lower than this (metres) are within sword reach. */
+const REACH = 3.4;
+/** Height of the golem's leap apex in metres (golem.ts: pos.y = 4 * 6 * t * (1 - t)). */
+const LEAP_APEX = 6;
 const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 
@@ -646,6 +650,7 @@ export class Game {
   }
 
   private crumbleT = -1;
+  private prevGolemY = 0;
   private readonly airborneParts = new Set(['hips', 'spine', 'chest', 'neck', 'head', 'shoulder_L', 'shoulder_R']);
   private heroLight: THREE.PointLight | null = null;
   private heldRockMesh: THREE.Mesh | null = null;
@@ -705,6 +710,12 @@ export class Game {
     // airborne golem, or arms thrown at the sky for the meteor rain: frame its torso and head, the raised
     // arms may leave the frame (keeping them in pushed the camera so far back the warrior was a speck)
     this.cam.topParts = g.pos.y > 0.4 || g.attack?.name === 'meteor' || g.attack?.name === 'leap' ? this.airborneParts : null;
+    // the leap: frame the apex before it happens (the solve lagged a jump that takes 0.3 s to peak)
+    const leaping = this.flow === 'fight' && g.attack?.name === 'leap' && (g.step === 'windup' || g.step === 'air');
+    const rising = g.pos.y >= this.prevGolemY - 1e-4;
+    this.cam.topBoost = !leaping ? 0 : g.step === 'windup' ? LEAP_APEX : rising ? Math.max(0, LEAP_APEX - g.pos.y) : 0;
+    this.cam.snappy = leaping ? 1 : 0;
+    this.prevGolemY = g.pos.y;
     if (g.riseTele) {
       this.threats.telegraph(g.riseTele, balance.golem.stagger.risePushRadius, balance.golem.stagger.rise * 0.75, 'push');
       g.riseTele = null;
@@ -728,7 +739,7 @@ export class Game {
     skyUniforms.uLava.value = this.heatShown;
     this.hemi.color.setRGB(0.506 + 0.12 * this.heatShown, 0.588 - 0.06 * this.heatShown, 0.733 - 0.2 * this.heatShown);
     // phase 3: lava light from the cracks warms the floor and the air
-    this.hemi.groundColor.setRGB(0.173 + 0.28 * this.heatShown, 0.153 + 0.06 * this.heatShown, 0.137 - 0.05 * this.heatShown);
+    this.hemi.groundColor.setRGB(0.173 + 0.16 * this.heatShown, 0.153 + 0.05 * this.heatShown, 0.137 - 0.03 * this.heatShown);
     (this.scene.fog as THREE.FogExp2).color.setRGB(0.118 + 0.13 * this.heatShown, 0.157 - 0.05 * this.heatShown, 0.22 - 0.14 * this.heatShown);
     // camera-occlusion fade on the golem (off in cinematics and on the title)
     const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
@@ -741,19 +752,20 @@ export class Game {
     });
     if (underThreat && !this.tips.quiet) this.tips.hush();
     this.tips.quiet = underThreat;
-    if (this.flow === 'fight' && g.windowOpen && !underThreat) {
-      if (g.staggered) {
-        let best: (typeof g.targets)[number] | null = null;
-        for (const t of g.targets) {
-          if (!t.open || t.kind === 'arm') continue;
-          if (!best || t.pos.distanceTo(this.player.pos) < best.pos.distanceTo(this.player.pos)) best = t;
-        }
-        this.hud.markCore = best;
+    // STRIKE marks a core whenever it can really be hit (cyan + STRIKE = hit here now)
+    const fighting = this.flow === 'fight' && (g.state === 'combat' || g.state === 'stagger');
+    if (fighting && g.staggered) {
+      let best: (typeof g.targets)[number] | null = null;
+      for (const t of g.targets) {
+        if (!t.open || t.kind === 'arm') continue;
+        if (!best || t.pos.distanceTo(this.player.pos) < best.pos.distanceTo(this.player.pos)) best = t;
       }
-      else {
-        const arm = g.focusCore(this.player.pos);
-        this.hud.markCore = arm && arm.pos.y < 3.4 ? arm : null;
-        if (this.hud.markCore) this.tips.show('window', 'Its fist is stuck: strike the <b class="core">glowing core</b> on its arm!', 3, 3.5);
+      this.hud.markCore = best;
+    } else if (fighting) {
+      const arm = g.focusCore(this.player.pos);
+      this.hud.markCore = arm && arm.kind === 'arm' && arm.pos.y < REACH ? arm : null;
+      if (this.hud.markCore && g.windowOpen && !underThreat) {
+        this.tips.show('window', 'Its fist is stuck: strike the <b class="core">glowing core</b> on its arm!', 3, 3.5);
       }
     } else this.hud.markCore = null;
     // death: the Ruin falls back into rubble
@@ -774,9 +786,9 @@ export class Game {
       const lit = g.state !== 'dormant' && (g.state !== 'assemble' || g.step === 'roar' || g.step === 'roarHold' || g.step === 'settle');
       let base = t.kind === 'back' ? (t.open ? 2.4 : 0) : !lit ? 0 : 1.1 + 0.25 * (g.phase - 1);
       if (t.kind === 'arm' && g.staggered) base *= 0.35; // the back core is the one to go for
-      if (t.kind === 'arm' && !g.staggered && t.pos.y < 3.4) base *= 1.7; // low enough to hit: burn bright
+      if (t.kind === 'arm' && !g.staggered) base *= t.pos.y < REACH ? 1.8 : 0.45; // in reach: burn bright; out of reach: dim
       if (g.state === 'dead') base = Math.max(0.0, base * (1 - g.stateTime / 0.25));
-      const low = t.open && t.pos.y < 3.4 && g.state !== 'dead';
+      const low = t.open && t.pos.y < REACH && g.state !== 'dead';
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;
       mat.emissiveIntensity = base * pulse + t.flash * 5;
       // sealed cores are plain stone knobs, not dim teal balls; arm cores ignite at the roar
@@ -800,7 +812,7 @@ export class Game {
       const l = this.coreLights.get('core_chest');
       if (l) {
         l.color.setHex(0xff6a20);
-        l.intensity = on * (ct?.open ? 260 : 200) * (0.9 + 0.1 * Math.sin(this.ctx.time * 5));
+        l.intensity = on * (ct?.open ? 200 : 140) * (0.9 + 0.1 * Math.sin(this.ctx.time * 5));
       }
     }
     void dt;
