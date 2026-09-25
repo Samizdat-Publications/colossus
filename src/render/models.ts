@@ -75,7 +75,14 @@ export function buildGolemModel(assets: Assets): GolemModel {
         }),
       );
       m.castShadow = false;
-      if (!chest) m.scale.setScalar(1.35);
+      if (!chest) {
+        m.scale.setScalar(1.65);
+        // a soft cyan halo so an open core reads as "the glowing thing" even from across the arena
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTexture(), color: 0x5ff0ff, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
+        halo.name = 'core_halo';
+        halo.scale.setScalar(1.9);
+        m.add(halo);
+      }
       cores.set(name, m);
     } else if (name.startsWith('eye_')) {
       m.material = eyeMat;
@@ -91,6 +98,23 @@ export function buildGolemModel(assets: Assets): GolemModel {
     }
   }
   return { rig, cores, eyes, parts, plates };
+}
+
+let haloTex: THREE.Texture | null = null;
+/** A soft round glow (canvas radial gradient), shared by the core halos. */
+function haloTexture(): THREE.Texture {
+  if (haloTex) return haloTex;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 64;
+  const g = cv.getContext('2d')!;
+  const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grd.addColorStop(0, 'rgba(255,255,255,0.9)');
+  grd.addColorStop(0.35, 'rgba(255,255,255,0.35)');
+  grd.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 64, 64);
+  haloTex = new THREE.CanvasTexture(cv);
+  return haloTex;
 }
 
 // ------------------------------------------------------------------ warrior
@@ -180,7 +204,7 @@ float floorLevel = smoothstep(0.9, 0.985, dot(normalize(vNormal), floorUpV));
 // standing water: shallow puddles on the flat tops, mirror-smooth and darker
 float puddle = floorLevel * smoothstep(0.58, 0.68, pNoise(vFloorWorld.xz * 0.16) * 0.7 + pNoise(vFloorWorld.xz * 0.5 + 7.0) * 0.3);
 roughnessFactor = mix(0.97, roughnessFactor, floorLevel);
-roughnessFactor = mix(roughnessFactor, 0.05, puddle);
+roughnessFactor = mix(roughnessFactor, 0.13, puddle);
 diffuseColor.rgb *= 1.0 - 0.45 * puddle;`,
       )
       .replace(
@@ -206,6 +230,17 @@ function pleated(base: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
 {
   float pleat = sin(vNormalMapUv.x * 6.2831853 * 4.5);
   normal = normalize(normal + tbn[0] * pleat * 0.3);
+}
+#endif`,
+    ).replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+#ifdef USE_NORMALMAP_TANGENTSPACE
+{
+  // the cape's v runs from 1 at the shoulders to -2 at the hem: a dark hem band and dirt toward the bottom
+  float v = vNormalMapUv.y;
+  diffuseColor.rgb *= mix(1.0, 0.72, smoothstep(0.3, -1.9, v));
+  diffuseColor.rgb *= 1.0 - 0.45 * smoothstep(-1.66, -1.76, v);
 }
 #endif`,
     );
@@ -323,7 +358,7 @@ export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 } };
 
 /** Dark water with a real sheen and raindrop ripples (normals perturbed in the shader). */
 function makeWater(): THREE.MeshStandardMaterial {
-  const m = new THREE.MeshStandardMaterial({ color: 0x1a2431, roughness: 0.12, metalness: 0.0, envMapIntensity: 1.5 });
+  const m = new THREE.MeshStandardMaterial({ color: 0x1a2431, roughness: 0.2, metalness: 0.0, envMapIntensity: 1.5 });
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, waterUniforms);
     shader.vertexShader = shader.vertexShader

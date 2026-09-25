@@ -44,6 +44,9 @@ export class Hud {
   private readonly tip: HTMLDivElement;
   private readonly controls: HTMLDivElement;
   private readonly controlsPill: HTMLDivElement;
+  private readonly heartMarker: HTMLDivElement;
+  /** world position of the sealed phase 3 heart while it should be labelled, else null */
+  sealedHeart: THREE.Vector3 | null = null;
   private readonly floaters: HTMLDivElement;
   private bossTrailFrac = 1;
   private hpTrailFrac = 1;
@@ -82,6 +85,7 @@ export class Hud {
     this.flashEl = el('div', 'hurt-flash', this.root);
     this.reticle = el('div', 'reticle', this.root);
     this.marker = el('div', 'core-marker', this.root, '<i></i><span>STRIKE</span>');
+    this.heartMarker = el('div', 'heart-marker', this.root, '<span>SEALED</span><em>bring it to its knees</em>');
     for (let i = 0; i < 3; i++) this.coreDots.push(el('div', 'core-dot', this.root));
     this.tip = el('div', 'tip', this.root);
     this.floaters = el('div', 'floaters', this.root);
@@ -192,6 +196,12 @@ export class Hud {
     }
     this.controls.classList.toggle('hidden', !this.showControls);
     this.root.classList.toggle('cine', this.cine);
+    if (this.sealedHeart && this.camera) {
+      const q = this.sealedHeart.clone().project(this.camera);
+      const on = q.z < 1 && Math.abs(q.x) < 1.1 && Math.abs(q.y) < 1.1;
+      this.heartMarker.classList.toggle('on', on);
+      if (on) this.heartMarker.style.transform = `translate(${((q.x + 1) / 2) * width}px, ${((1 - q.y) / 2) * height}px) translate(-50%, -140%)`;
+    } else this.heartMarker.classList.remove('on');
     this.controlsPill.classList.toggle('hidden', this.showControls);
 
     for (let i = this.pending.length - 1; i >= 0; i--) {

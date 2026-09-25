@@ -105,6 +105,7 @@ export class Player {
   private blockWeight = 0;
   private hitFlash = 0;
   lastHitSource = '';
+  private aimW = 0;
   lastOutcome: HitOutcome | '' = '';
   readonly stats = { damageTaken: 0, hits: 0, flasksUsed: 0, rolls: 0, swings: 0, coreHits: 0, bodyHits: 0, deflects: 0, whiffs: 0 };
 
@@ -823,6 +824,15 @@ export class Player {
       if (this.blockWeight > 0.001) out.blend(out, this.poses.block, this.blockWeight);
       warriorBreath(out, this.rig, this.time, 1 - this.moveAmount);
     });
+    // a core above the chest: lean back and lift the sword arm so the blade meets it (a flat slash under a
+    // raised fist looked like a miss that counted anyway)
+    const tgt = this.atk?.target;
+    const aimWant = tgt ? Math.min(1, Math.max(0, (tgt.pos.y - (this.y + 1.3)) / 1.8)) : 0;
+    this.aimW += (aimWant - this.aimW) * Math.min(1, dt * 12);
+    if (this.aimW > 0.01) {
+      this.rig.bone('chest').rotation.x -= 0.3 * this.aimW;
+      this.rig.bone('upperarm_R').rotation.x -= 0.55 * this.aimW;
+    }
     this.syncRig();
   }
 

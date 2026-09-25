@@ -399,14 +399,14 @@ try {
     // hold the models back for a moment so the loading screen can be seen
     await page.route('**/*.glb', async (route) => {
       await sleep(2500);
-      await route.continue();
+      await route.continue().catch(() => {});
     });
     await page.goto(page.url());
     await sleep(1200);
     await page.screenshot({ path: path.join(outDir, '01_loading.png') });
     shotN++;
-    await page.unroute('**/*.glb');
     await waitFor(() => window.__CO && window.__CO.ready && window.__CO.state().flow === 'title', 90000);
+    await page.unroute('**/*.glb').catch(() => {});
     await sleep(1200);
     await shot('title');
     await page.click('button[data-act="howto"]');

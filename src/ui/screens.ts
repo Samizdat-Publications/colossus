@@ -251,7 +251,7 @@ export class Screens {
             <div class="stats">
               <div><span>Time</span><b>${fmtTime(st?.time ?? 0)}</b></div>
               <div><span>Attempt</span><b>${st?.attempt ?? 1}</b></div>
-              <div><span>Damage taken</span><b>${Math.round(st?.damageTaken ?? 0)}</b></div>
+              <div><span>Health lost</span><b>${Math.round(st?.damageTaken ?? 0)} HP</b></div>
               <div><span>Flasks drunk</span><b>${st?.flasks ?? 0}</b></div>
               <div><span>Core strikes</span><b>${st?.coreHits ?? 0}</b></div>
               <div><span>Times it fell</span><b>${st?.staggers ?? 0}</b></div>

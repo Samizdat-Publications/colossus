@@ -379,7 +379,7 @@ const KNEEL: PoseDef = mergeDefs(KNEEL_SYM, {
   chest: [14, 4, -5],
   neck: [10, 0, 0],
   head: [30, -8, 0],
-  upperarm_L: [-52, 0, 22],
+  upperarm_L: [-56, 0, 9],
   forearm_L: [-16, 0, 0],
   hand_L: [50, 0, 0],
   upperarm_R: [-26, 0, -4],
@@ -404,7 +404,7 @@ const KNEEL_BOW: PoseDef = mergeDefs(KNEEL, {
   chest: [36, 4, -5],
   neck: [14, 0, 0],
   head: [34, -8, 0],
-  upperarm_L: [-72, 0, 26],
+  upperarm_L: [-72, 0, 10],
   upperarm_R: [-50, 0, -8],
 });
 

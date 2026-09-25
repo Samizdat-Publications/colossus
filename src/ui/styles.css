@@ -83,6 +83,34 @@ body {
 .hud .boss.on {
   opacity: 1;
 }
+.heart-marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  text-shadow: 0 1px 3px #000, 0 0 8px #000;
+}
+.heart-marker.on {
+  opacity: 1;
+}
+.heart-marker span {
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.26em;
+  color: #ff9a55;
+}
+.heart-marker em {
+  font-size: 14px;
+  color: var(--bone);
+}
+.hud.cine .heart-marker,
 .hud.cine .boss,
 .hud.cine .player,
 .hud.cine .reticle,
@@ -374,9 +402,11 @@ kbd {
 }
 .controls b,
 .controls-pill b {
-  font-family: var(--display);
-  font-size: 12px;
+  font-family: var(--text);
+  font-size: 14px;
   font-weight: 600;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
   color: var(--bone);
 }
 .controls .foot b {

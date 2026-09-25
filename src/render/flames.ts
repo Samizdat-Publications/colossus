@@ -90,7 +90,7 @@ export class FirePool {
         vertexShader: VERT,
         fragmentShader: FRAG,
         // ground fire: dimmer and deeper orange than a brazier, so it reads as burning floor and not as torches
-        uniforms: { uTime: { value: 0 }, uSeed: { value: i * 3.17 + 1.3 }, uSize: { value: 1 }, uGain: { value: 0.5 }, uTint: { value: new THREE.Vector3(1, 0.62, 0.34) }, uShape: { value: new THREE.Vector2(1.0, 1.1) } },
+        uniforms: { uTime: { value: 0 }, uSeed: { value: i * 3.17 + 1.3 }, uSize: { value: 1 }, uGain: { value: 0.3 }, uTint: { value: new THREE.Vector3(1, 0.55, 0.28) }, uShape: { value: new THREE.Vector2(1.0, 1.1) } },
         transparent: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,

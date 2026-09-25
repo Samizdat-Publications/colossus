@@ -10,6 +10,8 @@ const vec = (v: THREE.Vector3) => ({ x: r2(v.x), y: r2(v.y), z: r2(v.z) });
 
 /** window.__CO: state snapshots and controls for the Playwright self-test (only with ?test=1). */
 export function installHooks(game: Game): void {
+  // probes build rays and vectors in the page
+  (window as unknown as { __THREE: typeof THREE }).__THREE = THREE;
   const log: { t: number; type: string; info?: string }[] = [];
   const watch: (keyof GameEvents)[] = [
     'playerHit',

@@ -36,7 +36,9 @@ float vnoise(vec2 p) {
 float fbm(vec2 p) {
   float s = 0.0;
   float a = 0.5;
-  for (int i = 0; i < 4; i++) { s += a * vnoise(p); p *= 2.07; a *= 0.5; }
+  // rotate each octave: plain value noise lines its features up with the lattice (hard straight edges)
+  mat2 rot = mat2(0.8, -0.6, 0.6, 0.8);
+  for (int i = 0; i < 4; i++) { s += a * vnoise(p); p = rot * p * 2.07; a *= 0.5; }
   return s;
 }
 void main() {
@@ -46,7 +48,7 @@ void main() {
   // clouds projected on a dome
   vec2 cp = d.xz / max(0.12, d.y + 0.25) * 1.3 + vec2(uTime * 0.012, uTime * 0.004);
   float c = fbm(cp);
-  float cloud = smoothstep(0.42, 0.78, c);
+  float cloud = smoothstep(0.36, 0.84, c);
   float moon = max(dot(d, uMoonDir), 0.0);
   vec3 moonGlow = vec3(0.55, 0.65, 0.85) * (pow(moon, 60.0) * 1.0 + pow(moon, 6.0) * 0.08);
   // clouds are lit from behind by the moon, darker elsewhere

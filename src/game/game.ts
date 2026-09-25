@@ -780,6 +780,7 @@ export class Game {
   }
 
   private deathSide = 0;
+  private phase3Time = 0;
   private phaseCineT = -1;
   private readonly phaseCamDir = new THREE.Vector3();
 
@@ -1245,7 +1246,7 @@ export class Game {
     // the seal wakes with the golem: its runes burn while it assembles, then settle to an ember
     if (this.arenaModel?.runes) {
       const gs = this.golem.state;
-      const want = gs === 'assemble' ? 2.0 : gs === 'dormant' ? 0.3 : gs === 'dead' ? 0.05 : 0.12;
+      const want = gs === 'assemble' ? 1.0 : gs === 'dormant' ? 0.12 : gs === 'dead' ? 0.03 : 0.05;
       const r = this.arenaModel.runes;
       r.emissiveIntensity += (want - r.emissiveIntensity) * Math.min(1, dt * 2);
     }
@@ -1285,11 +1286,12 @@ export class Game {
       const left = Math.min(1, Math.max(0, (hz.dur - hz.t - 0.3) / 0.7));
       const k = warm * left;
       if (k <= 0.02) continue;
-      const n = Math.min(6, 2 + Math.round(hz.radius * 1.2));
+      const n = Math.min(4, 1 + Math.round(hz.radius * 0.9));
       for (let j = 0; j < n && this.fireSpots.length < 24; j++) {
         const a = hz.seed * 3.7 + j * 2.399;
         const r = hz.radius * 0.62 * Math.sqrt(((hz.seed * 7.3 + j * 0.618) % 1 + 1) % 1);
-        this.fireSpots.push({ x: hz.pos.x + Math.cos(a) * r, z: hz.pos.z + Math.sin(a) * r, size: (0.9 + 0.35 * ((j * 0.37) % 1)) * k * (j === 0 ? 1.35 : 1) });
+        const vary = ((hz.seed * 1.618 + j * 0.713) % 1 + 1) % 1;
+        this.fireSpots.push({ x: hz.pos.x + Math.cos(a) * r, z: hz.pos.z + Math.sin(a) * r, size: (0.7 + 0.8 * vary) * k * (j === 0 ? 1.3 : 1) });
       }
     }
     this.firePool.update(this.ctx.time, this.fireSpots);
@@ -1341,7 +1343,7 @@ export class Game {
     const gs = this.golem.state;
     const merged = !!this.golemMerge && (this.flow === 'fight' || this.flow === 'dying' || this.flow === 'dead') && gs !== 'dormant' && gs !== 'assemble' && gs !== 'dead';
     this.golemMerge?.use(merged);
-    const fadeOn = (gameplayCam && this.cam.cineBlend < 0.5) || this.flow === 'dying' || this.flow === 'dead';
+    const fadeOn = (gameplayCam && this.cam.cineBlend < 0.5) || this.flow === 'dying' || this.flow === 'dead' || this.flow === 'victoryCine';
     (merged && this.faderMerged ? this.faderMerged : this.fader).update(this.cam.camera.position, _v, dt, fadeOn, fadeOn ? this.findBlockers(this.cam.camera.position) : undefined);
     // teach the punish window the first few times it opens (never while a warning covers the warrior)
     const underThreat = this.threats.fissures.length > 0 || this.threats.telegraphs.some((t) => {
@@ -1401,6 +1403,8 @@ export class Game {
       const low = marked || (t.kind !== 'arm' && t.open && g.state !== 'dead');
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;
       mat.emissiveIntensity = base * pulse + t.flash * 3;
+      const halo = mesh.getObjectByName('core_halo') as THREE.Sprite | undefined;
+      if (halo) (halo.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.35 * base * pulse + t.flash);
       // sealed cores are plain stone knobs, not dim teal balls; arm cores ignite at the roar
       mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x80848c);
       mesh.visible = t.kind === 'back' ? t.open || t.flash > 0.05 : lit && !g.staggered;
@@ -1421,9 +1425,14 @@ export class Game {
       if (cyanBest) cyanBest.getWorldPosition(cyan.position);
     }
     const eyeMat = this.golemEyes[0]?.material as THREE.MeshStandardMaterial | undefined;
-    const eyeOn = this.assets ? 3.2 : 2.2;
+    const eyeOn = this.assets ? 2.1 : 2.0;
     if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, eyeOn * (1 - Math.max(0, g.stateTime - 1.0) / 0.8)) : g.state === 'dormant' ? 0 : g.staggered ? eyeOn * (0.22 + 0.12 * Math.sin(this.ctx.time * 11) * Math.sin(this.ctx.time * 3.7)) : eyeOn * (1 + 1.4 * this.roarFlare);
     const chest = this.coreMeshes.get('core_chest');
+    // phase 3: label the sealed heart for its first half minute (it only opens when the golem is down)
+    const heartT = g.targets.find((t) => t.kind === 'chest');
+    this.hud.sealedHeart = chest && heartT && g.phase >= 3 && !heartT.open && g.state === 'combat' && this.flow === 'fight' && this.phase3Time < 30 ? heartT.pos : null;
+    if (g.phase >= 3 && this.flow === 'fight') this.phase3Time += dt;
+    else if (g.phase < 3) this.phase3Time = 0;
     if (chest) {
       // in death the molten heart flares once and dies with the body
       const deadGlow = g.state === 'dead' ? Math.max(0, 1 - Math.max(0, g.stateTime - 1.0) / 1.2) : 1;

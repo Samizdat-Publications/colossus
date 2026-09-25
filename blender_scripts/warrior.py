@@ -73,7 +73,7 @@ def build_parts():
     for i, (y, r0, r1) in enumerate(((0.945, 0.185, 0.178), (0.905, 0.195, 0.188))):
         p.add(C.cylinder_bm(r0, r1, 0.045, 16, y0=y), STEEL)
     for z, sgn in ((0.155, 1), (-0.15, -1)):
-        tab = C.box_bm((0.2, 0.36, 0.012))
+        tab = C.box_bm((0.25, 0.36, 0.012))
         for v in tab.verts:  # flare toward the hem
             k = (0.18 - v.co.y) / 0.36  # 0 at the belt, 1 at the hem
             v.co.x *= 1.0 + 0.35 * k
@@ -106,50 +106,51 @@ def build_parts():
     p.add(C.cylinder_bm(0.122, 0.122, 0.018, 18, y0=1.635), BRASS)
     p.add(at(C.box_bm((0.19, 0.016, 0.03)), (0, 1.725, 0.108)), LEATHER)
     p.add(at(C.box_bm((0.018, 0.17, 0.025)), (0, 1.69, 0.118)), STEEL)
-    crest = C.sphere_bm(1.0, subdiv=2, scale=(0.02, 0.085, 0.16))
-    p.add(at(crest, (0, 1.845, -0.02)), CLOTH)
+    crest = C.sphere_bm(1.0, subdiv=2, scale=(0.03, 0.115, 0.21))
+    p.add(at(crest, (0, 1.87, -0.05)), CLOTH)
 
     for side in ('L', 'R'):
         s = side_sign(side)
         # ---- pauldron: a dome and two lames
         p = parts[f'shoulder_{side}']
-        p.add(at(C.sphere_bm(0.105, subdiv=2, scale=(1.15, 0.78, 1.08)), (0.2 * s, 1.47, 0.0)), STEEL)
-        p.add(at(C.cylinder_bm(0.1, 0.094, 0.032, 14, y0=0), (0.215 * s, 1.405, -0.005)), STEEL)
-        p.add(at(C.cylinder_bm(0.094, 0.088, 0.03, 14, y0=0), (0.22 * s, 1.37, -0.008)), STEEL)
-        p.add(at(C.sphere_bm(0.02, subdiv=1), (0.26 * s, 1.52, 0.0)), BRASS)
+        p.add(at(C.sphere_bm(0.138, subdiv=2, scale=(1.2, 0.8, 1.12)), (0.22 * s, 1.475, 0.0)), STEEL)
+        p.add(at(C.cylinder_bm(0.13, 0.122, 0.034, 16, y0=0), (0.235 * s, 1.4, -0.005)), STEEL)
+        p.add(at(C.cylinder_bm(0.122, 0.112, 0.032, 16, y0=0), (0.24 * s, 1.36, -0.008)), STEEL)
+        p.add(at(C.cylinder_bm(0.112, 0.1, 0.03, 16, y0=0), (0.245 * s, 1.325, -0.01)), STEEL)
+        p.add(at(C.sphere_bm(0.024, subdiv=1), (0.29 * s, 1.535, 0.0)), BRASS)
         # ---- arm: sleeve, rerebrace, couter, vambrace, gauntlet
         p = parts[f'upperarm_{side}']
-        p.add(seg_cyl(f'upperarm_{side}', 0.058, 0.052, 0.0, 1.0, 10), LEATHER)
-        p.add(seg_cyl(f'upperarm_{side}', 0.066, 0.06, 0.2, 0.85, 12), STEEL)
+        p.add(seg_cyl(f'upperarm_{side}', 0.066, 0.06, 0.0, 1.0, 10), LEATHER)
+        p.add(seg_cyl(f'upperarm_{side}', 0.078, 0.07, 0.2, 0.85, 12), STEEL)
         p = parts[f'forearm_{side}']
-        p.add(at(C.sphere_bm(0.06, subdiv=2, scale=(1.0, 0.9, 1.0)), head(f'forearm_{side}')), STEEL)
-        fan = C.sphere_bm(0.075, subdiv=1, scale=(0.35, 1.0, 1.0))
+        p.add(at(C.sphere_bm(0.072, subdiv=2, scale=(1.0, 0.9, 1.0)), head(f'forearm_{side}')), STEEL)
+        fan = C.sphere_bm(0.09, subdiv=1, scale=(0.35, 1.0, 1.0))
         p.add(at(fan, head(f'forearm_{side}') + Vector((0.045 * s, 0.0, -0.01))), STEEL)
-        p.add(seg_cyl(f'forearm_{side}', 0.052, 0.045, 0.0, 1.0, 10), LEATHER)
-        p.add(seg_cyl(f'forearm_{side}', 0.058, 0.05, 0.25, 0.92, 12), STEEL)
+        p.add(seg_cyl(f'forearm_{side}', 0.06, 0.052, 0.0, 1.0, 10), LEATHER)
+        p.add(seg_cyl(f'forearm_{side}', 0.07, 0.062, 0.25, 0.92, 12), STEEL)
         p = parts[f'hand_{side}']
-        p.add(at(C.box_bm((0.07, 0.085, 0.075)), tail(f'hand_{side}') + Vector((0, 0.035, 0.0))), STEEL)
-        p.add(at(C.box_bm((0.065, 0.05, 0.08)), tail(f'hand_{side}') + Vector((0, -0.01, 0.01))), LEATHER)
-        p.add(seg_cyl(f'hand_{side}', 0.06, 0.055, -0.1, 0.25, 12), STEEL)
+        p.add(at(C.box_bm((0.088, 0.1, 0.09)), tail(f'hand_{side}') + Vector((0, 0.035, 0.0))), STEEL)
+        p.add(at(C.box_bm((0.08, 0.055, 0.092)), tail(f'hand_{side}') + Vector((0, -0.012, 0.01))), LEATHER)
+        p.add(seg_cyl(f'hand_{side}', 0.078, 0.066, -0.12, 0.25, 12), STEEL)
         # ---- leg: leather hose, cuisse, poleyn, greave, sabaton
         p = parts[f'thigh_{side}']
-        p.add(seg_cyl(f'thigh_{side}', 0.085, 0.07, 0.0, 1.0, 12), LEATHER)
-        p.add(seg_cyl(f'thigh_{side}', 0.09, 0.077, 0.12, 0.88, 14), STEEL)
+        p.add(seg_cyl(f'thigh_{side}', 0.095, 0.078, 0.0, 1.0, 12), LEATHER)
+        p.add(seg_cyl(f'thigh_{side}', 0.104, 0.088, 0.12, 0.88, 14), STEEL)
         p = parts[f'shin_{side}']
-        p.add(at(C.sphere_bm(0.062, subdiv=2), head(f'shin_{side}') + Vector((0, 0.0, 0.025))), STEEL)
-        wing = C.sphere_bm(0.07, subdiv=1, scale=(0.3, 0.9, 0.9))
+        p.add(at(C.sphere_bm(0.074, subdiv=2), head(f'shin_{side}') + Vector((0, 0.0, 0.028))), STEEL)
+        wing = C.sphere_bm(0.085, subdiv=1, scale=(0.3, 0.9, 0.9))
         p.add(at(wing, head(f'shin_{side}') + Vector((0.05 * s, 0.0, 0.0))), STEEL)
-        p.add(seg_cyl(f'shin_{side}', 0.066, 0.052, 0.0, 1.0, 12), LEATHER)
-        p.add(seg_cyl(f'shin_{side}', 0.07, 0.058, 0.1, 0.9, 14), STEEL)
+        p.add(seg_cyl(f'shin_{side}', 0.074, 0.06, 0.0, 1.0, 12), LEATHER)
+        p.add(seg_cyl(f'shin_{side}', 0.083, 0.068, 0.1, 0.9, 14), STEEL)
         p = parts[f'foot_{side}']
-        foot = C.box_bm((0.1, 0.075, 0.25))
+        foot = C.box_bm((0.118, 0.085, 0.275))
         for v in foot.verts:  # taper the toe and slope the top
             if v.co.z > 0:
                 v.co.x *= 0.7
                 if v.co.y > 0:
                     v.co.y -= 0.03
         p.add(at(foot, (0.11 * s, 0.045, 0.06)), STEEL)
-        p.add(at(C.box_bm((0.105, 0.02, 0.26)), (0.11 * s, 0.01, 0.06)), LEATHER)
+        p.add(at(C.box_bm((0.122, 0.02, 0.285)), (0.11 * s, 0.01, 0.06)), LEATHER)
     return parts
 
 
@@ -204,7 +205,7 @@ def build_cape(mats):
     for j in range(rows):
         t = j / (rows - 1)
         y = 1.47 - t * 0.74  # shoulders to mid-thigh: the sword arm stays visible from behind
-        half = 0.19 + 0.12 * t
+        half = 0.21 + 0.15 * t
         row = []
         for i in range(cols):
             u = i / (cols - 1) * 2 - 1
