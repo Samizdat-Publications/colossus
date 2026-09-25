@@ -59,6 +59,7 @@ const _v = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _swordCold = new THREE.Color(0x8fb0d8);
+const _flareGold = new THREE.Color(1.0, 0.82, 0.5);
 const _swordHot = new THREE.Color(0xffc27a);
 
 export class Game {
@@ -334,7 +335,14 @@ export class Game {
     bus.on('playerDeath', () => this.onPlayerDeath());
     bus.on('golemDeath', () => this.onGolemDeath());
     bus.on('swing', (e) => {
-      if (e.heavy) this.cam.kick(e.charged ? 0.45 : 0.3);
+      if (!e.heavy) return;
+      this.cam.kick(e.charged ? 0.45 : 0.3);
+      if (this.trail) {
+        this.swordMid.set(0, 0, 0.8);
+        this.trail.bladePoint(this.swordMid);
+        this.fx.flash(this.swordMid, _flareGold, e.charged ? 2.2 : 1.4, 0.16);
+        this.fx.sparks(this.swordMid, null, e.charged ? 24 : 12, _flareGold, 6, 0.45, 0.12);
+      }
     });
     bus.on('golemKneel', () => {
       this.cam.shake(0.7);
@@ -618,6 +626,18 @@ export class Game {
         culled.push(o);
       }
     });
+    // fading golem parts switch their materials to transparent, which is a different shader variant: compile
+    // it now too, or the first fade (the first leap or stagger near the lens) stalls for up to a second
+    const fadeMats = [...(this.fader?.materials() ?? []), ...(this.faderMerged?.materials() ?? [])];
+    for (const m of fadeMats) {
+      m.transparent = true;
+      m.depthWrite = false;
+    }
+    this.renderer.renderer.compile(this.scene, this.cam.camera);
+    for (const m of fadeMats) {
+      m.transparent = false;
+      m.depthWrite = true;
+    }
     this.renderer.renderer.compile(this.scene, this.cam.camera);
     // one real frame (shadow pass and post passes included) uploads every buffer and texture too
     this.renderer.render(0);
@@ -1443,7 +1463,7 @@ export class Game {
       l.intensity = 12 * hz.radius * lit * fade * flick;
       l.distance = 5 + hz.radius * 3;
     });
-    this.heroHit = Math.max(0, this.heroHit - dt * 4.5);
+    this.heroHit = Math.max(0, this.heroHit - dt * 9);
     heroUniforms.uHeroHit.value = this.heroHit;
     const camPos = this.cam.camera.position;
     setHeroLight(Math.hypot(camPos.x - this.player.pos.x, camPos.z - this.player.pos.z), this.flow === 'dying' || this.flow === 'dead' ? 1.3 : 1);

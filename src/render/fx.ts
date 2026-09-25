@@ -287,12 +287,13 @@ export class Fx {
   }): void {
     for (const [i, w] of (ctx.waves ?? []).entries()) {
       if (w.r < 1 || w.r > w.maxR - 0.5) continue;
-      this.rate(`wv${i}`, 26 + w.r * 3, dt, () => {
+      this.rate(`wv${i}`, 40 + w.r * 4, dt, () => {
         const a = Math.random() * Math.PI * 2;
         _p.set(w.center.x + Math.sin(a) * w.r, 0.25, w.center.z + Math.cos(a) * w.r);
-        _v.set(Math.sin(a) * 2.2, rnd(0.6, 1.6), Math.cos(a) * 2.2);
-        this.dust.emit({ pos: _p, vel: _v, life: rnd(0.5, 0.9), size: rnd(0.7, 1.2), grow: 2.2, color: DUST, alpha: 0.3, drag: 2.2, gravity: -0.2 });
+        _v.set(Math.sin(a) * 2.6, rnd(0.8, 2.0), Math.cos(a) * 2.6);
+        this.dust.emit({ pos: _p, vel: _v, life: rnd(0.5, 0.9), size: rnd(0.8, 1.4), grow: 2.2, color: DUST, alpha: 0.42, drag: 2.2, gravity: -0.2 });
       });
+      this.rate(`ws${i}`, 30 + w.r * 3, dt, () => this.splash(_p.set(w.center.x + Math.sin(Math.random() * 6.283) * w.r, 0, w.center.z + Math.cos(Math.random() * 6.283) * w.r), 2, 2.4));
     }
     for (const h of ctx.hazards) {
       if (h.t < h.arm - 1 || h.dur - h.t < 0.3) continue;

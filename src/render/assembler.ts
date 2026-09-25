@@ -70,6 +70,11 @@ export class Assembler {
       const u = clamp((p - start) / flight, 0, 1);
       const parent = pc.obj.parent;
       if (!parent) continue;
+      // crumbling (progress falling): a stone reaching the rubble raises dust (every third, it is a lot of stones)
+      if (u <= 0 && this.lastProgress > p && this.onPieceLanded && (this.pieces.indexOf(pc) % 3 === 0)) {
+        const prevU = clamp((this.lastProgress - start) / flight, 0, 1);
+        if (prevU > 0) this.onPieceLanded(pc.startPos.clone(), 1);
+      }
       if (u >= 1) {
         if (this.lastProgress >= 0 && this.lastProgress < 1) {
           const prevU = clamp((this.lastProgress - start) / flight, 0, 1);

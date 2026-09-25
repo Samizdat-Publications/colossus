@@ -503,7 +503,8 @@ export class Player {
     }
     if (h.knockdown) {
       this.knockVel.copy(away).multiplyScalar(h.knockback ?? 8);
-      if (this.airborne) this.vy = Math.max(this.vy, 2);
+      // thrown: a short toss before the fall (a colossus does not just nudge you)
+      this.vy = Math.max(this.vy, 4.2);
       this.knockdown();
     } else {
       this.knockVel.copy(away).multiplyScalar(h.knockback ?? 4);

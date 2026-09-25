@@ -30,6 +30,11 @@ export class PartFader {
   }
 
   /** blocked: bone pivots whose capsule cuts the camera's view of the warrior (their pieces fade). */
+  /** The materials this fader switches between opaque and transparent (both are shader variants). */
+  materials(): THREE.MeshStandardMaterial[] {
+    return this.parts.map((p) => p.mat);
+  }
+
   update(cam: THREE.Vector3, focus: THREE.Vector3, dt: number, enabled: boolean, blocked?: Set<THREE.Object3D>, near = 2.2): void {
     _d.subVectors(focus, cam);
     const len = _d.length();

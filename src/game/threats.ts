@@ -258,12 +258,16 @@ export class Threats {
       r.vel.y -= GRAVITY * dt;
       r.pos.addScaledVector(r.vel, dt);
       let impact = r.t >= r.flight || r.pos.y <= 0;
+      let onPlayer = false;
       // direct hit on the player in flight
       if (!r.hit && !impact && pl.alive && ctx.live) {
         const dx = pl.pos.x - r.pos.x;
         const dz = pl.pos.z - r.pos.z;
         const dy = pl.y + 0.9 - r.pos.y;
-        if (dx * dx + dz * dz + dy * dy * 0.5 < (r.size + PLAYER_RADIUS + 0.2) ** 2) impact = true;
+        if (dx * dx + dz * dz + dy * dy * 0.5 < (r.size + PLAYER_RADIUS + 0.2) ** 2) {
+          impact = true;
+          onPlayer = true;
+        }
       }
       // pillars and walls stop rocks
       if (!impact && !r.meteor && ctx.world.blocked(r.pos.x, r.pos.y, r.pos.z, r.size * 0.6)) impact = true;
@@ -272,7 +276,9 @@ export class Threats {
       const center = r.pos.clone();
       center.y = Math.max(0, center.y);
       bus.emit('rockImpact', { pos: center.clone(), radius: r.radius });
-      bus.emit('rockShatter', { pos: r.pos.clone(), vel: r.vel.clone(), size: r.size });
+      // the boulder bursts where it met the warrior's body, not somewhere above it
+      const at = onPlayer ? new THREE.Vector3(pl.pos.x, pl.y + 1.1, pl.pos.z).lerp(r.pos, 0.3) : r.pos.clone();
+      bus.emit('rockShatter', { pos: at, vel: r.vel.clone(), size: r.size });
       if (pl.alive && ctx.live) {
         const d = Math.hypot(pl.pos.x - center.x, pl.pos.z - center.z);
         if (d < r.radius + PLAYER_RADIUS && pl.y < center.y + 2.2) {

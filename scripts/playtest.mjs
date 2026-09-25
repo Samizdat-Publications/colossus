@@ -589,8 +589,9 @@ try {
       const shin = g.capsules.find((c) => c.name === 'shin_L');
       const mx = (shin.a.x + shin.b.x) / 2;
       const mz = (shin.a.z + shin.b.z) / 2;
-      let dx = game.player.pos.x - mx;
-      let dz = game.player.pos.z - mz;
+      // from outside the legs (the side away from the golem's centre), not from between them
+      let dx = mx - g.pos.x;
+      let dz = mz - g.pos.z;
       const l = Math.hypot(dx, dz) || 1;
       dx /= l;
       dz /= l;
