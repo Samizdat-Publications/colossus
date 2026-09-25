@@ -151,7 +151,8 @@ const L3_STRIKE: PoseDef = mergeDefs(IDLE, {
 
 // Heavy: big overhead wind-up, full-body slam.
 const HEAVY_WIND: PoseDef = mergeDefs(IDLE, {
-  $pos: [0, -0.06, -0.12],
+  // a low, coiled stance while the blow charges
+  $pos: [0, -0.17, -0.14],
   hips: [-6, -10, 0],
   spine: [-10, -4, 0],
   chest: [-16, 4, 0],
@@ -162,12 +163,12 @@ const HEAVY_WIND: PoseDef = mergeDefs(IDLE, {
   hand_R: [18, 0, 0],
   upperarm_L: [-168, -14, 10],
   forearm_L: [-76, 0, 0],
-  thigh_L: [-26, 0, 8],
-  shin_L: [34, 0, 0],
-  foot_L: [-8, 0, 0],
-  thigh_R: [24, 0, -8],
-  shin_R: [30, 0, 0],
-  foot_R: [-54, 0, 0],
+  thigh_L: [-44, 0, 8],
+  shin_L: [62, 0, 0],
+  foot_L: [-18, 0, 0],
+  thigh_R: [12, 0, -8],
+  shin_R: [52, 0, 0],
+  foot_R: [-60, 0, 0],
 });
 const HEAVY_STRIKE: PoseDef = mergeDefs(IDLE, {
   $pos: [0, -0.3, 0.18],
