@@ -85,11 +85,13 @@ thread). Logs go to `test-output/blender-logs/<script>.log`; previews to `test-o
 
 `?test=1` exposes `window.__CO` (state snapshot, time scale, bot control). `?god=1` makes the player
 invulnerable, `?skipintro=1` skips the intro, `?phase=2|3` starts in a later phase, `?bot=decent|expert`
-lets the in-page bot play, `?nosound=1`, `?fps=1` shows a frame-time overlay.
+lets the in-page bot play, `?nosound=1`, `?fps=1` shows a frame-time overlay, `?greybox=1` uses the
+primitive greybox models instead of the Blender assets. Hooks for tests: `forcePhase(n)` always plays a
+phase-change roar, `killGolem()` starts the victory, `forceAttack(name, side)`.
 
 ## Milestones (in order, do not skip ahead)
 
-1. [ ] **Greybox**: core loop with primitive shapes. Player controller (move, lock-on, light and heavy
+1. [x] **Greybox**: core loop with primitive shapes. Player controller (move, lock-on, light and heavy
    attacks, roll with i-frames, block, jump, flask, stamina, input buffer), golem with all attacks for
    3 phases, weak points, break and stagger, hazards, win and lose states.
 2. [ ] **Assets**: model everything in Blender via the MCP (golem, warrior, arena, pillars, rubble),
@@ -108,16 +110,23 @@ saved in `docs/critic/`.
 Done means: a first-time player can start, understand the controls, play, and reach both a win and a
 lose screen with no bugs; README.md with controls and how to run; `screenshots/` with 6 final shots.
 
+Milestone 1 closed after 16 critic rounds (see `docs/critic/m1-r16.md`): the worst remaining item was
+close-range framing of the giant, which moved into milestone 3's camera work.
+
 ## Asset list
 
 | Family script | Output | Contents |
 | --- | --- | --- |
-| `textures.py` | `tex_*.png` | Tileable baked textures: golem rock (albedo, normal, roughness), crack mask, flagstones, wall ashlar, cloth, metal wear |
-| `golem.py` | `golem.glb` | Armature (19 bones) with bone-parented rock chunks, 3 core crystals (forearms, lower back), chest core, eyes, chest plates that break off in phase 3 |
-| `warrior.py` | `warrior.glb` | Armature (18 bones) with bone-parented armor plates, helmet, longsword, flask, cape mesh (cloth-simulated in game) |
-| `arena.py` | `arena.glb` | Flagstone floor disc, central rune seal, ring wall with arches (partly collapsed), entrance gate, outer tiers, cliff ring, braziers |
-| `pillars.py` | `pillars.glb` | Intact column, 3 broken columns, fallen column, capital fragments |
-| `rubble.py` | `rubble.glb` | Boulders for throws and meteors, 6 debris chunks for particles, rubble piles, the dormant golem mound |
+| `textures.py` | `tex_*.jpg/png` | Tileable baked textures (4D noise on a torus, Cycles bakes, numpy compositing): rock and dressed stone (albedo, normal, roughness), crack vein mask, metal (normal, roughness), cloth normal |
+| `golem.py` | `golem.glb` | Armature (19 bones) with 120 bone-parented pieces: dressed blocks, fluted column drums, boulders, rubble filler; core crystals `core_arm_L/R`, `core_back`, `core_chest`; `eye_L/R`; `chestplate_0..2` (burst off in phase 3); AO baked into vertex colours |
+| `warrior.py` | `warrior.glb` | Armature (19 bones) with one merged armour object per bone, `sword` (grip origin), `flask`, `cape` (a 9 x 15 grid for the cloth pass) |
+| `arena.py` | `arena.glb` | `floor_stones` (1590 flagstones in 20 rings, some missing or sunk), `floor_water`, `seal_stones` + `seal_runes`, `arcade` (24 bays, 6 collapsed), `wall_rubble`, `tiers`, `cliffs` |
+| `pillars.py` | `pillars.glb` | `pillar_intact`, `pillar_broken_tall`, `pillar_broken_mid`, `pillar_stump`, `pillar_fallen`, `capital_fragment`, `brazier` |
+| `rubble.py` | `rubble.glb` | `rock_throw`, `meteor` (unit radius), `debris_0..5`, `rubble_pile_a/b/c` (unit footprint), `golem_mound` |
+
+All GLBs are Draco-compressed (about 2.1 MB together); the decoder is served from the three package by
+a Vite plugin (`/draco/`). Each family script writes a preview render to `test-output/asset-previews/`
+and a report (triangles, sizes) to `test-output/blender-logs/<family>.json`.
 
 ### Asset conventions
 
@@ -201,3 +210,28 @@ Newest at the bottom. Record every non-obvious choice.
   so "cyan = hit here" never lies.
 - 2026-09-24 (M1 bot): with the fixes above the decent bot wins about 1 run in 4 (fight about 4 minutes)
   and the expert bot wins in under 5 minutes with little health to spare: in the target band.
+- 2026-09-25 (M1 critic r9-r16): the lock-on framing solve got director inputs: `topParts` (only the torso
+  counts for the top of the frame in the meteor rain and the leap), `topBoost` (the leap's apex is framed
+  before the jump), `snappy` (faster pitch and FOV in fast moves), `maxPull`, `rise` (a low camera looks up
+  at the airborne golem). The meteor rain opens with a roar that shoves the warrior 11 m back, so golem
+  and rings fit one frame.
+- 2026-09-25 (M1 critic r12-r15): STRIKE appears only when a reachable core is in an open window with no
+  warning, sweep, fissure or shockwave on the way; burning ground is amber, shockwaves pale red, incoming
+  hits red, cores cyan; burning cracks show fire creeping outward for the last second before they burn.
+- 2026-09-25 (M1 critic r15): fairness bug: the golem kept turning after the sweep sector was drawn. It
+  now commits its facing when the sector appears, and the sweep can only hit inside the drawn sector.
+- 2026-09-25 (M1 close): milestone 1 closed after 16 rounds with close-range framing of the giant as the
+  recurring MAJOR (the rings always carried the gameplay). Camera work belongs to milestone 3.
+- 2026-09-25 (M2): Blender runs in background processes launched from the MCP-connected GUI (`co_launch.py`,
+  chains via `co_chain.py`), never in the shared scene. Every script builds in three.js space and
+  converts with one rotation, so the JSON rig and layout data drive Blender and the game alike.
+- 2026-09-25 (M2): textures tile seamlessly by evaluating Blender's 4D noise and Voronoi on a 4D torus
+  made from the UV square; layers are Cycles emission bakes combined with numpy in Blender.
+- 2026-09-25 (M2): the golem is 120 separate bone-parented pieces (not one skinned mesh) so the intro can
+  fly each one in from the rubble, the camera fade can dim whole pieces and the chest plates can burst off.
+  `Rig.fromObject` turns the glTF armature into the same pivot rig the greybox used.
+- 2026-09-25 (M2): all GLBs are Draco-compressed (arena 17 MB to 1 MB); flagstones bevel only their top
+  edges; spandrel blocks have no bevel. A moonlit PMREM environment gives steel, wet stone and water
+  something to reflect.
+- 2026-09-25 (M2): the warrior's accent colour is ivory, not red: red is reserved for danger, amber for
+  fire, cyan for cores.

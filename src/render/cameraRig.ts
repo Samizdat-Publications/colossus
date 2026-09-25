@@ -28,7 +28,7 @@ const _lookPos = new THREE.Vector3();
 const TOP_MARGIN = 0.1; // leaves the top strip for tips
 const BOTTOM_MARGIN = 0.16; // keeps the feet above the (see-through) boss health panel
 const FOV_MIN = 58;
-const FOV_MAX = 84;
+const FOV_MAX = 78; // wider lenses stretched the frame edges
 
 /**
  * Third-person camera.
@@ -116,7 +116,7 @@ export class CameraRig {
   /** 0..1: how fast pitch and field of view follow the solve (1 for fast moves like the leap). */
   snappy = 0;
   /** Largest automatic pull-back in metres (the director raises it for the leap). */
-  maxPull = 4;
+  maxPull = 5;
 
   update(dt: number, lookX: number, lookY: number, player: Player, golem: Golem, world: World): void {
     this.time += dt;

@@ -851,7 +851,7 @@ export class Game {
     this.cam.topBoost = !leaping ? 0 : g.step === 'windup' ? LEAP_APEX : rising ? Math.max(0, LEAP_APEX - g.pos.y) : 0;
     const shoving = this.flow === 'fight' && g.attack?.name === 'meteor' && (g.step === 'windup' || g.step === 'rain');
     this.cam.snappy = leaping ? 1 : shoving ? 0.6 : 0;
-    this.cam.maxPull = leaping ? 7 : 4;
+    this.cam.maxPull = leaping ? 8 : 5;
     this.prevGolemY = g.pos.y;
     if (g.pushTele) {
       this.threats.telegraph(g.pushTele.pos, g.pushTele.radius, g.pushTele.dur, 'push');

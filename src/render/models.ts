@@ -114,13 +114,14 @@ export function buildWarriorModel(assets: Assets): WarriorModel {
     }),
     warrior_mail: new THREE.MeshStandardMaterial({ color: 0x6a6f78, metalness: 0.85, roughness: 0.5 }),
     warrior_leather: new THREE.MeshStandardMaterial({ color: 0x3a2a1e, roughness: 0.78 }),
+    // ivory cloth: the warrior's accent must never match a danger colour (red), fire (amber) or a core (cyan)
     warrior_cloth: new THREE.MeshStandardMaterial({
-      color: 0xa0141c,
-      roughness: 0.82,
+      color: 0xd9d0bb,
+      roughness: 0.85,
       normalMap: tex.cloth_normal,
       normalScale: NORMAL_SCALE(0.6),
       side: THREE.DoubleSide,
-      emissive: 0x2a0204,
+      emissive: 0x1c1a14,
       emissiveIntensity: 0.6,
     }),
     warrior_brass: new THREE.MeshStandardMaterial({ color: 0xd09a45, metalness: 1.0, roughness: 0.32, envMapIntensity: 1.3 }),
