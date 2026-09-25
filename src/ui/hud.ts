@@ -173,18 +173,7 @@ export class Hud {
       this.reticle.style.display = p.on ? 'block' : 'none';
       this.reticle.style.transform = `translate(${p.x}px, ${p.y}px) rotate(45deg)`;
     } else this.reticle.style.display = 'none';
-    let di = 0;
-    if (player.locked && golem.lockable) {
-      for (const t of golem.targets) {
-        if (!t.open || t === focus || di >= this.coreDots.length) continue;
-        const p = toScreen(t.pos);
-        if (!p.on) continue;
-        const d = this.coreDots[di++];
-        d.style.display = 'block';
-        d.style.transform = `translate(${p.x}px, ${p.y}px)`;
-      }
-    }
-    for (; di < this.coreDots.length; di++) this.coreDots[di].style.display = 'none';
+    for (const d of this.coreDots) d.style.display = 'none';
     if (this.markCore) {
       const p = toScreen(this.markCore.pos.clone().setY(this.markCore.pos.y + this.markCore.radius + 0.6));
       this.marker.style.display = p.on ? 'block' : 'none';

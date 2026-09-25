@@ -109,9 +109,6 @@ export class CameraRig {
   /** Extra camera height requested by the director (look down on a kneeling golem), in metres. */
   rise = 0;
   private riseNow = 0;
-  /** 1 = frame the warrior and the ground around them only (danger from the sky), 0 = normal. */
-  focusPlayer = 0;
-  private focusNow = 0;
   /** Only these golem capsules (by name) count for the top of the frame; null = all. */
   topParts: Set<string> | null = null;
 
@@ -151,11 +148,10 @@ export class CameraRig {
     if (this.lockW > 0.001) {
       const close = smoothstep(14, 4, dGolem);
       this.wideNow = damp(this.wideNow, this.wide, this.wide > this.wideNow ? 2.5 : 1.2, dt);
-      this.focusNow = damp(this.focusNow, this.focusPlayer, 2.5, dt);
-      const wantDist = lerp(8.6 + close * 1.6 + this.pullBack + this.wideNow, 7.2, this.focusNow);
+      const wantDist = 8.6 + close * 1.6 + this.pullBack + this.wideNow;
       this.lockDist = damp(this.lockDist, wantDist, 3, dt);
       this.riseNow = damp(this.riseNow, this.rise, 2.5, dt);
-      const camH = lerp(this.pivot.y + 1.1 + close * 1.4 + (this.pullBack + this.wideNow) * 0.35 + this.riseNow, this.pivot.y + 4.2, this.focusNow);
+      const camH = Math.max(1.3, this.pivot.y + 1.1 + close * 1.4 + (this.pullBack + this.wideNow) * 0.35 + this.riseNow);
       _lockPos.set(this.pivot.x - _f.x * this.lockDist, camH, this.pivot.z - _f.z * this.lockDist);
       this.collide(world, _t.set(this.pivot.x, camH, this.pivot.z), _lockPos);
 
@@ -178,18 +174,12 @@ export class CameraRig {
       }
       let top = feet;
       const tops = this.topParts;
-      if (this.focusNow < 0.5) {
-        for (const c of golem.capsules) {
-          if (tops && !tops.has(c.name)) continue;
-          for (const q of [c.a, c.b]) {
-            const a = angleOf(q.x, q.y + c.r * 0.6, q.z);
-            if (a !== null && a > top) top = a;
-          }
+      for (const c of golem.capsules) {
+        if (tops && !tops.has(c.name)) continue;
+        for (const q of [c.a, c.b]) {
+          const a = angleOf(q.x, q.y + c.r * 0.6, q.z);
+          if (a !== null && a > top) top = a;
         }
-      } else {
-        // focus: the warrior plus a little space above their head
-        const a = angleOf(player.pos.x, player.y + 4, player.pos.z);
-        if (a !== null && a > top) top = a;
       }
       for (const n of this.niceToSee) {
         const a = angleOf(n.x, n.y + 1, n.z);

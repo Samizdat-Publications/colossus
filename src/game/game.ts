@@ -125,7 +125,8 @@ export class Game {
     this.scene.add(gRig.root);
     this.golem = new Golem(gRig);
     for (const [name, mesh] of this.coreMeshes) {
-      const light = new THREE.PointLight(name === 'core_chest' ? 0xff6a20 : 0x5fe8ff, 0, 14, 2);
+      // the molten heart lights the arena floor in phase 3; the cyan cores light only their surroundings
+      const light = name === 'core_chest' ? new THREE.PointLight(0xff6a20, 0, 46, 1.6) : new THREE.PointLight(0x5fe8ff, 0, 14, 2);
       mesh.add(light);
       this.coreLights.set(name, light);
     }
@@ -678,7 +679,8 @@ export class Game {
     const p = this.player.pos;
     // rings the warrior is in, plus the nearest ring just behind them (a reflex roll lands there)
     const near = this.threats.telegraphs
-      .filter((t) => t.kind !== 'sector')
+      // the leap ring is huge and centred on the warrior: framing its near edge pointed the camera at the floor
+      .filter((t) => t.kind !== 'sector' && t.kind !== 'leap')
       .map((t) => ({ t, d: Math.hypot(t.pos.x - p.x, t.pos.z - p.z) - t.radius }))
       .filter((e) => e.d < 3)
       .sort((a, b) => a.d - b.d)
@@ -700,10 +702,9 @@ export class Game {
     this.updateHeldRock();
     this.cam.wide = this.flow === 'fight' || this.flow === 'victoryCine' ? g.wantsWide : 0;
     this.cam.rise = this.flow === 'fight' ? g.wantsRise : 0;
-    // meteor rain: the danger is the sky around the warrior, so frame the warrior, not the golem
-    this.cam.focusPlayer = this.flow === 'fight' && g.attack?.name === 'meteor' && (g.step === 'rain' || this.threats.rocks.some((r) => r.meteor)) ? 1 : 0;
-    // airborne golem: its torso is what matters, the raised arms may leave the frame
-    this.cam.topParts = g.pos.y > 0.4 ? this.airborneParts : null;
+    // airborne golem, or arms thrown at the sky for the meteor rain: frame its torso and head, the raised
+    // arms may leave the frame (keeping them in pushed the camera so far back the warrior was a speck)
+    this.cam.topParts = g.pos.y > 0.4 || g.attack?.name === 'meteor' || g.attack?.name === 'leap' ? this.airborneParts : null;
     if (g.riseTele) {
       this.threats.telegraph(g.riseTele, balance.golem.stagger.risePushRadius, balance.golem.stagger.rise * 0.75, 'push');
       g.riseTele = null;
@@ -726,8 +727,9 @@ export class Game {
     skyUniforms.uTime.value = this.ctx.time;
     skyUniforms.uLava.value = this.heatShown;
     this.hemi.color.setRGB(0.506 + 0.12 * this.heatShown, 0.588 - 0.06 * this.heatShown, 0.733 - 0.2 * this.heatShown);
-    // phase 3: lava light from the cracks warms the floor
+    // phase 3: lava light from the cracks warms the floor and the air
     this.hemi.groundColor.setRGB(0.173 + 0.28 * this.heatShown, 0.153 + 0.06 * this.heatShown, 0.137 - 0.05 * this.heatShown);
+    (this.scene.fog as THREE.FogExp2).color.setRGB(0.118 + 0.13 * this.heatShown, 0.157 - 0.05 * this.heatShown, 0.22 - 0.14 * this.heatShown);
     // camera-occlusion fade on the golem (off in cinematics and on the title)
     const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
     setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), false);
@@ -779,7 +781,7 @@ export class Game {
       mat.emissiveIntensity = base * pulse + t.flash * 5;
       // sealed cores are plain stone knobs, not dim teal balls; arm cores ignite at the roar
       mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x80848c);
-      mesh.visible = t.kind === 'back' ? g.state !== 'dormant' && g.state !== 'assemble' : lit;
+      mesh.visible = t.kind === 'back' ? t.open || t.flash > 0.05 : lit;
       const light = this.coreLights.get(t.name);
       if (light) light.intensity = (base * pulse * 0.6 + t.flash * 3) * 6;
     }
@@ -798,7 +800,7 @@ export class Game {
       const l = this.coreLights.get('core_chest');
       if (l) {
         l.color.setHex(0xff6a20);
-        l.intensity = on * 70;
+        l.intensity = on * (ct?.open ? 260 : 200) * (0.9 + 0.1 * Math.sin(this.ctx.time * 5));
       }
     }
     void dt;

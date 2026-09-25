@@ -363,7 +363,8 @@ export class Golem {
   /** How much higher the camera should sit right now (look down on a kneeling golem). */
   get wantsRise(): number {
     if (this.state === 'stagger') return 3.5;
-    if (this.attack?.name === 'meteor') return 1.5;
+    // a low camera looks up at the airborne golem (the classic colossus angle)
+    if (this.attack?.name === 'leap' && (this.step === 'air' || (this.step === 'windup' && this.pos.y > 0.2))) return -1.8;
     return 0;
   }
 
@@ -372,6 +373,8 @@ export class Golem {
     if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 4;
     if (this.state === 'stagger') return 2;
     if (this.state === 'dead') return 3;
+    // the phase-change roar is a show: step back and take in the whole pose
+    if (this.state === 'transition') return 3.5;
     return 0;
   }
 

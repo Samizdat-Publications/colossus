@@ -8,8 +8,38 @@ import type { Fissure, Hazard, Rock, Spike, Telegraph, Threats, Wave } from '../
  *   PALE   ring band            = shockwave travelling outward (roll through it or jump over it)
  */
 const RED = new THREE.Color(0xff2e22);
-const EMBER = new THREE.Color(0xff7418);
-const LAVA = new THREE.Color(0xff5410);
+// burning ground is amber-gold, well away from the red of incoming hits
+const EMBER = new THREE.Color(0xffa018);
+const LAVA = new THREE.Color(0xff8a14);
+
+/** A broken, jittered ring (unit radius): the edge of cracked ground, not a warning circle. */
+function brokenRingGeometry(): THREE.BufferGeometry {
+  const pos: number[] = [];
+  let seed = 23;
+  const rnd = () => {
+    seed = (seed * 16807) % 2147483647;
+    return seed / 2147483647;
+  };
+  const n = 22;
+  for (let i = 0; i < n; i++) {
+    const a0 = (i / n) * Math.PI * 2 + rnd() * 0.05;
+    const a1 = a0 + ((0.35 + rnd() * 0.3) / n) * Math.PI * 2;
+    const steps = 4;
+    const rIn = 0.9 + rnd() * 0.04;
+    for (let k = 0; k < steps; k++) {
+      const b0 = a0 + ((a1 - a0) * k) / steps;
+      const b1 = a0 + ((a1 - a0) * (k + 1)) / steps;
+      const j0 = 1 + (rnd() - 0.5) * 0.05;
+      const j1 = 1 + (rnd() - 0.5) * 0.05;
+      const p = (a: number, r: number) => [Math.sin(a) * r, 0, Math.cos(a) * r];
+      pos.push(...p(b0, rIn * j0), ...p(b0, j0), ...p(b1, j1));
+      pos.push(...p(b0, rIn * j0), ...p(b1, j1), ...p(b1, rIn * j1));
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  return g;
+}
 
 function crackTexture(): THREE.CanvasTexture {
   const S = 256;
@@ -127,7 +157,7 @@ export class ThreatView {
     g.rotateX(-Math.PI / 2);
     return g;
   })();
-  private readonly hazardEdgeGeo = new THREE.RingGeometry(0.93, 1, 48);
+  private readonly hazardEdgeGeo = brokenRingGeometry();
   private readonly crackTex = crackTexture();
   private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x4a4744, roughness: 0.95, flatShading: true, emissive: 0x802808, emissiveIntensity: 0.25 });
   private readonly trailMat = new THREE.ShaderMaterial({
@@ -174,7 +204,6 @@ export class ThreatView {
     this.quadGeo.rotateX(-Math.PI / 2);
     this.stripGeo.rotateX(-Math.PI / 2);
     this.stripGeo.translate(0, 0, 0.5);
-    this.hazardEdgeGeo.rotateX(-Math.PI / 2);
     this.bandGeo.translate(0, 0.5, 0);
     // comet trail: wide end at the rock, tapering away behind it (local -Y = behind)
     this.trailGeo.rotateX(Math.PI);
@@ -226,7 +255,7 @@ export class ThreatView {
       );
       const edge = new THREE.Mesh(
         this.hazardEdgeGeo,
-        new THREE.MeshBasicMaterial({ color: EMBER, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }),
+        new THREE.MeshBasicMaterial({ color: EMBER, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }),
       );
       edge.position.y = 0.01;
       m.add(edge);
@@ -241,19 +270,25 @@ export class ThreatView {
       const fade = Math.min(1, (h.dur - h.t) / 1.2);
       const armed = h.t >= h.arm;
       const warn = Math.max(0, 1 - (h.arm - h.t) / 0.5); // last 0.5 s before burning
-      if (!armed && warn <= 0) {
+      // it burns while glowing; in its last 0.3 s it no longer burns (see Threats) and goes dark
+      const left = h.dur - h.t;
+      const burning = armed && left > 0.3;
+      const glow = Math.max(0, Math.min(1, (left - 0.3) / 0.7));
+      const edgeMat = (m.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      if (!burning && (armed || warn <= 0)) {
         // cold cracks: dark fissures in the stone, safe to stand on
         mat.blending = THREE.NormalBlending;
         mat.color.setRGB(0.05, 0.04, 0.035);
-        mat.opacity = 0.75 * fade;
+        mat.opacity = 0.75 * (armed ? Math.min(1, left / 0.3) : fade);
+        edgeMat.opacity = 0;
       } else {
         mat.blending = THREE.AdditiveBlending;
         mat.color.copy(h.kind === 'lava' ? LAVA : EMBER);
         const flick = armed ? 0.85 + 0.15 * Math.sin(this.time * 7 + h.seed) : 0.5 + 0.5 * Math.sin(this.time * 26 + h.seed);
-        mat.opacity = Math.max(0, (armed ? 1 : 0.35 * warn) * flick * fade);
+        mat.opacity = Math.max(0, armed ? flick * (0.35 + 0.65 * glow) : 0.35 * warn * flick);
+        edgeMat.color.copy(mat.color);
+        edgeMat.opacity = armed ? 0.8 * (0.35 + 0.65 * glow) : 0.3 * warn;
       }
-      const edgeMat = (m.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial;
-      edgeMat.opacity = (armed ? 0.75 : 0.3 * warn) * fade;
       m.scale.setScalar(h.radius * (0.35 + 0.65 * grow));
     }
   }

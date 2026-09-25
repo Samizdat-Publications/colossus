@@ -324,7 +324,7 @@ try {
     await waitFor(() => window.__CO.state().golem.state === 'combat', 15000).catch(() => {});
     // phase 2
     await page.evaluate(() => window.__CO.setGolemPhase(2));
-    await waitFor(() => window.__CO.state().golem.state === 'transition', 10000).catch(() => {});
+    await waitFor(() => window.__CO.state().golem.state === 'transition', 30000).catch(() => log('warn: no phase 2 transition seen'));
     await sleep(1300);
     await shot('phase2_roar');
     await force('doubleSlam', 'L', 'stuck', 'phase2_double_slam', 500);
