@@ -199,7 +199,8 @@ export class Game {
     bus.on('golemDeath', () => this.onGolemDeath());
     bus.on('staggerStart', () => {
       this.cam.shake(0.5);
-      this.tips.show('stagger', 'It is <b>down</b>! Get behind it and strike the <b class="core">core on its back</b>.', 3, 5);
+      if (this.golem.phase >= 3) this.tips.show('stagger3', 'It is <b>down</b>! Strike its <b class="core">exposed heart</b> or the <b class="core">core on its back</b>.', 2, 5);
+      else this.tips.show('stagger', 'It is <b>down</b>! Get behind it and strike the <b class="core">core on its back</b>.', 3, 5);
     });
     bus.on('phaseChange', (e) => {
       this.hud.bossVisible = true;
@@ -292,7 +293,7 @@ export class Game {
     this.hud.bossVisible = true;
     this.hud.setVisible(true);
     this.hud.showControls = this.attempt === 1;
-    this.controlsTimer = this.attempt === 1 ? 25 : 0;
+    this.controlsTimer = this.attempt === 1 ? 15 : 0;
     bus.emit('fightStart', { attempt: this.attempt });
     if (this.attempt === 1) this.tips.show('start', 'Only the <b class="core">glowing cores</b> can be harmed.', 1, 4);
   }
@@ -491,7 +492,7 @@ export class Game {
           cam.cineBlend = damp(cam.cineBlend, 1, 2.2, rawDt);
         } else if (this.flow === 'dying') {
           this.deathShot();
-          cam.cineBlend = damp(cam.cineBlend, 1, 1.2, rawDt);
+          cam.cineBlend = damp(cam.cineBlend, 1, 3.5, rawDt);
         } else cam.cineBlend = damp(cam.cineBlend, 0, 3, rawDt);
         cam.update(rawDt, f.lookX, f.lookY, this.player, this.golem, this.world);
         if (this.flow !== 'fight') {
@@ -532,17 +533,21 @@ export class Game {
     dx /= l;
     dz /= l;
     const t = Math.min(1, this.flowTime / 4);
-    const a = 0.5 + 0.25 * t;
+    const a = 0.75 + 0.2 * t;
     const rx = dx * Math.cos(a) - dz * Math.sin(a);
     const rz = dx * Math.sin(a) + dz * Math.cos(a);
-    let px = p.x + rx * (6 + 3 * t);
-    let pz = p.z + rz * (6 + 3 * t);
+    // stand back from the midpoint so both the body and the whole golem are in frame
+    const mx = (p.x + g.x) / 2;
+    const mz = (p.z + g.z) / 2;
+    const back = Math.max(14, l * 0.9 + 12) + 4 * t;
+    let px = mx + rx * back;
+    let pz = mz + rz * back;
     const d = Math.hypot(px, pz);
     if (d > 36) {
       px *= 36 / d;
       pz *= 36 / d;
     }
-    c.pos.set(px, 3.2 + 3 * t, pz);
+    c.pos.set(px, 4.5 + 2 * t, pz);
     // never inside the golem
     for (const cap of this.golem.capsules) {
       const ax = cap.b.x - cap.a.x;
@@ -558,8 +563,8 @@ export class Game {
       const min = cap.r + 1.2;
       if (dd < min) c.pos.set(c.pos.x + (qx / dd) * (min - dd), Math.max(1, c.pos.y + (qy / dd) * (min - dd)), c.pos.z + (qz / dd) * (min - dd));
     }
-    c.look.set(p.x - dx * 3, 1.5 + 2.5 * t, p.z - dz * 3);
-    c.fov = 55;
+    c.look.set(mx, 4.5, mz);
+    c.fov = 58;
   }
 
   /** Pull back to watch the Ruin collapse (from the player's side, three-quarter view). */
@@ -641,6 +646,7 @@ export class Game {
     this.threatView.update(this.threats, this.ctx.time);
     const g = this.golem;
     this.updateMustSee();
+    this.cam.wide = this.flow === 'fight' || this.flow === 'victoryCine' ? g.wantsWide : 0;
     if (g.riseTele) {
       this.threats.telegraph(g.riseTele, balance.golem.stagger.risePushRadius, balance.golem.stagger.rise * 0.75, 'push');
       g.riseTele = null;
@@ -667,8 +673,13 @@ export class Game {
     const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
     setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), false);
     this.fader.update(this.cam.camera.position, _v, dt, gameplayCam);
-    // teach the punish window the first few times it opens
-    if (this.flow === 'fight' && g.windowOpen) {
+    // teach the punish window the first few times it opens (never while a warning covers the warrior)
+    const underThreat = this.threats.fissures.length > 0 || this.threats.telegraphs.some((t) => {
+      if (t.kind === 'sector') return true;
+      return Math.hypot(t.pos.x - this.player.pos.x, t.pos.z - this.player.pos.z) < t.radius + 1;
+    });
+    this.tips.quiet = underThreat;
+    if (this.flow === 'fight' && g.windowOpen && !underThreat) {
       if (g.staggered) this.hud.markCore = g.targets.find((t) => t.kind === 'back') ?? null;
       else {
         const arm = g.focusCore(this.player.pos);
@@ -678,7 +689,7 @@ export class Game {
     } else this.hud.markCore = null;
     // death: the Ruin falls back into rubble
     if (g.state === 'dead') {
-      if (this.crumbleT < 0 && g.stateTime > 1.1) {
+      if (this.crumbleT < 0 && g.stateTime > 0.8) {
         this.crumbleT = 0;
         this.assembler.setCenter(g.pos);
       }
@@ -692,7 +703,7 @@ export class Game {
       if (!mesh) continue;
       const mat = mesh.material as THREE.MeshStandardMaterial;
       let base = t.kind === 'back' ? (t.open ? 2.2 : 0.2) : g.state === 'dormant' ? 0.12 : 1.5 + 0.35 * (g.phase - 1);
-      if (g.state === 'dead') base = Math.max(0.02, base * (1 - g.stateTime / 1.2));
+      if (g.state === 'dead') base = Math.max(0.0, base * (1 - g.stateTime / 0.25));
       const low = t.open && t.pos.y < 3.4 && g.state !== 'dead';
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;
       mat.emissiveIntensity = base * pulse + t.flash * 5;
@@ -701,12 +712,18 @@ export class Game {
     }
     const chest = this.coreMeshes.get('core_chest');
     if (chest) {
-      const on = g.phase >= 3 && g.state !== 'dormant' ? 1 : 0;
-      (chest.material as THREE.MeshStandardMaterial).emissiveIntensity = on * (2.4 + 0.6 * Math.sin(this.ctx.time * 5));
+      const on = g.phase >= 3 && g.state !== 'dormant' && g.state !== 'dead' ? 1 : 0;
+      const ct = g.targets.find((t) => t.kind === 'chest');
+      const mat = chest.material as THREE.MeshStandardMaterial;
+      mat.emissive.setHex(0x5ff0ff);
+      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 1.4) + 0.3 * Math.sin(this.ctx.time * 5)) + (ct?.flash ?? 0) * 5;
       chest.visible = on > 0;
-      chest.scale.setScalar(2.1);
+      chest.scale.setScalar(1.5);
       const l = this.coreLights.get('core_chest');
-      if (l) l.intensity = on * 120;
+      if (l) {
+        l.color.setHex(0xff6a20);
+        l.intensity = on * 70;
+      }
     }
     void dt;
   }

@@ -26,7 +26,7 @@ await page.goto(`${server.resolvedUrls.local[0]}?test=1&god=1`);
 await page.waitForFunction(() => window.__CO?.ready && window.__CO.state().flow === 'title');
 await page.evaluate(() => window.__CO.begin());
 await page.evaluate(() => window.__CO.skipIntro());
-await page.waitForFunction(() => window.__CO.state().flow === 'fight', null, { timeout: 20000 });
+await page.waitForFunction(() => window.__CO.state().flow === 'fight' && window.__CO.state().golem.state === 'combat', null, { timeout: 20000 });
 
 const fmt = (t) => `${t.name.padEnd(11)} y=${t.pos.y.toFixed(2).padStart(5)} xz=(${t.pos.x.toFixed(1)},${t.pos.z.toFixed(1)}) open=${t.open}`;
 for (const a of attacks) {

@@ -25,7 +25,7 @@ const _camPos = new THREE.Vector3();
 const _lookPos = new THREE.Vector3();
 
 /** Fraction of the vertical field of view kept free above the golem and below the warrior's feet. */
-const TOP_MARGIN = 0.07;
+const TOP_MARGIN = 0.1; // leaves the top strip for tips
 const BOTTOM_MARGIN = 0.21; // keeps the feet above the boss health panel
 const FOV_MIN = 58;
 const FOV_MAX = 80;
@@ -101,6 +101,9 @@ export class CameraRig {
 
   /** Ground points that must stay in frame (near edges of warning rings around the warrior). */
   readonly mustSee: THREE.Vector3[] = [];
+  /** Extra pull-back requested by the director for big moments (leap, stagger), in metres. */
+  wide = 0;
+  private wideNow = 0;
 
   update(dt: number, lookX: number, lookY: number, player: Player, golem: Golem, world: World): void {
     this.time += dt;
@@ -137,9 +140,10 @@ export class CameraRig {
     // ---------------- lock-on framing solve
     if (this.lockW > 0.001) {
       const close = smoothstep(14, 4, dGolem);
-      const wantDist = 8.2 + close * 2.4 + this.pullBack;
+      this.wideNow = damp(this.wideNow, this.wide, this.wide > this.wideNow ? 4 : 1.5, dt);
+      const wantDist = 8.2 + close * 2.4 + this.pullBack + this.wideNow;
       this.lockDist = damp(this.lockDist, wantDist, 5, dt);
-      const camH = this.pivot.y + 1.1 + close * 1.4 + this.pullBack * 0.35;
+      const camH = this.pivot.y + 1.1 + close * 1.4 + (this.pullBack + this.wideNow) * 0.35;
       _lockPos.set(this.pivot.x - _f.x * this.lockDist, camH, this.pivot.z - _f.z * this.lockDist);
       this.collide(world, _t.set(this.pivot.x, camH, this.pivot.z), _lockPos);
 
@@ -169,7 +173,7 @@ export class CameraRig {
       }
       const span = top - feet;
       const needFov = span / (1 - TOP_MARGIN - BOTTOM_MARGIN);
-      const fov = clamp(needFov / DEG, FOV_MIN, FOV_MAX) * DEG;
+      const fov = clamp(needFov / DEG, FOV_MIN, FOV_MAX + Math.min(8, this.wideNow)) * DEG;
       const lo = top - fov * (0.5 - TOP_MARGIN);
       const hi = feet + fov * (0.5 - BOTTOM_MARGIN);
       // when both cannot fit, the ground around the warrior wins and the camera pulls back

@@ -136,6 +136,23 @@ export class ThreatView {
     side: THREE.DoubleSide,
   });
   private time = 0;
+  private readonly haloMat = new THREE.SpriteMaterial({
+    map: (() => {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = 64;
+      const g = cv.getContext('2d')!;
+      const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grd.addColorStop(0, 'rgba(255,190,120,0.9)');
+      grd.addColorStop(0.35, 'rgba(255,110,40,0.35)');
+      grd.addColorStop(1, 'rgba(255,80,20,0)');
+      g.fillStyle = grd;
+      g.fillRect(0, 0, 64, 64);
+      return new THREE.CanvasTexture(cv);
+    })(),
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
 
   constructor() {
     this.discGeo.rotateX(-Math.PI / 2);
@@ -156,7 +173,7 @@ export class ThreatView {
         this.group.remove(v);
         v.traverse((o) => {
           const m = (o as THREE.Mesh).material as THREE.Material | undefined;
-          if (m && m !== this.rockMat && m !== this.trailMat) m.dispose();
+          if (m && m !== this.rockMat && m !== this.trailMat && m !== this.haloMat) m.dispose();
         });
         map.delete(k);
       }
@@ -277,7 +294,9 @@ export class ThreatView {
       m.scale.setScalar(r.size);
       m.castShadow = true;
       const trail = new THREE.Mesh(this.trailGeo, this.trailMat);
-      g.add(m, trail);
+      const halo = new THREE.Sprite(this.haloMat);
+      halo.scale.setScalar(r.size * 4.2);
+      g.add(m, trail, halo);
       return g;
     });
     const up = new THREE.Vector3(0, 1, 0);

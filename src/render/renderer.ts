@@ -16,8 +16,11 @@ const SanitizeShader = {
     varying vec2 vUv;
     void main() {
       vec4 c = texture2D(tDiffuse, vUv);
-      if (any(isnan(c)) || any(isinf(c))) c = vec4(0.0, 0.0, 0.0, 1.0);
-      gl_FragColor = min(c, vec4(48.0));
+      // Comparisons are false for NaN, so this catches NaN and Inf where the compiler honours them;
+      // on D3D, max() returns the non-NaN operand, which covers compilers that fold the test away.
+      bool ok = c.r <= 1e30 && c.r >= -1e30 && c.g <= 1e30 && c.g >= -1e30 && c.b <= 1e30 && c.b >= -1e30;
+      c = min(max(c, vec4(0.0)), vec4(48.0));
+      gl_FragColor = ok ? vec4(c.rgb, 1.0) : vec4(0.0, 0.0, 0.0, 1.0);
     }`,
 };
 

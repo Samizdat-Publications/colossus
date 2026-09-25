@@ -81,11 +81,10 @@ export class Golem {
     this.anim = new Animator(rig);
     this.poses = buildGolemPoses(rig);
     for (const c of GOLEM_RIG.cores) {
-      if (c.kind === 'chest') continue;
       const bone = rig.i(c.bone);
       this.targets.push({
         name: c.name,
-        kind: c.kind as 'arm' | 'back',
+        kind: c.kind as 'arm' | 'back' | 'chest',
         pos: new THREE.Vector3(),
         radius: c.radius,
         open: c.kind === 'arm',
@@ -224,7 +223,7 @@ export class Golem {
       let mult = G.coreDamageMultiplier;
       let crit = false;
       if (core.kind === 'arm') mult *= G.armCoreDamageMultiplier;
-      if (core.kind === 'back') {
+      if (core.kind === 'back' || core.kind === 'chest') {
         if (!this.staggered) return 'deflect';
         mult *= G.stagger.backCoreMultiplier;
         crit = true;
@@ -351,6 +350,14 @@ export class Golem {
       { name: 'slump', dur: 1.6, pose: P.dormant, ease: 'inOutSine' },
       { name: 'still', dur: 1000, pose: P.dormant },
     ]);
+  }
+
+  /** How much wider the camera should frame right now (leap, stagger). */
+  get wantsWide(): number {
+    if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 9;
+    if (this.state === 'stagger') return 3;
+    if (this.state === 'dead') return 6;
+    return 0;
   }
 
   /** Set when a rise push starts so the director can draw its warning ring. */
@@ -513,6 +520,7 @@ export class Golem {
     for (const t of this.targets) {
       rig.attachedPoint(t.bone, t.rest, t.pos);
       if (t.kind === 'back') t.open = this.state === 'stagger' && this.stateTime > this.G.stagger.collapse * 0.6;
+      else if (t.kind === 'chest') t.open = this.phase >= 3 && this.state === 'stagger' && this.stateTime > this.G.stagger.collapse * 0.6;
       else t.open = this.state !== 'dormant' && this.state !== 'assemble' && this.state !== 'dead';
     }
     for (let i = 0; i < rig.count; i++) {
@@ -1240,7 +1248,7 @@ export class Golem {
         ease: 'outCubic',
         update: (t) => {
           this.pos.lerpVectors(start, land, ease.inOutSine(t));
-          this.pos.y = 4 * 9 * t * (1 - t);
+          this.pos.y = 4 * 6 * t * (1 - t);
         },
         exit: () => {
           this.pos.copy(land);

@@ -215,9 +215,12 @@ export class Tips {
   }
 
   private current = '';
+  /** While set (danger around the warrior) only critical tips show. */
+  quiet = false;
 
   show(id: string, text: string, maxTotal = 2, seconds = 4.5): void {
     if (!this.enabled) return;
+    if (this.quiet && !id.startsWith('stagger')) return;
     const n = this.shown.get(id) ?? 0;
     if (n >= maxTotal || this.perAttempt.has(id)) return;
     this.shown.set(id, n + 1);
