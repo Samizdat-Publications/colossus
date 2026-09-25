@@ -263,16 +263,20 @@ const HEAL: PoseDef = mergeDefs(IDLE, {
 });
 
 const HIT: PoseDef = mergeDefs(IDLE, {
-  $pos: [0, -0.06, -0.1],
-  hips: [-6, 0, 0],
-  spine: [-10, 0, 0],
-  chest: [-14, -6, 4],
-  neck: [-16, 8, 0],
-  head: [-12, 6, 0],
-  upperarm_L: [-30, 0, 36],
-  forearm_L: [-20, 0, 0],
-  upperarm_R: [-30, 0, -30],
-  forearm_R: [-30, 0, 0],
+  $pos: [0, -0.12, -0.16],
+  hips: [-8, 8, 0],
+  spine: [-16, 6, 0],
+  chest: [-22, -10, 6],
+  neck: [-18, 10, 0],
+  head: [-16, 8, 0],
+  upperarm_L: [-55, 0, 28],
+  forearm_L: [-70, 0, 0],
+  upperarm_R: [-40, 0, -26],
+  forearm_R: [-50, 0, 0],
+  thigh_L: [-20, 0, 6],
+  shin_L: [30, 0, 0],
+  thigh_R: [14, 0, -6],
+  shin_R: [18, 0, 0],
 });
 
 const DOWN: PoseDef = {
@@ -282,15 +286,15 @@ const DOWN: PoseDef = {
   chest: [-4, 0, 0],
   neck: [-8, 0, 0],
   head: [-10, 20, 0],
-  upperarm_L: [-10, 0, 50],
-  forearm_L: [-30, 0, 0],
-  upperarm_R: [-20, 0, -40],
-  forearm_R: [-40, 0, 0],
+  upperarm_L: [-60, 0, 30],
+  forearm_L: [-80, 0, 0],
+  upperarm_R: [-50, 0, -24],
+  forearm_R: [-70, 0, 0],
   hand_R: [40, 0, 0],
-  thigh_L: [-30, 0, 10],
-  shin_L: [40, 0, 0],
-  thigh_R: [-10, 0, -6],
-  shin_R: [20, 0, 0],
+  thigh_L: [-50, 0, 10],
+  shin_L: [70, 0, 0],
+  thigh_R: [-25, 0, -6],
+  shin_R: [45, 0, 0],
 };
 
 const GETUP: PoseDef = mergeDefs(IDLE, {

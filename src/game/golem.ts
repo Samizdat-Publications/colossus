@@ -525,8 +525,10 @@ export class Golem {
     const k = this.flinchAmt * Math.exp(-this.flinchT * 9) * Math.sin(Math.min(Math.PI, this.flinchT * 30));
     if (Math.abs(k) > 1e-3) {
       if (this.flinchSide) {
-        rig.bones[rig.i(`forearm_${this.flinchSide}`)].rotateX(-0.12 * k);
-        rig.bones[rig.i(`hand_${this.flinchSide}`)].rotateX(-0.18 * k);
+        rig.bones[rig.i(`forearm_${this.flinchSide}`)].rotateX(-0.2 * k);
+        rig.bones[rig.i(`hand_${this.flinchSide}`)].rotateX(-0.28 * k);
+        rig.bones[rig.i(`upperarm_${this.flinchSide}`)].rotateZ((this.flinchSide === 'L' ? 0.06 : -0.06) * k);
+        rig.bones[rig.i('chest')].rotateZ((this.flinchSide === 'L' ? -0.025 : 0.025) * k);
       } else {
         rig.bones[rig.i('spine')].rotateX(-0.05 * k);
         rig.bones[rig.i('chest')].rotateZ(0.04 * k);

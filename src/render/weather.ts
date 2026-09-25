@@ -233,11 +233,11 @@ export class Weather {
     let z = Math.cos(a) * r;
     let y = 120;
     const pts: THREE.Vector3[] = [new THREE.Vector3(x, y, z)];
-    while (y > 32) {
+    while (y > 8) {
       y -= 6 + Math.random() * 10;
       x += (Math.random() - 0.5) * 14;
       z += (Math.random() - 0.5) * 14;
-      pts.push(new THREE.Vector3(x, Math.max(30, y), z));
+      pts.push(new THREE.Vector3(x, Math.max(6, y), z));
     }
     // a ribbon facing the camera, with two or three thinner forks splitting off the main channel
     const pos: number[] = [];

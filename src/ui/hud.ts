@@ -205,7 +205,7 @@ export class Hud {
       const f = this.pending[i];
       f.t += dt;
       const p = f.pos.clone();
-      p.y += 1.4 + f.t * 1.2; // float above the glow so the number stays readable
+      p.y += (f.cls === 'deflect' ? 0.5 : 1.4) + f.t * 1.2; // numbers float above the glow; DEFLECTED stays by the blade
       p.project(this.camera);
       if (f.t > 1.1 || p.z > 1) {
         f.el.remove();

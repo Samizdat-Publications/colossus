@@ -138,9 +138,11 @@ export class Fx {
     const on = bus.on.bind(bus);
     const u = this.unsub;
     u.push(on('slamImpact', (e) => {
-      this.dustRing(e.pos, e.radius * 0.8, e.big ? 60 : 42, 9, 1.6, 2.0);
-      this.chunks(e.pos, e.big ? 16 : 10, e.radius, 9, 0.45);
-      this.splash(e.pos, 24, 6);
+      // a low, fast dust wave rolling out, a slower cloud, chunks thrown high and a water splash
+      this.dustRing(e.pos, e.radius * 0.5, e.big ? 44 : 30, 16, 1.2, 1.1, true);
+      this.dustRing(e.pos, e.radius * 0.8, e.big ? 60 : 42, 7, 1.8, 2.2);
+      this.chunks(e.pos, e.big ? 26 : 18, e.radius, 11, 0.5);
+      this.splash(e.pos, 32, 7);
     }));
     u.push(on('stompImpact', (e) => {
       this.dustRing(e.pos, e.radius * 0.6, 36, 8, 1.4);
@@ -170,9 +172,20 @@ export class Fx {
       this.chunks(e.pos, 2, 1, 4, 0.18);
     }));
     u.push(on('deflect', (e) => {
-      this.sparks(e.pos, e.normal, e.heavy ? 22 : 14, SPARK, 8, 0.45);
-      this.flash(e.pos, SPARK, 0.7, 0.09);
-      this.dustRing(e.pos, 0.2, 3, 1, 0.4, 0.8);
+      // blade on stone: a fan of hot sparks, white steel sparks, stone chips and a puff of grit
+      this.sparks(e.pos, e.normal, e.heavy ? 34 : 22, SPARK, 10, 0.5, 0.11);
+      this.sparks(e.pos, e.normal, 10, STEEL_SPARK, 7, 0.3, 0.07);
+      this.flash(e.pos, SPARK, e.heavy ? 1.3 : 0.95, 0.1);
+      if (this.debris) {
+        for (let i = 0; i < (e.heavy ? 7 : 4); i++) {
+          _v.set(e.normal.x * rnd(2, 5) + rnd(-2, 2), rnd(2, 5), e.normal.z * rnd(2, 5) + rnd(-2, 2));
+          this.debris.emit(e.pos, _v, rnd(0.07, 0.16), rnd(1.2, 2));
+        }
+      }
+      for (let i = 0; i < 6; i++) {
+        _v.set(e.normal.x * rnd(0.5, 1.5) + rnd(-0.6, 0.6), rnd(0.2, 1), e.normal.z * rnd(0.5, 1.5) + rnd(-0.6, 0.6));
+        this.dust.emit({ pos: e.pos, vel: _v, life: rnd(0.5, 0.9), size: rnd(0.35, 0.6), grow: 2.4, color: DUST, alpha: 0.28, drag: 2.4, gravity: -0.1 });
+      }
     }));
     u.push(on('playerBlock', (e) => this.sparks(e.pos, null, 12, STEEL_SPARK, 6, 0.35)));
     u.push(on('justGuard', (e) => {
@@ -180,10 +193,36 @@ export class Fx {
       this.flash(e.pos, GOLD, 1.2);
     }));
     u.push(on('playerHit', (e) => {
-      this.dustRing(e.pos, 0.6, 8, 2, 0.6, 1.0);
-      this.sparks(_p.copy(e.pos).setY(1.2), null, 6, STEEL_SPARK, 4, 0.3);
+      const heavy = e.damage >= 25 || e.knockdown;
+      _p.copy(e.pos).setY(1.15);
+      this.dustRing(e.pos, 0.8, heavy ? 16 : 10, heavy ? 4 : 2.5, 0.7, 1.1);
+      this.sparks(_p, null, heavy ? 22 : 12, STEEL_SPARK, 6, 0.35, 0.09);
+      this.flash(_p, STEEL_SPARK, heavy ? 1.4 : 0.9, 0.1);
+      // a rock or a fist: stone shatters on the warrior
+      if (this.debris && e.source !== 'hazard' && e.source !== 'push') {
+        for (let i = 0; i < (heavy ? 8 : 4); i++) {
+          const a = Math.random() * Math.PI * 2;
+          _v.set(Math.cos(a) * rnd(2, 5), rnd(2, 6), Math.sin(a) * rnd(2, 5));
+          this.debris.emit(_p, _v, rnd(0.1, 0.22), rnd(1.4, 2.4));
+        }
+      }
+    }));
+    u.push(on('hazardBurn', (e) => {
+      // burning: embers and a lick of flame around the warrior's legs
+      this.embers(e.pos, 3, 0.35, 1.6);
+      this.flameLick(e.pos, 0.35);
     }));
     u.push(on('roll', (e) => this.splash(e.pos, 8, 3)));
+    u.push(on('heavyCharge', (e) => {
+      // motes drawn in toward the blade while a heavy attack charges; more as the charge fills
+      for (let i = 0; i < 2 + Math.round(e.charge * 4); i++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = rnd(0.6, 1.3);
+        _p.set(e.pos.x + Math.cos(a) * r, e.pos.y + rnd(-0.4, 0.5), e.pos.z + Math.sin(a) * r);
+        _v.set(e.pos.x - _p.x, e.pos.y - _p.y, e.pos.z - _p.z).multiplyScalar(2.6);
+        this.glow.emit({ pos: _p, vel: _v, life: 0.38, size: rnd(0.1, 0.18), grow: 0.4, color: e.full ? GOLD : SPARK, alpha: 1, drag: 0.5 });
+      }
+    }));
     u.push(on('footstep', (e) => this.splash(e.pos, e.run ? 3 : 2, 1.8)));
     u.push(on('land', (e) => this.splash(e.pos, e.hard ? 14 : 8, 3)));
     u.push(on('assembleChunk', (e) => {

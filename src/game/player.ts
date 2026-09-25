@@ -105,6 +105,8 @@ export class Player {
   private blockWeight = 0;
   private hitFlash = 0;
   lastHitSource = '';
+  /** seconds left of a small flinch from standing in fire */
+  private burnJolt = 0;
   private aimW = 0;
   lastOutcome: HitOutcome | '' = '';
   readonly stats = { damageTaken: 0, hits: 0, flasksUsed: 0, rolls: 0, swings: 0, coreHits: 0, bodyHits: 0, deflects: 0, whiffs: 0 };
@@ -501,8 +503,9 @@ export class Player {
       this.knockVel.copy(away).multiplyScalar(h.knockback ?? 4);
       this.setState('hit');
       this.anim.play([
-        { name: 'flinch', dur: 0.12, pose: this.poses.hit, ease: 'outQuad' },
-        { name: 'recover', dur: Math.max(0.05, B.hitStun - 0.12), pose: this.poses.idle, ease: 'inOutSine' },
+        { name: 'flinch', dur: 0.07, pose: this.poses.hit, ease: 'outQuad' },
+        { name: 'hold', dur: 0.1, pose: this.poses.hit },
+        { name: 'recover', dur: Math.max(0.05, B.hitStun - 0.17), pose: this.poses.idle, ease: 'inOutSine' },
       ]);
     }
     return 'hit';
@@ -512,6 +515,7 @@ export class Player {
   burn(amount: number): boolean {
     if (!this.alive || this.invulnerable || this.airborne) return false;
     this.applyDamage(amount);
+    if (this.burnJolt <= 0) this.burnJolt = 0.3;
     this.lastHitSource = 'hazard';
     if (this.hp <= 0) this.die();
     return true;
@@ -826,6 +830,14 @@ export class Player {
     });
     // a core above the chest: lean back and lift the sword arm so the blade meets it (a flat slash under a
     // raised fist looked like a miss that counted anyway)
+    // standing in fire: a sharp little flinch, repeated while it burns
+    if (this.burnJolt > 0) {
+      this.burnJolt -= dt;
+      const k = Math.sin(Math.max(0, this.burnJolt) / 0.3 * Math.PI);
+      this.rig.bone('chest').rotation.x += 0.22 * k;
+      this.rig.bone('head').rotation.x += 0.2 * k;
+      this.rig.bone('upperarm_L').rotation.z += 0.3 * k;
+    }
     const tgt = this.atk?.target;
     const aimWant = tgt ? Math.min(1, Math.max(0, (tgt.pos.y - (this.y + 1.3)) / 1.8)) : 0;
     this.aimW += (aimWant - this.aimW) * Math.min(1, dt * 12);
@@ -872,8 +884,10 @@ export class Player {
     }
     yawToDir(this.yaw, _fwd);
     if (best) {
-      _p.subVectors(this.pos, best.pos);
-      _p.y = this.y + 1.2 - best.pos.y;
+      // the burst sits on the side of the core facing the sword hand, where the blade meets it
+      this.rig.worldPos(this.rig.i('hand_R'), _p);
+      _p.sub(best.pos);
+      if (_p.lengthSq() < 1e-6) _p.set(this.pos.x - best.pos.x, this.y + 1.2 - best.pos.y, this.pos.z - best.pos.z);
       _p.normalize();
       const hitPos = best.pos.clone().addScaledVector(_p, best.radius * 0.8);
       const hit: SwordHit = {

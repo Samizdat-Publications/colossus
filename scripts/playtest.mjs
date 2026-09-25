@@ -581,7 +581,8 @@ try {
       window.__game.hud.showControls = false;
     });
     await idle();
-    // deflect: a light attack on the stone shin, from 1 m away, facing it
+    await key('KeyQ');
+    // deflect: a light attack on the stone shin, from 1 m away, facing it (locked on, as a player would be)
     await page.evaluate(() => {
       const game = window.__game;
       const g = game.golem;
@@ -593,7 +594,6 @@ try {
       const l = Math.hypot(dx, dz) || 1;
       dx /= l;
       dz /= l;
-      game.player.locked = false;
       game.player.pos.set(mx + dx * (shin.r + 1.0), 0, mz + dz * (shin.r + 1.0));
       game.player.yaw = Math.atan2(-dx, -dz);
     });
@@ -603,7 +603,6 @@ try {
     await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'deflect'), 1500, sinceD).catch(() => log('warn: no deflect'));
     await burst('deflect_on_stone', 2, 90);
     await sleep(700);
-    await key('KeyQ');
     // three-hit combo in the open
     await page.evaluate(() => window.__CO.teleportPlayer(0, 14));
     await sleep(700);

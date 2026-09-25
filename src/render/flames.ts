@@ -34,7 +34,7 @@ void main() {
   // teardrop: wide at the bottom, tapering, bent by the noise and the wind
   float x = (uv.x - 0.5 - (n - 0.5) * 0.35 * uv.y - 0.08 * uv.y) * 2.0;
   float width = (1.0 - uv.y) * (0.55 + 0.45 * n);
-  float shape = smoothstep(width, width * 0.35, abs(x)) * smoothstep(0.0, 0.08, uv.y) * smoothstep(1.0, 0.45, uv.y + n * 0.25);
+  float shape = smoothstep(width, width * 0.05, abs(x)) * smoothstep(0.0, 0.12, uv.y) * smoothstep(1.0, 0.35, uv.y + n * 0.3);
   vec3 hot = vec3(1.0, 0.92, 0.65);
   vec3 mid = vec3(1.0, 0.5, 0.12);
   vec3 cold = vec3(0.7, 0.14, 0.03);

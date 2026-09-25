@@ -320,8 +320,9 @@ export class Game {
       this.tips.show('break', 'Core hits fill <b class="core">BREAK</b>. Fill it and the Ruin falls to its knees.', 2, 4.5);
     });
     bus.on('deflect', () => {
-      this.hitstop = Math.max(this.hitstop, 0.05);
-      this.cam.shake(0.1);
+      this.hitstop = Math.max(this.hitstop, 0.07);
+      this.cam.shake(0.16);
+      this.cam.kick(0.25);
       this.tips.show('deflect', 'Stone <b>deflects</b> your blade. Strike the <b class="core">glowing cores</b> on its arms.', 3, 5);
     });
     bus.on('playerHit', (e) => {
@@ -346,9 +347,22 @@ export class Game {
       if (e.phase === 2) this.tips.show('phase2', 'The Ruin cracks open. It is faster now.', 1, 4);
       if (e.phase === 3) this.tips.show('phase3', 'Its heart burns in its chest: bring it to its <b>knees</b> before you strike it. Watch the sky.', 1, 5);
     });
-    bus.on('hazardBurn', () => this.tips.show('burn', 'The cracked floor <b>burns</b>. Step out of it.', 2, 3.5));
+    bus.on('hazardBurn', () => {
+      this.tips.show('burn', 'The cracked floor <b>burns</b>. Step out of it.', 2, 3.5);
+      // every tick of fire shows on the screen, not only in the health bar
+      if (this.ctx.time - this.lastBurnFlash > 0.35) {
+        this.lastBurnFlash = this.ctx.time;
+        this.hud.flash(0.45);
+        this.cam.shake(0.06);
+      }
+    });
     bus.on('shockwave', () => this.tips.showNow('wave', 'Shockwave: <b>roll</b> (Space) or <b>jump</b> (F) through the ring.', 2, 3));
-    bus.on('playerHit', (e) => this.hud.flash(e.knockdown ? 1 : 0.6));
+    bus.on('playerHit', (e) => {
+      this.hud.flash(e.knockdown ? 1 : 0.7);
+      this.cam.shake(e.knockdown || e.damage >= 25 ? 0.45 : 0.25);
+      this.cam.kick(0.5);
+      this.hitstop = Math.max(this.hitstop, e.knockdown ? 0.09 : 0.06);
+    });
     bus.on('playerDeath', () => this.hud.flash(1.4));
   }
 
@@ -788,6 +802,8 @@ export class Game {
   private readonly firePool = new FirePool(24);
   private readonly fireSpots: { x: number; z: number; size: number }[] = [];
   private swordMat: THREE.MeshStandardMaterial | null = null;
+  private chargeMoteT = 0;
+  private readonly swordMid = new THREE.Vector3();
   private chargeFlashed = false;
 
   /** Golem bones whose capsule cuts the camera's line of sight to the warrior's chest or feet. */
@@ -810,6 +826,7 @@ export class Game {
   }
 
   private deathSide = 0;
+  private lastBurnFlash = -9;
   private deathT = 0;
   private readonly deathDir = new THREE.Vector3(0, 0, 1);
   private readonly deathPosNow = new THREE.Vector3();
@@ -1048,8 +1065,8 @@ export class Game {
     this.weather.update(dt, this.ctx.time, cam, this.player.pos, g.phase >= 3 ? 1.7 : 1);
     const f = this.weather.flash;
     skyUniforms.uFlash.value = f;
-    this.moon.intensity = this.moonBase + f * 5;
-    this.hemi.intensity = this.hemiBase + f * 1.4;
+    this.moon.intensity = this.moonBase + f * 9;
+    this.hemi.intensity = this.hemiBase + f * 2.2;
     this.flames?.update(this.ctx.time);
     // embers from the golem's cracks: sample its body
     if (this.golemPoints.length !== g.capsules.length) {
@@ -1081,12 +1098,21 @@ export class Game {
       // a held heavy attack heats the blade; a full charge flashes once and burns bright into the strike
       if (this.swordMat) {
         const charging = !!a?.heavy && !a.chargeDone;
-        const heat = charging ? 0.3 + 2.2 * a.charge : a?.heavy && a.charged && striking ? 2.8 : 0;
+        const heat = charging ? 0.6 + 3.4 * a.charge : a?.heavy && a.charged && striking ? 3.6 : 0;
         const want = Math.max(0.22, heat);
         const k = this.swordMat.emissiveIntensity;
         this.swordMat.emissiveIntensity = k + (want - k) * Math.min(1, dt * (want > k ? 14 : 5));
         // cold steel glint at rest, heating to orange as a heavy attack charges
         this.swordMat.emissive.lerpColors(_swordCold, _swordHot, Math.min(1, heat / 1.2));
+        if (charging && this.trail) {
+          this.chargeMoteT -= dt;
+          if (this.chargeMoteT <= 0) {
+            this.chargeMoteT = 0.05;
+            this.swordMid.set(0, 0, 0.7);
+            this.trail.bladePoint(this.swordMid);
+            bus.emit('heavyCharge', { pos: this.swordMid, charge: a.charge, full: a.charge > 0.98 });
+          }
+        }
         if (a?.charged && !this.chargeFlashed) {
           this.chargeFlashed = true;
           this.player.rig.worldPos(this.player.rig.i('hand_R'), _v3);
