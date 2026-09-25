@@ -606,20 +606,20 @@ export class Game {
     const l = Math.hypot(dx, dz) || 1;
     dx /= l;
     dz /= l;
-    // swing 35 degrees off the player's line so the collapse reads in three quarters
-    const a = 0.6;
-    const rx = dx * Math.cos(a) - dz * Math.sin(a);
-    const rz = dx * Math.sin(a) + dz * Math.cos(a);
-    let px = g.x + rx * 30;
-    let pz = g.z + rz * 30;
+    // over the warrior's shoulder: the warrior in the foreground, the collapse beyond
+    // the closer the warrior stands to the falling giant, the further back the camera steps
+    const back = clamp(22 - l, 10, 16);
+    let px = p.x + dx * back - dz * 4;
+    let pz = p.z + dz * back + dx * 4;
     const d = Math.hypot(px, pz);
     if (d > 36) {
       px *= 36 / d;
       pz *= 36 / d;
     }
+    // high and wide: the collapsing arms stay below the lens
     c.pos.set(px, 8.5, pz);
-    c.look.set(g.x, 4.5, g.z);
-    c.fov = 50;
+    c.look.set(lerp(p.x, g.x, 0.72), 2.8, lerp(p.z, g.z, 0.72));
+    c.fov = 56;
   }
 
   /** Scripted camera for the first intro: circle the gathering rubble, look up as it rises, settle behind the player. */
@@ -652,6 +652,7 @@ export class Game {
   private crumbleT = -1;
   private prevGolemY = 0;
   private readonly airborneParts = new Set(['hips', 'spine', 'chest', 'neck', 'head', 'shoulder_L', 'shoulder_R']);
+  private readonly leapParts = new Set([...this.airborneParts, 'hand_L', 'hand_R']);
   private heroLight: THREE.PointLight | null = null;
   private heldRockMesh: THREE.Mesh | null = null;
 
@@ -739,12 +740,13 @@ export class Game {
     this.cam.rise = this.flow === 'fight' ? g.wantsRise : 0;
     // airborne golem, or arms thrown at the sky for the meteor rain: frame its torso and head, the raised
     // arms may leave the frame (keeping them in pushed the camera so far back the warrior was a speck)
-    this.cam.topParts = g.pos.y > 0.4 || g.attack?.name === 'meteor' || g.attack?.name === 'leap' ? this.airborneParts : null;
+    this.cam.topParts = g.attack?.name === 'leap' ? this.leapParts : g.pos.y > 0.4 || g.attack?.name === 'meteor' ? this.airborneParts : null;
     // the leap: frame the apex before it happens (the solve lagged a jump that takes 0.3 s to peak)
     const leaping = this.flow === 'fight' && g.attack?.name === 'leap' && (g.step === 'windup' || g.step === 'air');
     const rising = g.pos.y >= this.prevGolemY - 1e-4;
     this.cam.topBoost = !leaping ? 0 : g.step === 'windup' ? LEAP_APEX : rising ? Math.max(0, LEAP_APEX - g.pos.y) : 0;
-    this.cam.snappy = leaping ? 1 : 0;
+    const shoving = this.flow === 'fight' && g.attack?.name === 'meteor' && (g.step === 'windup' || g.step === 'rain');
+    this.cam.snappy = leaping ? 1 : shoving ? 0.6 : 0;
     this.cam.maxPull = leaping ? 7 : 4;
     this.prevGolemY = g.pos.y;
     if (g.pushTele) {
@@ -829,7 +831,7 @@ export class Game {
       let base = t.kind === 'back' ? (t.open ? 2.4 : 0) : !lit ? 0 : 1.1 + 0.25 * (g.phase - 1);
       if (t.kind === 'arm' && g.staggered) base *= 0.35; // the back core is the one to go for
       const marked = this.hud.markCore === t;
-      if (t.kind === 'arm' && !g.staggered) base *= marked ? 1.8 : t.pos.y < REACH ? 1.05 : 0.45; // STRIKE: bright; in reach: steady; out of reach: dim
+      if (t.kind === 'arm' && !g.staggered) base *= marked ? 1.8 : t.pos.y < REACH ? 1.05 : 0.8; // STRIKE: bright pulse; otherwise steady
       if (g.state === 'dead') base = Math.max(0.0, base * (1 - g.stateTime / 0.25));
       const low = marked || (t.kind !== 'arm' && t.open && g.state !== 'dead');
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;
@@ -837,6 +839,7 @@ export class Game {
       // sealed cores are plain stone knobs, not dim teal balls; arm cores ignite at the roar
       mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x80848c);
       mesh.visible = t.kind === 'back' ? t.open || t.flash > 0.05 : lit && !g.staggered;
+      if (g.state === 'dead' && g.stateTime > 0.3) mesh.visible = false; // spent cores crumble with the body
       const light = this.coreLights.get(t.name);
       if (light) light.intensity = mesh.visible ? (base * pulse * 0.6 + t.flash * 1.5) * 6 : 0;
     }

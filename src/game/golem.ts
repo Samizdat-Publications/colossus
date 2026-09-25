@@ -375,6 +375,8 @@ export class Golem {
     if (this.state === 'dead') return 3;
     // the phase-change roar is a show: step back and take in the whole pose
     if (this.state === 'transition') return 3.5;
+    // the meteor rain: golem, sky and the rings around the warrior all at once
+    if (this.attack?.name === 'meteor') return 3.5;
     return 0;
   }
 

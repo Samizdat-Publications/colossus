@@ -85,7 +85,7 @@ def build_floor(rng):
                 parts = [(a0, a1, sunk)]
             for b0, b1, dy in parts:
                 bm = C.hull_bm(slab_points(r0, r1, b0, b1, dy, -0.28, rng))
-                C.bevel_bm(bm, 0.035, segments=1)
+                C.bevel_bm(bm, 0.035, segments=1, top_only=True)
                 cen = polar((r0 + r1) / 2, (b0 + b1) / 2)
                 C.box_uv(bm, 4.0, offset=(rng.random() + cen.x * 0.0, rng.random()), rot=rng.uniform(0, TAU))
                 v = rng.uniform(0.72, 1.05)
@@ -252,14 +252,13 @@ def build_arcade(rng):
                 h = rng.uniform(0.55, 0.7)
                 x = -chord / 2 - 0.2
                 while x < chord / 2 + 0.2:
-                    w = rng.uniform(1.1, 1.8)
+                    w = rng.uniform(1.6, 2.6)
                     cx = x + w / 2
                     # skip blocks inside the arch opening
                     inside = abs(cx) < radius + 0.6 and yy + h / 2 < impost + 0.9 + math.sqrt(max(0.0, (radius + 0.6) ** 2 - cx * cx))
                     if not inside and (not bay_ruined or rng.random() < 0.6):
                         bm = C.hull_bm(C.block_points(rng, (w - 0.03, h - 0.03, depth * 0.9), chips=rng.randint(0, 2),
                                                       chip=(0.03, 0.1)))
-                        C.bevel_bm(bm, 0.025, segments=1)
                         C.transform_bm(bm, None, (cx, yy + h / 2, depth * 0.45))
                         for v in bm.verts:
                             v.co = arch_world(v.co)
@@ -292,7 +291,7 @@ def build_tiers(rng):
         r0 = 43.0 + s * 1.9
         r1 = r0 + 1.9
         top = 2.2 + s * 1.45
-        n = 64
+        n = 48
         for i in range(n):
             a0 = i / n * TAU
             a1 = (i + 1) / n * TAU
@@ -302,7 +301,7 @@ def build_tiers(rng):
             if gap or collapse:
                 continue
             bm = C.hull_bm(slab_points(r0, r1, a0 + 0.004, a1 - 0.004, top, top - 1.5, rng, jitter=0.05))
-            C.bevel_bm(bm, 0.05, segments=1)
+            C.bevel_bm(bm, 0.05, segments=1, top_only=True)
             C.box_uv(bm, 4.0, offset=(rng.random(), rng.random()))
             k = rng.uniform(0.55, 0.75)
             C.paint_bm(bm, lambda p, n, k=k: (k, k, k * 0.97))

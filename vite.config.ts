@@ -23,9 +23,32 @@ function balanceDefaults(): Plugin {
   };
 }
 
+/**
+ * The GLB assets are Draco-compressed. The decoder ships inside the three package; this plugin serves it
+ * at /draco/ in dev and copies it into the build, so nothing is fetched from outside.
+ */
+function dracoDecoder(): Plugin {
+  const dir = path.resolve(import.meta.dirname, 'node_modules/three/examples/jsm/libs/draco/gltf');
+  const files = ['draco_decoder.js', 'draco_decoder.wasm', 'draco_wasm_wrapper.js'];
+  return {
+    name: 'draco-decoder',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const m = req.url?.match(/\/draco\/([\w.]+)$/);
+        if (!m || !files.includes(m[1])) return next();
+        res.setHeader('Content-Type', m[1].endsWith('.wasm') ? 'application/wasm' : 'text/javascript');
+        res.end(fs.readFileSync(path.join(dir, m[1])));
+      });
+    },
+    generateBundle() {
+      for (const f of files) this.emitFile({ type: 'asset', fileName: `draco/${f}`, source: fs.readFileSync(path.join(dir, f)) });
+    },
+  };
+}
+
 // Ports are pinned so the self-test never talks to a sibling game's dev server.
 export default defineConfig({
-  plugins: [balanceDefaults()],
+  plugins: [balanceDefaults(), dracoDecoder()],
   server: { host: '127.0.0.1', port: 5419, strictPort: false },
   preview: { host: '127.0.0.1', port: 4419, strictPort: false },
   build: {

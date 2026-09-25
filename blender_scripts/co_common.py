@@ -212,10 +212,15 @@ def block_points(rng, size, chips=2, chip=(0.1, 0.3), skew=0.0):
     return pts
 
 
-def bevel_bm(bm, offset, segments=1, profile=0.5):
+def bevel_bm(bm, offset, segments=1, profile=0.5, top_only=False):
+    """Chamfer the edges. top_only: only the edges of up-facing faces (slabs whose sides are hidden)."""
     if offset <= 0:
         return
-    bmesh.ops.bevel(bm, geom=bm.edges[:], offset=offset, offset_type='OFFSET', segments=segments,
+    edges = bm.edges[:]
+    if top_only:
+        bm.normal_update()
+        edges = list({e for f in bm.faces if f.normal.y > 0.8 for e in f.edges})
+    bmesh.ops.bevel(bm, geom=edges, offset=offset, offset_type='OFFSET', segments=segments,
                     profile=profile, affect='EDGES', clamp_overlap=True)
 
 
@@ -577,7 +582,7 @@ def material(name, color=(0.5, 0.5, 0.5), rough=0.8, metal=0.0, emission=None, s
 
 # ------------------------------------------------------------------ export, previews, reports
 
-def export_glb(path, objects):
+def export_glb(path, objects, draco=True):
     bpy.ops.object.select_all(action='DESELECT')
     for ob in objects:
         ob.select_set(True)
@@ -601,6 +606,13 @@ def export_glb(path, objects):
         export_cameras=False,
         export_lights=False,
         export_extras=True,
+        export_draco_mesh_compression_enable=draco,
+        export_draco_mesh_compression_level=7,
+        export_draco_position_quantization=14,
+        export_draco_normal_quantization=10,
+        export_draco_texcoord_quantization=12,
+        export_draco_color_quantization=8,
+        export_draco_generic_quantization=12,
     )
     size = os.path.getsize(path)
     log(f'exported {os.path.relpath(path, ROOT)} ({size / 1024:.0f} KB, {len(objects)} objects)')

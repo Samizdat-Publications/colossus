@@ -55,7 +55,7 @@ void main() {
   // lightning lights the cloud deck
   col += vec3(0.55, 0.62, 0.8) * uFlash * (0.35 + cloud * 0.9) * smoothstep(-0.1, 0.3, d.y);
   // lava reflected on the low clouds in phase 3
-  col += vec3(0.45, 0.12, 0.03) * uLava * (1.0 - smoothstep(0.0, 0.45, d.y)) * (0.4 + cloud);
+  col += vec3(0.32, 0.15, 0.04) * uLava * (1.0 - smoothstep(0.0, 0.45, d.y)) * (0.4 + cloud);
   gl_FragColor = vec4(col, 1.0);
 }`;
 
