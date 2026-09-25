@@ -342,7 +342,7 @@ export class ThreatView {
       }),
     );
     this.lavaPool.renderOrder = 1;
-    this.lavaPool.scale.setScalar(17);
+    this.lavaPool.scale.setScalar(24);
     this.lavaPool.position.y = 0.04;
     this.lavaPool.visible = false;
     this.group.add(this.lavaPool);
@@ -511,7 +511,7 @@ export class ThreatView {
     });
     const up = new THREE.Vector3(0, 1, 0);
     for (const [r, g] of this.rockMeshes) {
-      const visible = r.t >= (r.meteor ? -0.9 : 0);
+      const visible = r.t >= (r.meteor ? -1.8 : 0);
       g.visible = visible;
       if (!visible) continue;
       const rock = g.children[0];
@@ -519,7 +519,7 @@ export class ThreatView {
       if (r.t < 0) {
         // meteor hanging in the clouds, glowing, drifting down to its launch point
         g.position.copy(r.pos);
-        g.position.y += -r.t * 6;
+        g.position.y += -r.t * 3.5;
       } else g.position.copy(r.pos);
       rock.rotation.set(r.spin.x * r.t, r.spin.y * r.t, r.spin.z * r.t);
       const v = r.t < 0 ? new THREE.Vector3(0, -1, 0) : r.vel.clone();

@@ -83,7 +83,7 @@ export class Weather {
   private readonly rainMat: THREE.ShaderMaterial;
   private readonly splashMat: THREE.ShaderMaterial;
   private readonly bolt: THREE.Mesh;
-  private readonly boltMat: THREE.MeshBasicMaterial;
+  private readonly boltMat: THREE.ShaderMaterial;
   private nextStrike = 3 + Math.random() * 4;
   private strikeT = -1;
   private strikeStrength = 1;
@@ -154,7 +154,27 @@ export class Weather {
     this.group.add(splashes);
 
     // lightning bolt (rebuilt for every strike)
-    this.boltMat = new THREE.MeshBasicMaterial({ color: 0xdfe8ff, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+    this.boltMat = new THREE.ShaderMaterial({
+      vertexShader: /* glsl */ `
+        attribute float aAcross;
+        varying float vAcross;
+        void main() { vAcross = aAcross; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+      fragmentShader: /* glsl */ `
+        uniform float opacity;
+        varying float vAcross;
+        void main() {
+          float d = abs(vAcross - 0.5) * 2.0;
+          float core = exp(-d * d * 30.0);
+          float glow = exp(-d * d * 3.5) * 0.45;
+          vec3 col = vec3(0.82, 0.88, 1.0) * (core * 3.2 + glow);
+          gl_FragColor = vec4(col * opacity, 1.0);
+        }`,
+      uniforms: { opacity: { value: 0 } },
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+    });
     this.bolt = new THREE.Mesh(new THREE.BufferGeometry(), this.boltMat);
     this.bolt.frustumCulled = false;
     this.group.add(this.bolt);
@@ -193,11 +213,11 @@ export class Weather {
       const t = this.strikeT;
       const pulse = (t0: number, k: number) => (t >= t0 ? Math.exp(-(t - t0) * k) : 0);
       this.flash = Math.min(1.2, pulse(0, 9) + 0.7 * pulse(0.09, 12) + 0.9 * pulse(0.24, 7));
-      this.boltMat.opacity = Math.min(1, this.flash * 1.4);
+      this.boltMat.uniforms.opacity.value = Math.min(1, this.flash * 1.4);
       if (t > 1.2) {
         this.strikeT = -1;
         this.flash = 0;
-        this.boltMat.opacity = 0;
+        this.boltMat.uniforms.opacity.value = 0;
       }
     }
     u.uFlash.value = this.flash;
@@ -221,6 +241,7 @@ export class Weather {
     }
     // a ribbon facing the camera, with two or three thinner forks splitting off the main channel
     const pos: number[] = [];
+    const across: number[] = [];
     const ribbon = (line: THREE.Vector3[], w: number) => {
       for (let i = 0; i < line.length - 1; i++) {
         const p0 = line[i];
@@ -232,9 +253,10 @@ export class Weather {
         const b1 = p1.clone().sub(side);
         pos.push(a0.x, a0.y, a0.z, b0.x, b0.y, b0.z, a1.x, a1.y, a1.z);
         pos.push(b0.x, b0.y, b0.z, b1.x, b1.y, b1.z, a1.x, a1.y, a1.z);
+        across.push(0, 1, 0, 1, 1, 0);
       }
     };
-    ribbon(pts, 1.1);
+    ribbon(pts, 2.6);
     const forks = 2 + Math.floor(Math.random() * 2);
     for (let k = 0; k < forks; k++) {
       const from = pts[1 + Math.floor(Math.random() * Math.max(1, pts.length - 3))];
@@ -247,10 +269,11 @@ export class Weather {
         const last = fork[fork.length - 1];
         fork.push(new THREE.Vector3(last.x + dx * 0.35 + (Math.random() - 0.5) * 6, Math.max(30, fy), last.z + dz * 0.35 + (Math.random() - 0.5) * 6));
       }
-      ribbon(fork, 0.45);
+      ribbon(fork, 1.2);
     }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('aAcross', new THREE.Float32BufferAttribute(across, 1));
     this.bolt.geometry.dispose();
     this.bolt.geometry = g;
   }

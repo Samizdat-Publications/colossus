@@ -93,12 +93,6 @@ def build_list():
     add('chest', 'rock', (0.0, 10.9, -1.55), (1.4, 1.2, 0.9), mat='rock', name='g_chest_backmid')
     add('chest', 'rock', (0.85, 13.15, 0.35), (0.42, 0.34, 0.4), mat='rock', mirror=True, name='g_chest_rubble')
     add('chest', 'rock', (2.0, 11.4, -1.45), (0.5, 0.45, 0.4), mat='rock', mirror=True, name='g_chest_rubble2')
-    # a broken arch it carries on its back, rising over the shoulders: the ruin it was built from
-    for i, a in enumerate((22.0, 52.0, 90.0, 126.0)):
-        r = math.radians(a)
-        p = Vector((math.cos(r) * 3.3, 12.4 + math.sin(r) * 3.3, -1.95))
-        add('chest', 'block', p, (1.25 if i != 2 else 1.4, 1.15, 1.05), euler(0, 0, a - 90), chips=2, mirror=False,
-            name=f'g_chest_arch{i}')
     # chest plates: the breastplate that bursts off in phase 3
     add('chest', 'plate', (0.0, 11.05, 3.72), (2.4, 2.6, 0.65), euler(-10, 0, 0), name='chestplate_0', mirror=False)
     add('chest', 'plate', (1.4, 10.95, 3.3), (1.35, 2.4, 0.62), euler(-8, 28, 0), name='chestplate_1', mirror=False)

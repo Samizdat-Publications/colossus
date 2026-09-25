@@ -87,14 +87,18 @@ async function shot(label) {
     head.y += 1.85;
     const a = feet.project(c);
     const b = head.project(c);
+    const chest = feet.clone();
+    chest.y += 0.9;
+    chest.project(c);
     return {
+      warriorAt: [Math.round(((chest.x + 1) / 2) * innerWidth), Math.round(((1 - chest.y) / 2) * innerHeight)],
       warriorPx: Math.round(Math.abs(a.y - b.y) * 0.5 * innerHeight),
       camDist: +Math.hypot(c.position.x - p.x, c.position.z - p.z).toFixed(1),
       fov: +c.fov.toFixed(1),
     };
   });
   shots.push({ file, label, flow: s.flow, golem: s.golem.state, attack: s.golem.attack, step: s.golem.step, php: s.player.hp, ghp: s.golem.hpFrac, ...view });
-  log('shot', file, s.flow, s.golem.attack ?? '', s.golem.step, `warrior ${view.warriorPx}px cam ${view.camDist}m fov ${view.fov}`);
+  log('shot', file, s.flow, s.golem.attack ?? '', s.golem.step, `warrior ${view.warriorPx}px at ${view.warriorAt} cam ${view.camDist}m fov ${view.fov}`);
 }
 async function waitFor(fn, timeoutMs, arg) {
   await page.waitForFunction(fn, arg, { timeout: timeoutMs, polling: 100 });

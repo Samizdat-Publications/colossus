@@ -75,6 +75,13 @@ export function buildGolemModel(assets: Assets): GolemModel {
         }),
       );
       m.castShadow = false;
+      if (chest) {
+        // the molten heart's glow spills out of the burst chest
+        const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTexture(), color: 0xff8a30, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending }));
+        glow.name = 'core_halo';
+        glow.scale.setScalar(3.4);
+        m.add(glow);
+      }
       if (!chest) {
         m.scale.setScalar(1.65);
         // a soft cyan halo so an open core reads as "the glowing thing" even from across the arena

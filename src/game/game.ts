@@ -468,6 +468,8 @@ export class Game {
     this.tips.dismiss('lock');
     this.hitstop = Math.max(this.hitstop, 0.12);
     this.deathSide = 0;
+    this.deathT = 0;
+    this.deathBlocked = 0;
     this.setFlow('dying');
     this.slowmo = 0.55;
     this.slowmoTimer = 1.0;
@@ -635,6 +637,7 @@ export class Game {
       this.updateVisuals(dt);
     }
     this.hud.dying = this.flow === 'dying';
+    this.hud.bossDim = this.flow === 'fight' && this.ringUnderBossPanel();
     this.hud.update(rawDt, this.player, this.golem, this.cam.camera, window.innerWidth, window.innerHeight);
     this.renderer.render(rawDt);
     this.quality.update(rawDt, this.frameMs, !this.paused && (this.flow === 'fight' || this.flow === 'title'));
@@ -691,7 +694,7 @@ export class Game {
           this.introShot(t);
           cam.cineBlend = 1 - smoothstep(L - 1.4, L, t);
           cam.update(rawDt, 0, 0, this.player, this.golem, this.world);
-          if (t >= 8.2) {
+          if (t >= L - 0.25) {
             this.hud.bossVisible = true;
             this.hud.setVisible(true);
           }
@@ -718,7 +721,7 @@ export class Game {
           cam.cineBlend = damp(cam.cineBlend, 1, 2.2, rawDt);
         } else if (this.flow === 'dying') {
           this.phaseCineT = -1;
-          this.deathShot();
+          this.deathShot(rawDt);
           cam.cineBlend = damp(cam.cineBlend, 1, 3.5, rawDt);
         } else if (this.phaseCineT >= 0) {
           // phase change: hard cut in, hold through the roar, blend back to the warrior
@@ -751,7 +754,7 @@ export class Game {
       }
       case 'dead':
       case 'victory':
-        if (this.flow === 'dead') this.deathShot();
+        if (this.flow === 'dead') this.deathShot(rawDt);
         cam.update(rawDt, 0, 0, this.player, this.golem, this.world);
         break;
       default:
@@ -761,6 +764,19 @@ export class Game {
   }
 
   private readonly blockedPivots = new Set<THREE.Object3D>();
+
+  /** Does any warning ring reach into the boss panel's strip at the bottom of the screen? */
+  private ringUnderBossPanel(): boolean {
+    const cam = this.cam.camera;
+    for (const t of this.threats.telegraphs) {
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        _v3.set(t.pos.x + Math.sin(a) * t.radius, 0.05, t.pos.z + Math.cos(a) * t.radius).project(cam);
+        if (_v3.z < 1 && _v3.y < -0.78 && Math.abs(_v3.x) < 0.6) return true;
+      }
+    }
+    return false;
+  }
   private readonly firePool = new FirePool(24);
   private readonly fireSpots: { x: number; z: number; size: number }[] = [];
   private swordMat: THREE.MeshStandardMaterial | null = null;
@@ -770,6 +786,8 @@ export class Game {
   private findBlockers(cam: THREE.Vector3): Set<THREE.Object3D> {
     const out = this.blockedPivots;
     out.clear();
+    // in the death shots the whole fist and forearm clear out of the way (the killing slam lands by the body)
+    const wide = this.flow === 'dying' || this.flow === 'dead';
     const p = this.player;
     const caps = this.golem.capsules;
     const bones = this.golem.rig.bones;
@@ -777,13 +795,18 @@ export class Game {
       _v3.set(p.pos.x, p.y + h, p.pos.z);
       for (let i = 0; i < caps.length; i++) {
         const c = caps[i];
-        if (segSegDist(cam, _v3, c.a, c.b) < c.r * 0.85 + 0.3) out.add(bones[i]);
+        if (segSegDist(cam, _v3, c.a, c.b) < c.r * (wide ? 1.15 : 0.85) + (wide ? 0.6 : 0.3)) out.add(bones[i]);
       }
     }
     return out;
   }
 
   private deathSide = 0;
+  private deathT = 0;
+  private readonly deathDir = new THREE.Vector3(0, 0, 1);
+  private readonly deathPosNow = new THREE.Vector3();
+  private readonly deathLookNow = new THREE.Vector3();
+  private deathBlocked = 0;
   private pendingStrike = -1;
   private phase3Time = 0;
   private phaseCineT = -1;
@@ -837,50 +860,65 @@ export class Game {
   }
 
   /** After death: a low view over the fallen warrior, the Ruin looming behind, rising slowly. */
-  private deathShot(): void {
+  private deathShot(dt: number): void {
+    // one continuous clock and one viewpoint for the whole death (dying, then the FALLEN screen)
+    this.deathT += dt;
     const c = this.cam.cine;
     const p = this.player.pos;
     const g = this.golem.pos;
-    let dx = p.x - g.x;
-    let dz = p.z - g.z;
-    const l = Math.hypot(dx, dz) || 1;
-    dx /= l;
-    dz /= l;
-    const t = Math.min(1, this.flowTime / 5);
-    // behind the body and off to one side: the warrior in the foreground, the golem above them; pick the side
-    // with fewer golem limbs near the lens (chosen once per death)
-    if (this.flowTime < 0.05 || this.deathSide === 0) {
-      let best = 1;
-      let bestClear = -1;
-      for (const side of [1, -1]) {
-        const aa = 0.75 * side;
-        const cx = p.x + (dx * Math.cos(aa) - dz * Math.sin(aa)) * 6;
-        const cz = p.z + (dx * Math.sin(aa) + dz * Math.cos(aa)) * 6;
+    const t = Math.min(1, this.deathT / 5);
+    // a limb that swings into the view after the choice (the golem's attack runs on) forces a new choice
+    if (this.deathSide !== 0) {
+      _v3.set(p.x + this.deathDir.x * 6.5, 2.4, p.z + this.deathDir.z * 6.5);
+      _v2.set(p.x, 0.4, p.z);
+      let blocked = false;
+      for (const cap of this.golem.capsules) if (segSegDist(_v3, _v2, cap.a, cap.b) < cap.r * 0.9 + 0.25) blocked = true;
+      this.deathBlocked = blocked ? this.deathBlocked + dt : 0;
+      if (this.deathBlocked > 0.25) {
+        this.deathSide = 0;
+        this.deathBlocked = 0;
+      }
+    }
+    if (this.deathSide === 0) {
+      // of 16 directions around the body, take the one whose view of the body is clearest of golem limbs,
+      // preferring views with the golem behind the body
+      let tox = g.x - p.x;
+      let toz = g.z - p.z;
+      const tl = Math.hypot(tox, toz) || 1;
+      tox /= tl;
+      toz /= tl;
+      let best = -Infinity;
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2;
+        const ux = Math.sin(a);
+        const uz = Math.cos(a);
+        const cx = p.x + ux * 6.5;
+        const cz = p.z + uz * 6.5;
+        if (Math.hypot(cx, cz) > 28) continue;
+        _v3.set(cx, 2.4, cz);
+        _v2.set(p.x, 0.4, p.z);
         let clear = 99;
-        for (const cap of this.golem.capsules) {
-          const d = segSegDist(_v3.set(cx, 2, cz), _v2.set(p.x, 0.8, p.z), cap.a, cap.b) - cap.r;
-          clear = Math.min(clear, d);
-        }
-        if (clear > bestClear) {
-          bestClear = clear;
-          best = side;
+        for (const cap of this.golem.capsules) clear = Math.min(clear, segSegDist(_v3, _v2, cap.a, cap.b) - cap.r);
+        const behind = -(ux * tox + uz * toz);
+        const score = Math.min(clear, 3) * 2 + behind * 1.5 - (clear < 0.4 ? 20 : 0);
+        if (score > best) {
+          best = score;
+          this.deathDir.set(ux, 0, uz);
         }
       }
-      this.deathSide = best;
+      // seen from there, which side of the body does the golem show on? (camera right = (dz, -dx))
+      this.deathSide = Math.sign((g.x - p.x) * this.deathDir.z - (g.z - p.z) * this.deathDir.x) || 1;
     }
-    const a = (0.7 + 0.15 * t) * this.deathSide;
-    const rx = dx * Math.cos(a) - dz * Math.sin(a);
-    const rz = dx * Math.sin(a) + dz * Math.cos(a);
-    const back = 5.2 + 2.2 * t;
-    let px = p.x + rx * back;
-    let pz = p.z + rz * back;
+    const back = 5.4 + 1.8 * t;
+    let px = p.x + this.deathDir.x * back;
+    let pz = p.z + this.deathDir.z * back;
     const d = Math.hypot(px, pz);
     // stay inside the pillar ring (31 m)
     if (d > 28) {
       px *= 28 / d;
       pz *= 28 / d;
     }
-    c.pos.set(px, 1.5 + 1.6 * t, pz);
+    c.pos.set(px, 1.6 + 1.4 * t, pz);
     // never inside the golem
     for (const cap of this.golem.capsules) {
       const ax = cap.b.x - cap.a.x;
@@ -896,9 +934,34 @@ export class Game {
       const min = cap.r + 1.2;
       if (dd < min) c.pos.set(c.pos.x + (qx / dd) * (min - dd), Math.max(1, c.pos.y + (qy / dd) * (min - dd)), c.pos.z + (qz / dd) * (min - dd));
     }
-    // look at the body, tilted up toward the golem so it looms in the top of the frame
-    c.look.set(lerp(p.x, g.x, 0.18), 1.6 + 0.4 * t, lerp(p.z, g.z, 0.18));
+    // aim so the body lies in an outer third of the frame (the FALLEN text, stats and buttons fill the
+    // middle): the view turns toward the side the golem shows on, so the golem stays in frame too
     c.fov = 60;
+    const bx = p.x - c.pos.x;
+    const by = 0.4 - c.pos.y;
+    const bz = p.z - c.pos.z;
+    const bh = Math.hypot(bx, bz) || 1;
+    const fx = bx / bh;
+    const fz = bz / bh;
+    const sx = -fz;
+    const sz = fx;
+    const tv = Math.tan((c.fov * Math.PI) / 360);
+    const turn = Math.atan(0.56 * tv * this.cam.camera.aspect) * this.deathSide;
+    const pitch = Math.atan2(by, bh) + Math.atan(0.3 * tv);
+    const lx = fx * Math.cos(turn) + sx * Math.sin(turn);
+    const lz = fz * Math.cos(turn) + sz * Math.sin(turn);
+    c.look.set(c.pos.x + lx * 10 * Math.cos(pitch), c.pos.y + 10 * Math.sin(pitch), c.pos.z + lz * 10 * Math.cos(pitch));
+    // glide to a new viewpoint instead of cutting (the first frame of a death snaps)
+    if (this.deathT <= dt + 1e-6) {
+      this.deathPosNow.copy(c.pos);
+      this.deathLookNow.copy(c.look);
+    } else {
+      const k = 1 - Math.exp(-2.8 * dt);
+      this.deathPosNow.lerp(c.pos, k);
+      this.deathLookNow.lerp(c.look, k);
+    }
+    c.pos.copy(this.deathPosNow);
+    c.look.copy(this.deathLookNow);
   }
 
   /** Pull back to watch the Ruin collapse (from the player's side, three-quarter view). */
@@ -1277,9 +1340,9 @@ export class Game {
     // the telegraph is the golem's body: extra room while a big blow is wound up or a rock is in the air
     const bigWindup = this.flow === 'fight' && !!g.attack && g.step === 'windup' && ['slam', 'doubleSlam', 'throw', 'volley'].includes(g.attack.name);
     const meteorCall = this.flow === 'fight' && g.attack?.name === 'meteor';
-    this.cam.maxPull = leaping ? 9 : meteorCall ? 6.5 : bigWindup || this.threats.rocks.length > 0 ? 4.5 : 3;
+    this.cam.maxPull = leaping ? 9 : meteorCall ? 5 : bigWindup || this.threats.rocks.length > 0 ? 4.5 : 3;
     // the leap and the meteor call keep clear sky above the golem (they were pinned against the top edge)
-    this.cam.topMargin = leaping || meteorCall ? 0.16 : 0.1;
+    this.cam.topMargin = leaping ? 0.16 : meteorCall ? 0.13 : 0.1;
     this.prevGolemY = g.pos.y;
     if (g.pushTele) {
       this.threats.telegraph(g.pushTele.pos, g.pushTele.radius, g.pushTele.dur, 'push');
@@ -1362,7 +1425,8 @@ export class Game {
     this.golemMerge?.use(merged);
     const fadeOn = (gameplayCam && this.cam.cineBlend < 0.5) || this.flow === 'dying' || this.flow === 'dead' || this.flow === 'victoryCine';
     // while the golem kneels the camera looks down past its limbs: fade anything within 5 m of the lens
-    const near = this.golem.staggered ? 5 : 2.2;
+    const deathCam = this.flow === 'dying' || this.flow === 'dead';
+    const near = deathCam ? 6 : this.golem.staggered ? 5 : 2.2;
     (merged && this.faderMerged ? this.faderMerged : this.fader).update(this.cam.camera.position, _v, dt, fadeOn, fadeOn ? this.findBlockers(this.cam.camera.position) : undefined, near);
     // teach the punish window the first few times it opens (never while a warning covers the warrior)
     const underThreat = this.threats.fissures.length > 0 || this.threats.telegraphs.some((t) => {
@@ -1440,8 +1504,11 @@ export class Game {
     }
     const cyan = this.coreLights.get('cyan');
     if (cyan) {
-      cyan.intensity = cyanWant;
-      if (cyanBest) cyanBest.getWorldPosition(cyan.position);
+      cyan.intensity = cyanWant * 0.7;
+      if (cyanBest) {
+        cyanBest.getWorldPosition(cyan.position);
+        cyan.position.y += 1.2;
+      }
     }
     const eyeMat = this.golemEyes[0]?.material as THREE.MeshStandardMaterial | undefined;
     const eyeOn = this.assets ? 2.1 : 2.0;
@@ -1466,6 +1533,12 @@ export class Game {
       mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 3.4) + 0.4 * Math.sin(this.ctx.time * 4.2)) + (ct?.flash ?? 0) * 5;
       chest.visible = on > 0;
       chest.scale.setScalar(ct?.open ? 1.5 : 1.3 + 0.05 * Math.sin(this.ctx.time * 4.2));
+      const heartHalo = chest.getObjectByName('core_halo') as THREE.Sprite | undefined;
+      if (heartHalo) {
+        const hm = heartHalo.material as THREE.SpriteMaterial;
+        hm.color.setHex(ct?.open ? 0x5ff0ff : 0xff8a30);
+        hm.opacity = on * (ct?.open ? 0.55 : 0.85 + 0.15 * Math.sin(this.ctx.time * 4.2));
+      }
       const l = this.coreLights.get('core_chest');
       if (l) {
         // the heart lights its own chest and the stone around it; the floor gets the molten pool below
@@ -1482,7 +1555,7 @@ export class Game {
         pool.position.x = g.pos.x + Math.sin(g.yaw) * 2;
         pool.position.z = g.pos.z + Math.cos(g.yaw) * 2;
         const pm = pool.material as THREE.ShaderMaterial;
-        pm.uniforms.uAlpha.value = 0.34 * on * this.heatShown;
+        pm.uniforms.uAlpha.value = 0.62 * on * this.heatShown;
         pm.uniforms.uTime.value = this.ctx.time;
       }
     }

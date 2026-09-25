@@ -17,7 +17,7 @@ export class SwordTrail {
   private readonly geo: THREE.BufferGeometry;
   private readonly mat: THREE.ShaderMaterial;
   private readonly local0 = new THREE.Vector3(0, 0, 0.15);
-  private readonly local1 = new THREE.Vector3(0, 0, 1.12);
+  private readonly local1 = new THREE.Vector3(0, 0, 1.26);
 
   constructor(private readonly sword: THREE.Object3D) {
     for (let i = 0; i < N; i++) {
@@ -35,17 +35,28 @@ export class SwordTrail {
     this.geo = new THREE.BufferGeometry();
     this.geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3).setUsage(THREE.DynamicDrawUsage));
     this.geo.setAttribute('aAlpha', new THREE.BufferAttribute(this.alpha, 1).setUsage(THREE.DynamicDrawUsage));
+    const edge = new Float32Array(N * 2);
+    for (let i = 0; i < N; i++) edge[i * 2 + 1] = 1; // 0 at the base vertex, 1 at the tip vertex
+    this.geo.setAttribute('aEdge', new THREE.BufferAttribute(edge, 1));
     this.geo.setIndex(index);
     this.geo.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
     this.mat = new THREE.ShaderMaterial({
       vertexShader: /* glsl */ `
         attribute float aAlpha;
+        attribute float aEdge;
         varying float vA;
-        void main() { vA = aAlpha; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        varying float vEdge;
+        void main() { vA = aAlpha; vEdge = aEdge; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
       fragmentShader: /* glsl */ `
         uniform vec3 uColor;
         varying float vA;
-        void main() { if (vA < 0.01) discard; gl_FragColor = vec4(uColor, vA); }`,
+        varying float vEdge;
+        void main() {
+          if (vA < 0.01) discard;
+          // faint near the hilt, brightest along the path of the blade's edge
+          float k = pow(vEdge, 1.6) * 0.75 + smoothstep(0.82, 1.0, vEdge) * 0.9;
+          gl_FragColor = vec4(uColor * (0.6 + 0.8 * smoothstep(0.85, 1.0, vEdge)), vA * k);
+        }`,
       uniforms: { uColor: { value: new THREE.Color(0xdde8ff) } },
       transparent: true,
       depthWrite: false,

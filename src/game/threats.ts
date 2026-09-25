@@ -181,7 +181,7 @@ export class Threats {
     const tele = this.telegraph(pos, radius, warn, 'meteor');
     // come in at a steep slant from beside the line of sight, so trails read as falling from the sky
     const side = from ? new THREE.Vector3(pos.z - from.z, 0, from.x - pos.x).normalize().multiplyScalar(rng.sign() * 14) : new THREE.Vector3(rng.range(-8, 8), 0, rng.range(-8, 8));
-    const start = pos.clone().add(side).add(new THREE.Vector3(0, 34, 0));
+    const start = pos.clone().add(side).add(new THREE.Vector3(0, 21, 0));
     const r: Rock = {
       pos: start,
       vel: new THREE.Vector3(),

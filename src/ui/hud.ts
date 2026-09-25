@@ -46,6 +46,8 @@ export class Hud {
   private readonly controlsPill: HTMLDivElement;
   /** the warrior is dying: a dark red vignette closes in */
   dying = false;
+  /** a warning ring lies under the boss panel: fade the panel so the ring shows */
+  bossDim = false;
   private readonly floaters: HTMLDivElement;
   private bossTrailFrac = 1;
   private hpTrailFrac = 1;
@@ -196,6 +198,7 @@ export class Hud {
     this.controls.classList.toggle('hidden', !this.showControls);
     this.root.classList.toggle('cine', this.cine);
     this.root.classList.toggle('dying', this.dying);
+    this.boss.classList.toggle('dim', this.bossDim);
     this.controlsPill.classList.toggle('hidden', this.showControls);
 
     for (let i = this.pending.length - 1; i >= 0; i--) {

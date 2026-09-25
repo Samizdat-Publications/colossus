@@ -83,6 +83,10 @@ body {
 .hud .boss.on {
   opacity: 1;
 }
+.hud .boss.on.dim {
+  opacity: 0.28;
+  transition: opacity 0.2s;
+}
 .hud::after {
   content: '';
   position: absolute;
@@ -539,7 +543,7 @@ h3 {
   max-width: 560px;
 }
 .title-side .menu {
-  align-items: flex-start;
+  margin-left: 0;
 }
 .title-side .hint {
   margin: 32px 0 0;
@@ -712,8 +716,9 @@ input[type='checkbox'] {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  align-items: center;
-  margin-top: 32px;
+  align-items: stretch;
+  width: max-content;
+  margin: 32px auto 0;
 }
 .menu.row {
   flex-direction: row;
