@@ -57,7 +57,7 @@ export class Fx {
       const r = r0 * Math.sqrt(Math.random());
       _p.set(pos.x + Math.cos(a) * r, 0.3 + Math.random() * 0.6, pos.z + Math.sin(a) * r);
       _v.set(Math.cos(a) * speed * rnd(0.5, 1.1), rnd(0.4, 2.2), Math.sin(a) * speed * rnd(0.5, 1.1));
-      this.dust.emit({ pos: _p, vel: _v, life: life * rnd(0.7, 1.2), size: size * rnd(0.6, 1.3), grow: 2.6, color: dark ? DUST_DARK : DUST, alpha: 0.32, drag: 1.8, gravity: -0.3 });
+      this.dust.emit({ pos: _p, vel: _v, life: life * rnd(0.7, 1.2), size: size * rnd(0.8, 1.6), grow: 2.8, color: dark ? DUST_DARK : DUST, alpha: 0.3, drag: 1.8, gravity: -0.3 });
     }
   }
 
@@ -163,7 +163,7 @@ export class Fx {
     u.push(on('coreHit', (e) => {
       this.sparks(e.pos, e.normal, e.crit ? 30 : 16, CYAN, 9, 0.5, 0.13);
       this.sparks(e.pos, e.normal, 6, STEEL_SPARK, 6, 0.3, 0.08);
-      this.flash(e.pos, CYAN, e.crit ? 2.6 : 1.6);
+      this.flash(e.pos, CYAN, e.crit ? 1.9 : 1.15);
     }));
     u.push(on('bodyHit', (e) => {
       this.sparks(e.pos, e.normal, 8, SPARK, 6, 0.35);

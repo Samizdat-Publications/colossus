@@ -52,8 +52,20 @@ on its back.
 | Lock on / off | Q, middle click or Tab | R3 |
 | Drink a flask (heal, 3 per attempt) | R | X / Square |
 | Pause | Esc or P | Start |
+| Show or hide the controls card | H | |
 
-Every action is buffered: press it during another action and it fires as soon as it can.
+Every action is buffered: press it during another action and it fires as soon as it can. The controls card
+shows for the first seconds of your first attempt; **Settings** (title screen or pause menu) has mouse
+sensitivity, invert Y, master, music and effects volume, camera shake and the controls card. Settings are
+remembered in the browser.
+
+## Performance
+
+The game aims for 60 fps on a mid-range laptop. An adaptive quality governor watches the frame time: after a
+few seconds above about 19.5 ms it lowers the render scale (and then the shadow resolution), and it raises
+them again after a long fast stretch. Add `?quality=low`, `?quality=medium` or `?quality=high` to the URL to
+pin a level, and `?fps=1` to show the frame time. Every shader is compiled behind the loading screen, so the
+first stagger or phase change never stalls.
 
 ## Tuning
 
@@ -69,10 +81,16 @@ the pipeline.
 ## Tests
 
 ```bash
-npm run playtest -- --scenario smoke   # real keyboard and mouse input through every control
-npm run playtest -- --scenario win     # the in-page bot fights to a victory
-npm run playtest -- --scenario lose    # a death, the death screen, try again
-npm run playtest -- --scenario critic  # 19 player-camera screenshots of every beat
+npm run playtest -- --scenario smoke        # real keyboard and mouse input through every control
+npm run playtest -- --scenario win          # the in-page bot fights to a victory
+npm run playtest -- --scenario lose         # a death, the death screen, try again
+npm run playtest -- --scenario perf         # frame times and draw calls over 20 s of fighting
+npm run playtest -- --scenario critic       # 19 player-camera screenshots of every beat
+npm run playtest -- --scenario feelcritic   # frame bursts around hits, impacts and weather
+npm run playtest -- --scenario uicritic     # every menu, HUD state and end screen
+npm run balance -- --runs 8                 # the "decent" bot fights 8 full attempts (no god mode)
 ```
 
-Screenshots, console logs and a report land in `test-output/`.
+Screenshots, console logs and a report land in `test-output/`. The decent bot wins roughly one attempt in
+four or five, with most losses late in phase 3: a player who learns the patterns should win within three to
+six attempts. `docs/critic/` holds every screenshot-critic report and what was fixed after it.

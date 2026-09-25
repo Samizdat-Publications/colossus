@@ -364,7 +364,7 @@ export class Golem {
 
   /** How much higher the camera should sit right now (look down on a kneeling golem). */
   get wantsRise(): number {
-    if (this.state === 'stagger') return 3.8;
+    if (this.state === 'stagger') return 5.2;
     // a low camera looks up at the airborne golem (the classic colossus angle)
     if (this.attack?.name === 'leap' && (this.step === 'air' || (this.step === 'windup' && this.pos.y > 0.2))) return -1.8;
     return 0;

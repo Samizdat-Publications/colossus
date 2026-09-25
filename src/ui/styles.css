@@ -107,8 +107,11 @@ body {
   color: #ff9a55;
 }
 .heart-marker em {
-  font-size: 14px;
+  font-style: normal;
+  font-size: 15px;
   color: var(--bone);
+  background: rgba(8, 9, 12, 0.55);
+  padding: 1px 8px;
 }
 .hud.cine .heart-marker,
 .hud.cine .boss,

@@ -38,7 +38,7 @@ void main() {
   vec2 d = gl_PointCoord - 0.5;
   float r = length(d) * 2.0;
   float a = smoothstep(1.0, 0.0, r);
-  a *= a;
+  a *= a * a;
   if (a * vColor.a < 0.004) discard;
   gl_FragColor = vec4(vColor.rgb, a * vColor.a);
 }`;

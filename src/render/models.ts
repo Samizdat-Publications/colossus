@@ -81,6 +81,12 @@ export function buildGolemModel(assets: Assets): GolemModel {
         const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTexture(), color: 0x5ff0ff, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
         halo.name = 'core_halo';
         halo.scale.setScalar(1.9);
+        if (name === 'core_back') {
+          // the back core is the payoff of the whole loop: its glow shows through the golem and the warrior
+          halo.material.depthTest = false;
+          halo.renderOrder = 8;
+          halo.scale.setScalar(2.4);
+        }
         m.add(halo);
       }
       cores.set(name, m);
@@ -332,6 +338,16 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
     scene.add(o);
     braziers.push(new THREE.Vector3(b.x, 2.35, b.z));
   }
+  // the drowned outer ring: shallow standing water from just inside the colonnade to the walls
+  const floodGeo = new THREE.RingGeometry(27.5, 44, 128, 1);
+  floodGeo.rotateX(-Math.PI / 2);
+  const flood = new THREE.Mesh(floodGeo, makeWater([27.5, 31.5]));
+  flood.name = 'flood';
+  flood.position.y = 0.05;
+  flood.renderOrder = 1;
+  flood.receiveShadow = true;
+  scene.add(flood);
+
   const mound = proto(assets.models.rubble, 'golem_mound').clone();
   mound.position.set(ARENA.golemHome[0], 0, ARENA.golemHome[1]);
   dress(mound, true);
@@ -356,10 +372,20 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
 /** Uniforms the game animates: time (ripples) and rain (how hard it falls). */
 export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 } };
 
-/** Dark water with a real sheen and raindrop ripples (normals perturbed in the shader). */
-function makeWater(): THREE.MeshStandardMaterial {
-  const m = new THREE.MeshStandardMaterial({ color: 0x1a2431, roughness: 0.2, metalness: 0.0, envMapIntensity: 1.5 });
+/**
+ * Dark water with a real sheen and raindrop ripples (normals perturbed in the shader). With `shore`, the
+ * water fades in between two radii (the flooded outer ring of the arena).
+ */
+function makeWater(shore?: [number, number]): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ color: 0x1a2431, roughness: 0.2, metalness: 0.0, envMapIntensity: 1.5, transparent: !!shore, depthWrite: !shore });
   m.onBeforeCompile = (shader) => {
+    if (shore) {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        `diffuseColor.a = smoothstep(${shore[0].toFixed(1)}, ${shore[1].toFixed(1)}, length(vWaterWorld.xz)) * 0.9;
+#include <opaque_fragment>`,
+      );
+    }
     Object.assign(shader.uniforms, waterUniforms);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWaterWorld;')
@@ -399,7 +425,7 @@ vec2 ripples(vec2 p, float t) {
 }`,
       );
   };
-  m.customProgramCacheKey = () => 'arena-water';
+  m.customProgramCacheKey = () => (shore ? 'arena-flood' : 'arena-water');
   return m;
 }
 

@@ -109,6 +109,7 @@ export class CameraRig {
   /** Extra camera height requested by the director (look down on a kneeling golem), in metres. */
   rise = 0;
   private riseNow = 0;
+  private sideNow = 0.75;
   /** Only these golem capsules (by name) count for the top of the frame; null = all. */
   topParts: Set<string> | null = null;
   /** Metres added to the golem's top for framing (the director anticipates a leap's apex). */
@@ -158,7 +159,10 @@ export class CameraRig {
       this.lockDist = damp(this.lockDist, wantDist, 3, dt);
       this.riseNow = damp(this.riseNow, this.rise, 2.5, dt);
       const camH = Math.max(1.3, this.pivot.y + 0.7 - close * 0.8 + (this.pullBack + this.wideNow) * 0.35 + this.riseNow);
-      _lockPos.set(this.pivot.x - _f.x * this.lockDist, camH, this.pivot.z - _f.z * this.lockDist);
+      // over the shoulder: the warrior sits left of centre so it never hides what it is fighting
+      // (further aside while the golem kneels: the back core is right in front of the warrior)
+      this.sideNow = damp(this.sideNow, golem.staggered ? 1.7 : 0.75, 3, dt);
+      _lockPos.set(this.pivot.x - _f.x * this.lockDist + _r.x * this.sideNow, camH, this.pivot.z - _f.z * this.lockDist + _r.z * this.sideNow);
       this.collide(world, _t.set(this.pivot.x, camH, this.pivot.z), _lockPos);
 
       const aspect = this.camera.aspect;

@@ -30,7 +30,7 @@ export class PartFader {
   }
 
   /** blocked: bone pivots whose capsule cuts the camera's view of the warrior (their pieces fade). */
-  update(cam: THREE.Vector3, focus: THREE.Vector3, dt: number, enabled: boolean, blocked?: Set<THREE.Object3D>): void {
+  update(cam: THREE.Vector3, focus: THREE.Vector3, dt: number, enabled: boolean, blocked?: Set<THREE.Object3D>, near = 2.2): void {
     _d.subVectors(focus, cam);
     const len = _d.length();
     _d.divideScalar(Math.max(len, 1e-3));
@@ -42,7 +42,7 @@ export class PartFader {
         p.mesh.matrixWorld.decompose(_s, _q, _s);
         const r = p.radius * Math.max(_s.x, _s.y, _s.z);
         const dCam = _c.distanceTo(cam) - r;
-        if (dCam < 2.2) want = Math.min(want, 0.12 + 0.88 * Math.max(0, dCam) / 2.2);
+        if (dCam < near) want = Math.min(want, 0.12 + 0.88 * Math.max(0, dCam) / near);
         const along = _s.subVectors(_c, cam).dot(_d);
         if (along > 0 && along < len - 0.8) {
           const lateral = _s.addScaledVector(_d, -along).length() - r * 0.8;

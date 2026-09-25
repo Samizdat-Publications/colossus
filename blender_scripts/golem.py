@@ -93,6 +93,12 @@ def build_list():
     add('chest', 'rock', (0.0, 10.9, -1.55), (1.4, 1.2, 0.9), mat='rock', name='g_chest_backmid')
     add('chest', 'rock', (0.85, 13.15, 0.35), (0.42, 0.34, 0.4), mat='rock', mirror=True, name='g_chest_rubble')
     add('chest', 'rock', (2.0, 11.4, -1.45), (0.5, 0.45, 0.4), mat='rock', mirror=True, name='g_chest_rubble2')
+    # a broken arch it carries on its back, rising over the shoulders: the ruin it was built from
+    for i, a in enumerate((22.0, 52.0, 90.0, 126.0)):
+        r = math.radians(a)
+        p = Vector((math.cos(r) * 3.3, 12.4 + math.sin(r) * 3.3, -1.95))
+        add('chest', 'block', p, (1.25 if i != 2 else 1.4, 1.15, 1.05), euler(0, 0, a - 90), chips=2, mirror=False,
+            name=f'g_chest_arch{i}')
     # chest plates: the breastplate that bursts off in phase 3
     add('chest', 'plate', (0.0, 11.05, 3.72), (2.4, 2.6, 0.65), euler(-10, 0, 0), name='chestplate_0', mirror=False)
     add('chest', 'plate', (1.4, 10.95, 3.3), (1.35, 2.4, 0.62), euler(-8, 28, 0), name='chestplate_1', mirror=False)
@@ -145,7 +151,9 @@ def build_list():
         add('hand_L', 'block', core + off, (0.32, 0.46, 0.46), C.rot_x(math.degrees(a)), chips=1, name=f'g_hand_L_socket{i}')
 
     # ---- legs
-    add('thigh_L', 'rock', along('thigh_L', 0.48), (1.4, 1.55, 1.45), bone_rot('thigh_L'), mat='rock', blocky=0.4, n=24)
+    # thighs are fluted column drums (the legs of the ruin), with a boulder at the hip
+    add('thigh_L', 'drum', along('thigh_L', 0.1), (1.32, 2.5), bone_rot('thigh_L', C.rot_y(6)), flutes=16, stack=True,
+        top_break=0.22, name='g_thigh_L_column')
     add('thigh_L', 'block', along('thigh_L', 0.35, (1.05, 0.0, 0.0)), (0.6, 2.3, 1.9), bone_rot('thigh_L', C.rot_y(8)),
         chips=2, name='g_thigh_L_plate')
     add('shin_L', 'rock', along('shin_L', 0.0, (0.0, 0.1, 0.8)), (0.75, 0.68, 0.6), mat='rock', name='g_shin_L_knee')

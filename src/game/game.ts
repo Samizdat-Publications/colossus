@@ -239,7 +239,7 @@ export class Game {
     // a core mesh: a core hiding would drop its light, and any change in the light count recompiles every
     // shader (a 1-2 s freeze).
     this.coreLights.set('core_chest', new THREE.PointLight(0xff6a20, 0, 46, 1.6));
-    this.coreLights.set('cyan', new THREE.PointLight(0x5fe8ff, 0, 14, 2));
+    this.coreLights.set('cyan', new THREE.PointLight(0x5fe8ff, 0, 9, 2));
     for (const l of this.coreLights.values()) this.scene.add(l);
     const home = new THREE.Vector3(ARENA.golemHome[0], 0, ARENA.golemHome[1]);
     this.golem.reset(home.x, home.z, 0);
@@ -335,6 +335,7 @@ export class Game {
     });
     bus.on('phaseChange', (e) => {
       if (this.flow === 'fight') this.startPhaseCine();
+      this.pendingStrike = 1.15;
       if (e.phase >= 3) this.burstPlates();
       this.weather.strike(1);
       this.hud.bossVisible = true;
@@ -780,6 +781,7 @@ export class Game {
   }
 
   private deathSide = 0;
+  private pendingStrike = -1;
   private phase3Time = 0;
   private phaseCineT = -1;
   private readonly phaseCamDir = new THREE.Vector3();
@@ -1279,6 +1281,10 @@ export class Game {
     // a soft light that follows the warrior so they never vanish into the dark
     this.heroLight.position.set(this.player.pos.x, this.player.y + 2.8, this.player.pos.z);
     // burning ground: flames licking up from each patch (a few per patch, placed by its seed)
+    if (this.pendingStrike > 0) {
+      this.pendingStrike -= dt;
+      if (this.pendingStrike <= 0) this.weather.strike(1);
+    }
     this.fireSpots.length = 0;
     for (const hz of this.threats.hazards) {
       const armed = hz.t >= hz.arm;
@@ -1344,7 +1350,9 @@ export class Game {
     const merged = !!this.golemMerge && (this.flow === 'fight' || this.flow === 'dying' || this.flow === 'dead') && gs !== 'dormant' && gs !== 'assemble' && gs !== 'dead';
     this.golemMerge?.use(merged);
     const fadeOn = (gameplayCam && this.cam.cineBlend < 0.5) || this.flow === 'dying' || this.flow === 'dead' || this.flow === 'victoryCine';
-    (merged && this.faderMerged ? this.faderMerged : this.fader).update(this.cam.camera.position, _v, dt, fadeOn, fadeOn ? this.findBlockers(this.cam.camera.position) : undefined);
+    // while the golem kneels the camera looks down past its limbs: fade anything within 5 m of the lens
+    const near = this.golem.staggered ? 5 : 2.2;
+    (merged && this.faderMerged ? this.faderMerged : this.fader).update(this.cam.camera.position, _v, dt, fadeOn, fadeOn ? this.findBlockers(this.cam.camera.position) : undefined, near);
     // teach the punish window the first few times it opens (never while a warning covers the warrior)
     const underThreat = this.threats.fissures.length > 0 || this.threats.telegraphs.some((t) => {
       if (t.kind === 'sector') return true;
@@ -1410,7 +1418,7 @@ export class Game {
       mesh.visible = t.kind === 'back' ? t.open || t.flash > 0.05 : lit && !g.staggered;
       if (g.state === 'dead' && g.stateTime > 0.3) mesh.visible = false; // spent cores crumble with the body
       if (t.kind !== 'chest' && mesh.visible) {
-        const want = (base * pulse * 0.6 + t.flash * 1.5) * 6;
+        const want = (base * pulse * 0.6 + t.flash * 1.5) * 3.2;
         const prio = (marked ? 4 : 0) + (t.kind === 'back' && t.open ? 3 : 0) + t.flash * 2 + 1 / (1 + t.pos.distanceTo(this.player.pos));
         if (want > 0 && prio > cyanPrio) {
           cyanPrio = prio;
@@ -1447,9 +1455,13 @@ export class Game {
       chest.scale.setScalar(ct?.open ? 1.5 : 0.55);
       const l = this.coreLights.get('core_chest');
       if (l) {
+        // lit from low in front of the chest, so the molten light floods the floor where the fight is
         chest.getWorldPosition(l.position);
+        l.position.x += Math.sin(g.yaw) * 3.5;
+        l.position.z += Math.cos(g.yaw) * 3.5;
+        l.position.y = Math.max(3, l.position.y - 6);
         l.color.setHex(0xff6a20);
-        l.intensity = on * (ct?.open ? 260 : 210) * (0.9 + 0.1 * Math.sin(this.ctx.time * 5));
+        l.intensity = on * (ct?.open ? 420 : 340) * (0.9 + 0.1 * Math.sin(this.ctx.time * 5));
       }
     }
     void dt;
