@@ -348,8 +348,10 @@ kbd {
   opacity: 0;
   transition: opacity 0.4s;
   text-align: center;
-  white-space: nowrap;
-  max-width: 64vw;
+  white-space: normal;
+  text-wrap: balance;
+  width: max-content;
+  max-width: min(560px, 54vw);
   text-shadow: 0 1px 2px #000;
 }
 .tip b {

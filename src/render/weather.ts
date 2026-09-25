@@ -72,7 +72,7 @@ void main() {
   vec2 d = gl_PointCoord - 0.5;
   float r = length(d) * 2.0;
   // a thin expanding ring, squashed onto the floor by the view (good enough at a distance)
-  float ring = smoothstep(0.15, 0.0, abs(r - 0.75)) ;
+  float ring = smoothstep(0.22, 0.0, abs(r - 0.72));
   float a = ring * (1.0 - vT) * uOpacity * vNear;
   if (a < 0.004) discard;
   gl_FragColor = vec4(0.72, 0.8, 0.92, a);
@@ -197,7 +197,7 @@ export class Weather {
     u.uOpacity.value = 0.24 * this.rain;
     this.splashMat.uniforms.uTime.value = time;
     this.splashMat.uniforms.uFocus.value.copy(focus);
-    this.splashMat.uniforms.uOpacity.value = 0.26 * this.rain;
+    this.splashMat.uniforms.uOpacity.value = 0.17 * this.rain;
     // lightning
     this.nextStrike -= dt * frequency;
     if (this.nextStrike <= 0 && this.strikeT < 0) {

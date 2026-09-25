@@ -57,7 +57,7 @@ export class Fx {
       const r = r0 * Math.sqrt(Math.random());
       _p.set(pos.x + Math.cos(a) * r, 0.3 + Math.random() * 0.6, pos.z + Math.sin(a) * r);
       _v.set(Math.cos(a) * speed * rnd(0.5, 1.1), rnd(0.4, 2.2), Math.sin(a) * speed * rnd(0.5, 1.1));
-      this.dust.emit({ pos: _p, vel: _v, life: life * rnd(0.7, 1.2), size: size * rnd(0.8, 1.6), grow: 2.8, color: dark ? DUST_DARK : DUST, alpha: 0.3, drag: 1.8, gravity: -0.3 });
+      this.dust.emit({ pos: _p, vel: _v, life: life * rnd(0.7, 1.2), size: size * rnd(0.8, 1.6), grow: 2.8, color: dark ? DUST_DARK : DUST, alpha: 0.22, drag: 1.8, gravity: -0.3 });
     }
   }
 

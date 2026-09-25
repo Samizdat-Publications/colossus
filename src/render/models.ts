@@ -250,10 +250,18 @@ function pleated(base: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
       `#include <color_fragment>
 #ifdef USE_NORMALMAP_TANGENTSPACE
 {
-  // the cape's v runs from 1 at the shoulders to -2 at the hem: a dark hem band and dirt toward the bottom
+  // the cape's v runs from 1 at the shoulders to -2 at the hem, u from 0 to 2 across: a dark hem band and
+  // side borders, dirt toward the bottom, and a faded circular emblem between the shoulders
   float v = vNormalMapUv.y;
+  float u = vNormalMapUv.x;
   diffuseColor.rgb *= mix(1.0, 0.72, smoothstep(0.3, -1.9, v));
   diffuseColor.rgb *= 1.0 - 0.45 * smoothstep(-1.66, -1.76, v);
+  float side = min(u, 2.0 - u);
+  diffuseColor.rgb *= 1.0 - 0.4 * (1.0 - smoothstep(0.05, 0.11, side));
+  vec2 e = vec2((u - 1.0) * 1.2, (v - 0.05) * 0.9);
+  float ring = abs(length(e) - 0.32);
+  float emblem = (1.0 - smoothstep(0.035, 0.06, ring)) + (1.0 - smoothstep(0.03, 0.05, abs(e.x))) * step(length(e), 0.3);
+  diffuseColor.rgb *= 1.0 - 0.3 * clamp(emblem, 0.0, 1.0);
 }
 #endif`,
     );

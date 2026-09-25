@@ -398,6 +398,89 @@ try {
     await waitFor(() => window.__CO.state().flow === 'dead', 15000);
     await sleep(700);
     await shot('death_screen');
+  } else if (scenario === 'final') {
+    // The six final screenshots for screenshots/ (run at 1920x1080): one per beat of the fight.
+    const idle = () => waitFor(() => !window.__CO.state().golem.attack && window.__CO.state().golem.state === 'combat', 20000).catch(() => {});
+    const still = async (label) => {
+      await page.evaluate(() => window.__CO.setTimeScale(0));
+      await sleep(120);
+      await shot(label);
+      await page.evaluate(() => window.__CO.setTimeScale(1));
+    };
+    await page.click('button[data-act="begin"]');
+    await page.evaluate(() => window.__CO.skipIntro());
+    await waitFor(() => window.__CO.state().flow === 'fight', 20000);
+    await page.evaluate(() => {
+      window.__CO.god(true);
+      window.__CO.holdGolem(true);
+      window.__game.hud.showControls = false;
+    });
+    await idle();
+    await key('KeyQ');
+    // 1. the punish window: a fist stuck in the floor, its core marked
+    await page.evaluate(() => window.__CO.teleportPlayer(1.5, 12));
+    await sleep(600);
+    await page.evaluate(() => window.__CO.forceAttack('slam', 'L'));
+    await waitFor(() => window.__CO.state().golem.step === 'stuck', 10000).catch(() => {});
+    await page.evaluate(() => window.__CO.bot('expert'));
+    const since = (await state()).time;
+    await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'coreHit'), 8000, since).catch(() => {});
+    await sleep(60);
+    await still('strike_the_core');
+    await page.evaluate(() => {
+      window.__CO.stopBot();
+      window.__CO.holdGolem(true);
+    });
+    // 2. the stomp shockwave rolling toward the warrior
+    await idle();
+    await page.evaluate(() => window.__CO.teleportPlayer(0, 11));
+    await sleep(900);
+    await page.evaluate(() => window.__CO.forceAttack('stomp', 'R'));
+    await waitFor(() => window.__CO.state().threats.waves.length > 0, 10000).catch(() => {});
+    await sleep(260);
+    await still('shockwave');
+    // 3. the golem on its knees, back core open
+    await idle();
+    await page.evaluate(() => window.__game.golem.startStagger());
+    await sleep(1200);
+    await page.evaluate(() => {
+      const g = window.__game.golem;
+      const back = g.targets.find((t) => t.kind === 'back');
+      const dx = back.pos.x - g.pos.x;
+      const dz = back.pos.z - g.pos.z;
+      const l = Math.hypot(dx, dz) || 1;
+      window.__CO.teleportPlayer(back.pos.x + (dx / l) * 3.2, back.pos.z + (dz / l) * 3.2);
+    });
+    await sleep(1400);
+    await still('on_its_knees');
+    await waitFor(() => window.__CO.state().golem.state === 'combat', 15000).catch(() => {});
+    // 4. phase 2: the two-fisted slam and its racing fissure
+    await page.evaluate(() => window.__CO.forcePhase(2));
+    await waitFor(() => window.__CO.state().golem.state === 'combat', 30000).catch(() => {});
+    await sleep(2500);
+    await idle();
+    await page.evaluate(() => window.__CO.teleportPlayer(2, 13));
+    await sleep(700);
+    await page.evaluate(() => window.__CO.forceAttack('doubleSlam', 'L'));
+    await waitFor(() => window.__CO.state().threats.fissures.length > 0, 10000).catch(() => {});
+    await sleep(350);
+    await still('fissure');
+    // 5. phase 3: the meteor rain around the molten golem
+    await idle();
+    await page.evaluate(() => window.__CO.forcePhase(3));
+    await waitFor(() => window.__CO.state().golem.state === 'combat', 30000).catch(() => {});
+    await sleep(2500);
+    await idle();
+    await page.evaluate(() => window.__CO.forceAttack('meteor', 'L'));
+    await waitFor((s) => window.__CO.state().golem.step === s, 12000, 'rain').catch(() => {});
+    await sleep(1400);
+    await still('meteor_rain');
+    // 6. the leap: the whole molten golem in the air over its landing ring
+    await idle();
+    await page.evaluate(() => window.__CO.forceAttack('leap', 'L'));
+    await waitFor((s) => window.__CO.state().golem.step === s, 12000, 'air').catch(() => {});
+    await sleep(250);
+    await still('the_leap');
   } else if (scenario === 'uicritic') {
     // Every screen and HUD state, for the milestone 4 (UI) critic.
     // hold the models back for a moment so the loading screen can be seen

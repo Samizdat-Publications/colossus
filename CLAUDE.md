@@ -118,8 +118,8 @@ close-range framing of the giant, which moved into milestone 3's camera work.
 | Family script | Output | Contents |
 | --- | --- | --- |
 | `textures.py` | `tex_*.jpg/png` | Tileable baked textures (4D noise on a torus, Cycles bakes, numpy compositing): rock and dressed stone (albedo, normal, roughness), crack vein mask, metal (normal, roughness), cloth normal |
-| `golem.py` | `golem.glb` | Armature (19 bones) with 120 bone-parented pieces: dressed blocks, fluted column drums, boulders, rubble filler; core crystals `core_arm_L/R`, `core_back`, `core_chest`; `eye_L/R`; `chestplate_0..2` (burst off in phase 3); AO baked into vertex colours |
-| `warrior.py` | `warrior.glb` | Armature (19 bones) with one merged armour object per bone, `sword` (grip origin), `flask`, `cape` (a 9 x 15 grid for the cloth pass) |
+| `golem.py` | `golem.glb` | Armature (19 bones) with about 126 bone-parented pieces: dressed blocks, fluted column drums (upper arms and thighs), boulders, rubble filler; core crystals `core_arm_L/R`, `core_back`, `core_chest`; ember eye sockets `eye_L/R`; `chestplate_0..2` (burst off in phase 3); AO baked into vertex colours |
+| `warrior.py` | `warrior.glb` | Armature (19 bones) with one merged armour object per bone (broad pauldrons, heavy plate), `sword` (grip origin, 1.27 m), `flask`, `cape` (a pleated 9 x 13 grid for the cloth pass) |
 | `arena.py` | `arena.glb` | `floor_stones` (1590 flagstones in 20 rings, some missing or sunk), `floor_water`, `seal_stones` + `seal_runes`, `arcade` (24 bays, 6 collapsed), `wall_rubble`, `tiers`, `cliffs` |
 | `pillars.py` | `pillars.glb` | `pillar_intact`, `pillar_broken_tall`, `pillar_broken_mid`, `pillar_stump`, `pillar_fallen`, `capital_fragment`, `brazier` |
 | `rubble.py` | `rubble.glb` | `rock_throw`, `meteor` (unit radius), `debris_0..5`, `rubble_pile_a/b/c` (unit footprint), `golem_mound` |
@@ -250,3 +250,17 @@ Newest at the bottom. Record every non-obvious choice.
   warm-up pass compiles and renders the whole scene once behind the loading screen.
 - 2026-09-25 (perf): adaptive quality governor: after 2.5 s above 19.5 ms per frame it steps render scale
   1.5 / 1.0 / 0.85 (with 1024 shadows) / 0.7; after 12 s under 13.5 ms it steps back up. `?quality=` pins it.
+- 2026-09-25 (M2 critic r7): line of sight is judged against the golem's bone capsules (segment-to-segment
+  distance from the camera to the warrior's chest and feet); any bone that cuts it fades as a whole part.
+- 2026-09-25 (M2 critic r7): point lights are pooled and never change in number: one cyan light follows the core
+  that matters most, two fire lights follow the burning patches nearest the warrior.
+- 2026-09-25 (M2 critic r8-r9): the flooded joints no longer glow (any glow in the ring-shaped joints read as
+  rings or burning tiles); burning ground carries a pool of flame billboards; the night is darker.
+- 2026-09-25 (M2 critic r10): the lock-on camera sits over the right shoulder (0.75 m, 1.7 m while the golem
+  kneels) so the warrior never hides what it fights; the open back core's halo draws through geometry.
+- 2026-09-25 (M2 critic r11-r12): phase 3 reads from the golem: a big white-hot heart in the burst chest with a
+  glow sprite, calmer veins, and a soft molten pool on the floor around its feet (a strong floor light painted
+  the whole golem salmon). The leap and the meteor call keep extra sky above the golem (director top margin).
+- 2026-09-25 (M2 critic r12): the death camera keeps one clock and one viewpoint across dying and the FALLEN
+  screen, picks the clearest of 16 directions around the body, re-picks (gliding) if a limb swings into the
+  view, and frames the body in an outer third clear of the screen's text.

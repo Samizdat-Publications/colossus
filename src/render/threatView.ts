@@ -454,7 +454,7 @@ export class ThreatView {
           vertexShader: RING_VERT,
           fragmentShader: RING_FRAG,
           uniforms: {
-            uColor: { value: new THREE.Color(0xff9d90) },
+            uColor: { value: new THREE.Color(0xffc0b4) },
             uCenter: { value: new THREE.Vector2(w.center.x, w.center.z) },
             uR: { value: w.r },
             uWidth: { value: w.width },
@@ -472,7 +472,7 @@ export class ThreatView {
         new THREE.ShaderMaterial({
           vertexShader: BAND_VERT,
           fragmentShader: BAND_FRAG,
-          uniforms: { uColor: { value: new THREE.Color(0xffb0a4) }, uAlpha: { value: 0.5 }, uTime: { value: 0 } },
+          uniforms: { uColor: { value: new THREE.Color(0xff9a8c) }, uAlpha: { value: 0.5 }, uTime: { value: 0 } },
           transparent: true,
           depthWrite: false,
           side: THREE.DoubleSide,
@@ -489,10 +489,10 @@ export class ThreatView {
       const life = 1 - w.r / w.maxR;
       const rm = ring.material as THREE.ShaderMaterial;
       rm.uniforms.uR.value = w.r;
-      rm.uniforms.uAlpha.value = 0.5 + 0.5 * life;
-      band.scale.set(w.r, w.height * 1.25, w.r);
+      rm.uniforms.uAlpha.value = 0.85 + 0.6 * life;
+      band.scale.set(w.r, w.height * 1.5, w.r);
       const bm = band.material as THREE.ShaderMaterial;
-      bm.uniforms.uAlpha.value = 0.8 * life + 0.25;
+      bm.uniforms.uAlpha.value = 1.1 * life + 0.45;
       bm.uniforms.uTime.value = this.time;
     }
   }

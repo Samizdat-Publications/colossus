@@ -1511,7 +1511,7 @@ export class Game {
       }
     }
     const eyeMat = this.golemEyes[0]?.material as THREE.MeshStandardMaterial | undefined;
-    const eyeOn = this.assets ? 2.1 : 2.0;
+    const eyeOn = (this.assets ? 2.1 : 2.0) * (g.phase >= 3 ? 1.7 : 1);
     if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, eyeOn * (1 - Math.max(0, g.stateTime - 1.0) / 0.8)) : g.state === 'dormant' ? 0 : g.staggered ? eyeOn * (0.22 + 0.12 * Math.sin(this.ctx.time * 11) * Math.sin(this.ctx.time * 3.7)) : eyeOn * (1 + 1.4 * this.roarFlare);
     const chest = this.coreMeshes.get('core_chest');
     // phase 3: while the heart burns out of reach, remind the player how to get at it (in the tip strip)
@@ -1519,7 +1519,7 @@ export class Game {
     if (g.phase >= 3 && this.flow === 'fight') {
       this.phase3Time += dt;
       if (heartT && !heartT.open && this.player.locked && this.phase3Time > 6 && this.phase3Time < 60) {
-        this.tips.show('heart', 'Its molten <b>heart</b> burns out of reach: bring the Ruin to its <b>knees</b>, then strike it.', 2, 4.5);
+        this.tips.show('heart', 'Its molten <b>heart</b> is out of reach: bring it to its <b>knees</b> first.', 2, 4.5);
       }
     } else if (g.phase < 3) this.phase3Time = 0;
     if (chest) {
@@ -1529,15 +1529,15 @@ export class Game {
       const ct = g.targets.find((t) => t.kind === 'chest');
       const mat = chest.material as THREE.MeshStandardMaterial;
       // the burst chest shows a big molten core, white-hot at its heart; it turns cyan only when it can be struck
-      mat.emissive.setHex(ct?.open ? 0x5ff0ff : 0xffa050);
-      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 3.4) + 0.4 * Math.sin(this.ctx.time * 4.2)) + (ct?.flash ?? 0) * 5;
+      mat.emissive.setHex(ct?.open ? 0x5ff0ff : 0xff7a24);
+      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 2.6) + 0.35 * Math.sin(this.ctx.time * 4.2)) + (ct?.flash ?? 0) * 5;
       chest.visible = on > 0;
       chest.scale.setScalar(ct?.open ? 1.5 : 1.3 + 0.05 * Math.sin(this.ctx.time * 4.2));
       const heartHalo = chest.getObjectByName('core_halo') as THREE.Sprite | undefined;
       if (heartHalo) {
         const hm = heartHalo.material as THREE.SpriteMaterial;
-        hm.color.setHex(ct?.open ? 0x5ff0ff : 0xff8a30);
-        hm.opacity = on * (ct?.open ? 0.55 : 0.85 + 0.15 * Math.sin(this.ctx.time * 4.2));
+        hm.color.setHex(ct?.open ? 0x5ff0ff : 0xff6a1c);
+        hm.opacity = on * (ct?.open ? 0.55 : 0.62 + 0.12 * Math.sin(this.ctx.time * 4.2));
       }
       const l = this.coreLights.get('core_chest');
       if (l) {

@@ -75,7 +75,7 @@ export class Cape {
       const row = rows[j];
       for (let i = 0; i < row.length; i++) {
         if (i + 1 < row.length) link(row[i], row[i + 1]);
-        if (i + 2 < row.length) link(row[i], row[i + 2]);
+        // no horizontal bend links: the cape may fold across its width (vertical ones keep it from crumpling)
         const below = rows[j + 1];
         if (below && below.length === row.length) {
           link(row[i], below[i]);

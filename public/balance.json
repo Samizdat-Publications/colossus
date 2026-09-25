@@ -2,7 +2,7 @@
   "_readme": "COLOSSUS tuning. Times in seconds, speeds in m/s, distances in metres, damage in HP, angles in degrees. Per-phase values are arrays of 3 (phase 1, 2, 3). Edit, save, reload the page. Missing keys fall back to the built-in defaults.",
 
   "player": {
-    "maxHealth": 100,
+    "maxHealth": 110,
     "maxStamina": 100,
     "staminaRegen": 44,
     "staminaRegenDelay": 0.45,
@@ -69,7 +69,7 @@
 
     "flask": {
       "charges": 3,
-      "heal": 45,
+      "heal": 50,
       "drinkTime": 1.1,
       "healAt": 0.55
     },
@@ -80,7 +80,7 @@
   },
 
   "golem": {
-    "maxHealth": 2000,
+    "maxHealth": 1850,
     "phaseThresholds": [0.66, 0.33],
     "coreDamageMultiplier": 1.0,
     "armCoreDamageMultiplier": 1.0,
@@ -109,7 +109,7 @@
 
     "turnRate": [42, 52, 64],
     "walkSpeed": [2.3, 2.7, 3.2],
-    "idleGap": [[1.1, 1.9], [0.8, 1.5], [0.55, 1.1]],
+    "idleGap": [[1.1, 1.9], [0.95, 1.65], [0.55, 1.1]],
     "timingScale": [1.0, 0.9, 0.82],
     "preferredRange": [7, 12],
     "arenaLimit": 25,
@@ -142,7 +142,7 @@
         "damage": 46, "radius": 4.4, "knockdown": true,
         "windup": 1.45, "strike": 0.3, "stuck": 2.0, "pull": 0.6, "recover": 0.8,
         "range": [5, 13],
-        "fissureDamage": 20, "fissureSpeed": 15, "fissureLength": 22, "fissureRadius": 1.6, "fissureDelay": 0.55,
+        "fissureDamage": 16, "fissureSpeed": 15, "fissureLength": 22, "fissureRadius": 1.6, "fissureDelay": 0.55,
         "fissureHazardDuration": [0, 8, 10],
         "phases": [2, 3]
       },
