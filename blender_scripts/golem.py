@@ -115,14 +115,14 @@ def build_list():
     add('shoulder_L', 'rock', (3.65, 12.35, -0.75), (0.8, 0.7, 0.7), mat='rock', name='g_shoulder_L_back')
 
     # ---- upper arm: two fluted column drums
-    add('upperarm_L', 'drum', along('upperarm_L', 0.06), (1.18, 1.95), bone_rot('upperarm_L', C.rot_y(10)), flutes=14,
+    add('upperarm_L', 'drum', along('upperarm_L', 0.06), (1.36, 1.95), bone_rot('upperarm_L', C.rot_y(10)), flutes=14,
         stack=True)
-    add('upperarm_L', 'drum', along('upperarm_L', 0.51), (1.12, 1.95), bone_rot('upperarm_L', C.rot_y(-7)), flutes=14,
+    add('upperarm_L', 'drum', along('upperarm_L', 0.51), (1.28, 1.95), bone_rot('upperarm_L', C.rot_y(-7)), flutes=14,
         top_break=0.18, stack=True)
 
     # ---- forearm: elbow boulder, three blocks swelling toward the wrist, a dressed cuff
     add('forearm_L', 'rock', along('forearm_L', 0.02), (0.92, 0.85, 0.95), mat='rock', n=22)
-    for i, (t, sz) in enumerate(((0.26, (2.2, 1.35, 2.2)), (0.52, (2.4, 1.4, 2.4)), (0.78, (2.6, 1.4, 2.6)))):
+    for i, (t, sz) in enumerate(((0.26, (2.5, 1.4, 2.5)), (0.52, (2.75, 1.45, 2.75)), (0.78, (2.95, 1.45, 2.95)))):
         add('forearm_L', 'rock', along('forearm_L', t), (sz[0] * 0.52, sz[1] * 0.56, sz[2] * 0.52),
             bone_rot('forearm_L', C.rot_y(i * 17 - 10)), mat='rock', blocky=0.55, n=22, name=f'g_forearm_L_{i}')
     for i in range(4):
@@ -294,8 +294,9 @@ def main():
         C.parent_to_bone(ob, arm, c['bone'])
         objs.append(ob)
     for side, p in (('L', RIG['eyes']['left']), ('R', RIG['eyes']['right'])):
-        bm = C.box_bm((0.52, 0.17, 0.22))
-        C.transform_bm(bm, C.rot_z(-8 if side == 'L' else 8))
+        # a rough glowing ember set deep under the brow, inner corner lower: a face, not a visor slit
+        bm = C.hull_bm(C.rock_points(rng, (0.24, 0.17, 0.14), n=14, blocky=0.15, cuts=1))
+        C.transform_bm(bm, C.rot_z(-16 if side == 'L' else 16), (0.0, 0.0, -0.08))
         ob = C.new_object(f'eye_{side}', bm, [mats['eye']], loc=p)
         C.parent_to_bone(ob, arm, RIG['eyes']['bone'])
         objs.append(ob)
