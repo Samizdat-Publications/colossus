@@ -115,6 +115,8 @@ export class CameraRig {
   topBoost = 0;
   /** 0..1: how fast pitch and field of view follow the solve (1 for fast moves like the leap). */
   snappy = 0;
+  /** Largest automatic pull-back in metres (the director raises it for the leap). */
+  maxPull = 4;
 
   update(dt: number, lookX: number, lookY: number, player: Player, golem: Golem, world: World): void {
     this.time += dt;
@@ -196,7 +198,7 @@ export class CameraRig {
       const hi = feet + fov * (0.5 - BOTTOM_MARGIN);
       // when both cannot fit, the ground around the warrior wins and the camera pulls back
       const pitch = lo <= hi ? (lo + hi) / 2 : hi;
-      if (needFov > FOV_MAX * DEG * 1.02) this.pullBack = Math.min(4, this.pullBack + dt * 2);
+      if (needFov > FOV_MAX * DEG * 1.02) this.pullBack = Math.min(this.maxPull, this.pullBack + dt * (2 + 4 * this.snappy));
       else if (needFov < FOV_MAX * DEG * 0.85) this.pullBack = Math.max(0, this.pullBack - dt * 0.8);
       this.lockPitch = damp(this.lockPitch, pitch, lerp(4, 10, this.snappy), dt);
       this.lockFov = damp(this.lockFov, fov / DEG, lerp(3, 8, this.snappy), dt);

@@ -655,6 +655,37 @@ export class Game {
   private heroLight: THREE.PointLight | null = null;
   private heldRockMesh: THREE.Mesh | null = null;
 
+  private strikeSpot: THREE.Group | null = null;
+
+  /** While the golem is down: a cyan ring on the floor under the core to go for ("stand here"). */
+  private updateStrikeSpot(core: { pos: THREE.Vector3 } | null, dt: number): void {
+    if (!this.strikeSpot) {
+      const g = new THREE.Group();
+      const ringGeo = new THREE.RingGeometry(1.25, 1.45, 48);
+      ringGeo.rotateX(-Math.PI / 2);
+      const discGeo = new THREE.CircleGeometry(1.25, 48);
+      discGeo.rotateX(-Math.PI / 2);
+      const mk = (geo: THREE.BufferGeometry, op: number) =>
+        new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: 0x5ff0ff, transparent: true, opacity: op, depthWrite: false, blending: THREE.AdditiveBlending }));
+      g.add(mk(ringGeo, 0.8), mk(discGeo, 0.12));
+      g.renderOrder = 3;
+      g.visible = false;
+      this.scene.add(g);
+      this.strikeSpot = g;
+    }
+    const spot = this.strikeSpot;
+    spot.visible = !!core;
+    if (!core) return;
+    // under the core, nudged out from the golem's centre so it lands on open floor
+    _v2.set(core.pos.x - this.golem.pos.x, 0, core.pos.z - this.golem.pos.z);
+    const len = _v2.length() || 1;
+    _v2.multiplyScalar(1 / len);
+    spot.position.set(core.pos.x + _v2.x * 0.9, 0.06, core.pos.z + _v2.z * 0.9);
+    const s = 1 + 0.08 * Math.sin(this.ctx.time * 6);
+    spot.scale.setScalar(s);
+    void dt;
+  }
+
   private updateHeldRock(): void {
     const side = this.golem.heldRock;
     if (!this.heldRockMesh) {
@@ -684,8 +715,7 @@ export class Game {
     const p = this.player.pos;
     // rings the warrior is in, plus the nearest ring just behind them (a reflex roll lands there)
     const near = this.threats.telegraphs
-      // the leap ring is huge and centred on the warrior: framing its near edge pointed the camera at the floor
-      .filter((t) => t.kind !== 'sector' && t.kind !== 'leap')
+      .filter((t) => t.kind !== 'sector')
       .map((t) => ({ t, d: Math.hypot(t.pos.x - p.x, t.pos.z - p.z) - t.radius }))
       .filter((e) => e.d < 3)
       .sort((a, b) => a.d - b.d)
@@ -715,14 +745,19 @@ export class Game {
     const rising = g.pos.y >= this.prevGolemY - 1e-4;
     this.cam.topBoost = !leaping ? 0 : g.step === 'windup' ? LEAP_APEX : rising ? Math.max(0, LEAP_APEX - g.pos.y) : 0;
     this.cam.snappy = leaping ? 1 : 0;
+    this.cam.maxPull = leaping ? 7 : 4;
     this.prevGolemY = g.pos.y;
+    if (g.pushTele) {
+      this.threats.telegraph(g.pushTele.pos, g.pushTele.radius, g.pushTele.dur, 'push');
+      g.pushTele = null;
+    }
     if (g.riseTele) {
       this.threats.telegraph(g.riseTele, balance.golem.stagger.risePushRadius, balance.golem.stagger.rise * 0.75, 'push');
       g.riseTele = null;
     }
     // a soft light that follows the warrior so they never vanish into the dark
     if (!this.heroLight) {
-      this.heroLight = new THREE.PointLight(0xc8d8ff, 7, 8, 2);
+      this.heroLight = new THREE.PointLight(0xc8d8ff, 4.5, 7, 2);
       this.scene.add(this.heroLight);
     }
     this.heroLight.position.set(this.player.pos.x, this.player.y + 2.8, this.player.pos.z);
@@ -752,7 +787,13 @@ export class Game {
     });
     if (underThreat && !this.tips.quiet) this.tips.hush();
     this.tips.quiet = underThreat;
-    // STRIKE marks a core whenever it can really be hit (cyan + STRIKE = hit here now)
+    // STRIKE = hit here now: a reachable core in an open window, with no warning or shockwave on the way
+    const pp = this.player.pos;
+    const waveComing = this.threats.waves.some((w) => {
+      const d = Math.hypot(w.center.x - pp.x, w.center.z - pp.z);
+      return w.r < d + 1.5 && d < w.maxR;
+    });
+    const danger = underThreat || waveComing;
     const fighting = this.flow === 'fight' && (g.state === 'combat' || g.state === 'stagger');
     if (fighting && g.staggered) {
       let best: (typeof g.targets)[number] | null = null;
@@ -763,11 +804,12 @@ export class Game {
       this.hud.markCore = best;
     } else if (fighting) {
       const arm = g.focusCore(this.player.pos);
-      this.hud.markCore = arm && arm.kind === 'arm' && arm.pos.y < REACH ? arm : null;
-      if (this.hud.markCore && g.windowOpen && !underThreat) {
+      this.hud.markCore = arm && arm.kind === 'arm' && arm.pos.y < REACH && g.windowOpen && !danger ? arm : null;
+      if (this.hud.markCore) {
         this.tips.show('window', 'Its fist is stuck: strike the <b class="core">glowing core</b> on its arm!', 3, 3.5);
       }
     } else this.hud.markCore = null;
+    this.updateStrikeSpot(g.staggered && this.flow === 'fight' ? this.hud.markCore : null, dt);
     // death: the Ruin falls back into rubble
     if (g.state === 'dead') {
       if (this.crumbleT < 0 && g.stateTime > 0.8) {
@@ -786,16 +828,17 @@ export class Game {
       const lit = g.state !== 'dormant' && (g.state !== 'assemble' || g.step === 'roar' || g.step === 'roarHold' || g.step === 'settle');
       let base = t.kind === 'back' ? (t.open ? 2.4 : 0) : !lit ? 0 : 1.1 + 0.25 * (g.phase - 1);
       if (t.kind === 'arm' && g.staggered) base *= 0.35; // the back core is the one to go for
-      if (t.kind === 'arm' && !g.staggered) base *= t.pos.y < REACH ? 1.8 : 0.45; // in reach: burn bright; out of reach: dim
+      const marked = this.hud.markCore === t;
+      if (t.kind === 'arm' && !g.staggered) base *= marked ? 1.8 : t.pos.y < REACH ? 1.05 : 0.45; // STRIKE: bright; in reach: steady; out of reach: dim
       if (g.state === 'dead') base = Math.max(0.0, base * (1 - g.stateTime / 0.25));
-      const low = t.open && t.pos.y < REACH && g.state !== 'dead';
+      const low = marked || (t.kind !== 'arm' && t.open && g.state !== 'dead');
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;
-      mat.emissiveIntensity = base * pulse + t.flash * 5;
+      mat.emissiveIntensity = base * pulse + t.flash * 3;
       // sealed cores are plain stone knobs, not dim teal balls; arm cores ignite at the roar
       mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x80848c);
-      mesh.visible = t.kind === 'back' ? t.open || t.flash > 0.05 : lit;
+      mesh.visible = t.kind === 'back' ? t.open || t.flash > 0.05 : lit && !g.staggered;
       const light = this.coreLights.get(t.name);
-      if (light) light.intensity = (base * pulse * 0.6 + t.flash * 3) * 6;
+      if (light) light.intensity = mesh.visible ? (base * pulse * 0.6 + t.flash * 1.5) * 6 : 0;
     }
     const eyeMat = this.golemEyes[0]?.material as THREE.MeshStandardMaterial | undefined;
     if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, 2.2 * (1 - g.stateTime / 0.4)) : g.state === 'dormant' ? 0 : 2.2;

@@ -22,7 +22,7 @@ export function buildGreyboxGolem(rig: Rig): { cores: Map<string, THREE.Mesh>; e
     else geo = new THREE.BoxGeometry(r * 1.8, len + r * 0.4, r * 1.6);
     const mesh = new THREE.Mesh(
       geo,
-      makeGolemStoneMaterial(i % 2 ? { color: 0x9a9ea6, roughness: 0.82, flatShading: true } : { color: 0x80848c, roughness: 0.88, flatShading: true }),
+      makeGolemStoneMaterial(i % 2 ? { color: 0x80848c, roughness: 0.82, flatShading: true } : { color: 0x6c7078, roughness: 0.88, flatShading: true }),
     );
     mesh.castShadow = true;
     mesh.receiveShadow = true;

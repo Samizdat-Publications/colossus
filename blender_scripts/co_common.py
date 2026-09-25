@@ -152,7 +152,7 @@ def hull_bm(points):
     for p in points:
         bm.verts.new(p)
     res = bmesh.ops.convex_hull(bm, input=bm.verts[:], use_existing_faces=False)
-    junk = [g for g in res['geom_interior'] + res['geom_unused'] if isinstance(g, bmesh.types.BMVert)]
+    junk = list({g for g in res['geom_interior'] + res['geom_unused'] if isinstance(g, bmesh.types.BMVert) and g.is_valid})
     if junk:
         bmesh.ops.delete(bm, geom=junk, context='VERTS')
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])

@@ -169,7 +169,8 @@
       "meteor": {
         "damage": 22, "radius": 2.5, "knockdown": false, "knockback": 7,
         "count": 7, "windup": 1.5, "warn": 1.45, "spreadTime": 3.0, "recover": 1.0,
-        "nearPlayer": 3, "exhausted": 2.4, "cooldown": 28, "phases": [3]
+        "nearPlayer": 3, "exhausted": 2.4, "cooldown": 28, "phases": [3],
+        "pushRadius": 11, "pushForce": 11
       }
     },
 

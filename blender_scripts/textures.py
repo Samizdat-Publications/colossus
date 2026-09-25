@@ -292,7 +292,9 @@ def ashlar(bk):
     big = norm01(bk.noise(T, 0.7, detail=4, rough=0.55, seed=11))
     mid = norm01(bk.noise(T, 3.0, detail=6, rough=0.55, seed=12))
     fine = norm01(bk.noise(T, 22.0, detail=3, rough=0.5, seed=13))
-    streak = norm01(bk.noise(T, 1.6, detail=4, rough=0.5, seed=14, stretch=(3.0, 0.35)))
+    streak = norm01(bk.noise(T, 1.3, detail=3, rough=0.45, seed=14, stretch=(1.8, 0.55)))
+    grain = bk.voronoi(T, 70.0, 'F1', seed=19, output='Color')[..., 1]
+    mottle = norm01(bk.noise(T, 1.8, detail=6, rough=0.6, seed=20))
     pits_d = bk.voronoi(T, 14.0, 'F1', seed=15)
     pit_rand = bk.voronoi(T, 14.0, 'F1', seed=15, output='Color')[..., 2]
     chips_d = bk.voronoi(T, 2.2, 'F1', seed=16)
@@ -307,10 +309,11 @@ def ashlar(bk):
     h_m = height * 0.03
     cavity = np.clip((blur(height, 5) - height) * 3.5, 0, 1)
 
-    base = ramp(0.55 * big + 0.45 * mid, [(0.0, (0.15, 0.14, 0.125)), (0.5, (0.25, 0.232, 0.205)),
-                                          (1.0, (0.34, 0.315, 0.28))])
-    grime = ss(0.45, 0.85, streak)
-    col = mix(base, base * np.array([0.42, 0.42, 0.44], dtype=np.float32), grime * 0.75)
+    base = ramp(0.45 * big + 0.3 * mid + 0.25 * mottle, [(0.0, (0.13, 0.128, 0.122)), (0.5, (0.23, 0.222, 0.208)),
+                                                          (1.0, (0.32, 0.31, 0.29))])
+    base *= (0.94 + 0.12 * grain)[..., None]
+    grime = ss(0.55, 0.9, streak)
+    col = mix(base, base * np.array([0.55, 0.55, 0.57], dtype=np.float32), grime * 0.45)
     col = mix(col, np.array([0.07, 0.085, 0.045], dtype=np.float32), moss * 0.6)
     col *= (1.0 - 0.35 * pits)[..., None]
     col = mix(col, col * 1.25, chips * 0.6)  # fresh stone in the chips

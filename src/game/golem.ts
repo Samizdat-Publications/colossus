@@ -362,7 +362,7 @@ export class Golem {
 
   /** How much higher the camera should sit right now (look down on a kneeling golem). */
   get wantsRise(): number {
-    if (this.state === 'stagger') return 3.5;
+    if (this.state === 'stagger') return 5;
     // a low camera looks up at the airborne golem (the classic colossus angle)
     if (this.attack?.name === 'leap' && (this.step === 'air' || (this.step === 'windup' && this.pos.y > 0.2))) return -1.8;
     return 0;
@@ -371,7 +371,7 @@ export class Golem {
   /** How much wider the camera should frame right now (leap, stagger). */
   get wantsWide(): number {
     if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 4;
-    if (this.state === 'stagger') return 2;
+    if (this.state === 'stagger') return 3.5;
     if (this.state === 'dead') return 3;
     // the phase-change roar is a show: step back and take in the whole pose
     if (this.state === 'transition') return 3.5;
@@ -380,6 +380,8 @@ export class Golem {
 
   /** Set when a rise push starts so the director can draw its warning ring. */
   riseTele: THREE.Vector3 | null = null;
+  /** Set when any other shove is coming (meteor roar) so the director can draw its warning ring. */
+  pushTele: { pos: THREE.Vector3; radius: number; dur: number } | null = null;
 
   private pushWave(radius: number, force: number, damage: number): void {
     bus.emit('pushWave', { pos: this.pos.clone(), radius });
@@ -1359,18 +1361,23 @@ export class Golem {
         enter: () => {
           bus.emit('golemWindup', { attack: 'meteor', duration: M.windup * k, pos: this.pos });
           bus.emit('roar', { pos: this.pos, phase: 4 });
+          // it roars at the sky and shoves the warrior back: room to see the rain coming
+          this.pushTele = { pos: this.pos.clone(), radius: M.pushRadius, dur: M.windup * k };
         },
       },
       {
         name: 'rain',
         dur: M.spreadTime,
+        enter: () => this.pushWave(M.pushRadius, M.pushForce, 0),
         pose: (out, t) => {
           out.copy(P.roarSky);
           const s = Math.sin(this.time * 20) * 1.5;
           out.addEuler(this.rig.i('chest'), s * (1 - t), 0, 0);
         },
         update: (t) => {
-          const want = Math.floor(t * M.count + 0.001);
+          // the shove lands first (about 0.35 s), then the rubble starts to fall around where the warrior ended up
+          if (t < 0.12) return;
+          const want = Math.floor(((t - 0.12) / 0.88) * M.count + 0.001);
           while (spawned < Math.min(M.count, want + 1)) spawnAt(spawned++);
         },
       },
