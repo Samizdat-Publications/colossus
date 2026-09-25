@@ -1,0 +1,25 @@
+{
+  "_note": "Warrior skeleton in three.js space (metres, Y up, faces +Z, left side is +X). Read by blender_scripts/warrior.py and by the greybox. The sword sits in hand_R with the blade along +Z at rest.",
+  "bones": [
+    { "name": "hips",       "parent": null,         "head": [0, 0.98, 0],       "tail": [0, 1.12, 0],       "radius": 0.16 },
+    { "name": "spine",      "parent": "hips",       "head": [0, 1.12, 0],       "tail": [0, 1.3, 0.01],     "radius": 0.15 },
+    { "name": "chest",      "parent": "spine",      "head": [0, 1.3, 0.01],     "tail": [0, 1.5, 0.0],      "radius": 0.19 },
+    { "name": "neck",       "parent": "chest",      "head": [0, 1.5, 0.0],      "tail": [0, 1.58, 0.02],    "radius": 0.06 },
+    { "name": "head",       "parent": "neck",       "head": [0, 1.58, 0.02],    "tail": [0, 1.82, 0.03],    "radius": 0.12 },
+    { "name": "shoulder_L", "parent": "chest",      "head": [0.07, 1.45, 0.0],  "tail": [0.2, 1.44, -0.01], "radius": 0.06 },
+    { "name": "upperarm_L", "parent": "shoulder_L", "head": [0.2, 1.44, -0.01], "tail": [0.24, 1.16, -0.02], "radius": 0.065 },
+    { "name": "forearm_L",  "parent": "upperarm_L", "head": [0.24, 1.16, -0.02], "tail": [0.26, 0.92, 0.0],  "radius": 0.055 },
+    { "name": "hand_L",     "parent": "forearm_L",  "head": [0.26, 0.92, 0.0],  "tail": [0.26, 0.82, 0.02], "radius": 0.05 },
+    { "name": "shoulder_R", "parent": "chest",      "head": [-0.07, 1.45, 0.0], "tail": [-0.2, 1.44, -0.01], "radius": 0.06 },
+    { "name": "upperarm_R", "parent": "shoulder_R", "head": [-0.2, 1.44, -0.01], "tail": [-0.24, 1.16, -0.02], "radius": 0.065 },
+    { "name": "forearm_R",  "parent": "upperarm_R", "head": [-0.24, 1.16, -0.02], "tail": [-0.26, 0.92, 0.0],  "radius": 0.055 },
+    { "name": "hand_R",     "parent": "forearm_R",  "head": [-0.26, 0.92, 0.0], "tail": [-0.26, 0.82, 0.02], "radius": 0.05 },
+    { "name": "thigh_L",    "parent": "hips",       "head": [0.1, 0.94, 0.0],   "tail": [0.11, 0.52, 0.02], "radius": 0.08 },
+    { "name": "shin_L",     "parent": "thigh_L",    "head": [0.11, 0.52, 0.02], "tail": [0.11, 0.09, -0.02], "radius": 0.065 },
+    { "name": "foot_L",     "parent": "shin_L",     "head": [0.11, 0.09, -0.02], "tail": [0.11, 0.03, 0.15], "radius": 0.05 },
+    { "name": "thigh_R",    "parent": "hips",       "head": [-0.1, 0.94, 0.0],  "tail": [-0.11, 0.52, 0.02], "radius": 0.08 },
+    { "name": "shin_R",     "parent": "thigh_R",    "head": [-0.11, 0.52, 0.02], "tail": [-0.11, 0.09, -0.02], "radius": 0.065 },
+    { "name": "foot_R",     "parent": "shin_R",     "head": [-0.11, 0.09, -0.02], "tail": [-0.11, 0.03, 0.15], "radius": 0.05 }
+  ],
+  "sword": { "bone": "hand_R", "grip": [-0.26, 0.86, 0.02], "length": 1.05, "hilt": 0.24 }
+}

@@ -1,0 +1,346 @@
+/* COLOSSUS UI (milestone 1: functional; the designed pass comes in milestone 4) */
+:root {
+  --ink: #0d0e12;
+  --slate: #23262e;
+  --rain: #6f86a8;
+  --bone: #e6dfcf;
+  --ash: #9a9486;
+  --ember: #ff7a2a;
+  --gold: #e0b25a;
+  --blood: #a3262c;
+  --moss: #79a05a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--bone);
+  font-family: Georgia, 'Times New Roman', serif;
+  user-select: none;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+}
+
+#app canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hud.hidden,
+.hidden {
+  display: none !important;
+}
+
+.hud .boss {
+  position: absolute;
+  top: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(760px, 70vw);
+  opacity: 0;
+  transition: opacity 0.8s;
+}
+.hud .boss.on {
+  opacity: 1;
+}
+.boss-name {
+  font-size: 18px;
+  letter-spacing: 0.18em;
+  margin-bottom: 6px;
+  text-shadow: 0 1px 3px #000;
+}
+.boss-bar {
+  position: relative;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(230, 223, 207, 0.4);
+}
+.boss-bar .fill,
+.boss-bar .trail {
+  position: absolute;
+  inset: 0 auto 0 0;
+}
+.boss-bar .fill {
+  background: linear-gradient(#b8352c, #7e1d18);
+}
+.boss-bar .trail {
+  background: #e8c070;
+}
+.boss-bar .notch {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  background: rgba(230, 223, 207, 0.7);
+}
+.boss-dmg {
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 16px;
+  color: var(--bone);
+  opacity: 0;
+}
+.break {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.break-label {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--ember);
+}
+.break-bar {
+  flex: 1;
+  height: 5px;
+  background: rgba(0, 0, 0, 0.6);
+  position: relative;
+}
+.break-bar .fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--ember);
+}
+.break.staggered .break-bar .fill {
+  width: 100% !important;
+  animation: pulse 0.4s infinite alternate;
+}
+@keyframes pulse {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.hud .player {
+  position: absolute;
+  left: 32px;
+  bottom: 32px;
+  width: min(360px, 40vw);
+}
+.pbar {
+  position: relative;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(230, 223, 207, 0.35);
+  margin-top: 6px;
+}
+.pbar .fill,
+.pbar .trail {
+  position: absolute;
+  inset: 0 auto 0 0;
+}
+.pbar.hp .fill {
+  background: var(--blood);
+}
+.pbar.hp .trail {
+  background: #e0a060;
+}
+.pbar.st .fill {
+  background: var(--moss);
+}
+.pbar.st.flash {
+  border-color: var(--ember);
+}
+.flasks {
+  margin-top: 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.flasks i {
+  width: 12px;
+  height: 18px;
+  border-radius: 3px 3px 6px 6px;
+  border: 1px solid var(--gold);
+}
+.flasks i.full {
+  background: var(--gold);
+}
+.key {
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  border: 1px solid var(--ash);
+  padding: 0 5px;
+  border-radius: 3px;
+  margin-right: 4px;
+}
+
+.reticle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border: 2px solid var(--bone);
+  display: none;
+}
+
+.tip {
+  position: absolute;
+  left: 50%;
+  bottom: 110px;
+  transform: translateX(-50%);
+  padding: 8px 18px;
+  background: rgba(10, 12, 16, 0.72);
+  font-size: 18px;
+  opacity: 0;
+  transition: opacity 0.4s;
+  text-align: center;
+  max-width: 70vw;
+}
+.tip.on {
+  opacity: 1;
+}
+.ember {
+  color: var(--ember);
+}
+
+.controls {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--ash);
+  max-width: 420px;
+  text-align: right;
+  line-height: 1.6;
+}
+.controls b {
+  color: var(--bone);
+}
+
+.floaters .floater {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 18px;
+  font-weight: bold;
+  text-shadow: 0 1px 3px #000;
+  white-space: nowrap;
+}
+.floater.core {
+  color: #ffb070;
+}
+.floater.crit {
+  color: #ffe08a;
+  font-size: 24px;
+}
+.floater.body {
+  color: var(--bone);
+}
+.floater.deflect {
+  color: #b8c0cc;
+  font-size: 14px;
+  letter-spacing: 0.15em;
+}
+
+.screens {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.screens.title,
+.screens.pause,
+.screens.dead,
+.screens.victory,
+.screens.loading {
+  pointer-events: auto;
+  background: rgba(5, 6, 9, 0.45);
+}
+.screens.dead {
+  background: rgba(30, 4, 6, 0.6);
+}
+.panel.center {
+  text-align: center;
+}
+.logo {
+  font-size: 84px;
+  letter-spacing: 0.3em;
+  margin: 0;
+}
+.death {
+  font-size: 72px;
+  color: #c0302a;
+  letter-spacing: 0.3em;
+}
+.victory {
+  font-size: 64px;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+}
+.sub {
+  color: var(--ash);
+  font-size: 18px;
+}
+.hint {
+  color: var(--bone);
+  font-size: 16px;
+  max-width: 560px;
+  margin: 12px auto;
+}
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  margin-top: 24px;
+}
+.menu button {
+  pointer-events: auto;
+  font: inherit;
+  font-size: 20px;
+  letter-spacing: 0.15em;
+  color: var(--bone);
+  background: rgba(20, 22, 28, 0.8);
+  border: 1px solid rgba(230, 223, 207, 0.3);
+  padding: 8px 36px;
+  cursor: pointer;
+  min-width: 240px;
+}
+.menu button.focus {
+  border-color: var(--ember);
+  color: #fff;
+}
+
+.fps {
+  position: fixed;
+  top: 4px;
+  right: 6px;
+  font: 12px monospace;
+  color: #9f9;
+  z-index: 10;
+}
+.fatal {
+  position: fixed;
+  inset: 40% 10% auto;
+  color: #f88;
+  font: 16px monospace;
+  text-align: center;
+}

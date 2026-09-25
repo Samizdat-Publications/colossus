@@ -1,0 +1,13 @@
+node_modules/
+dist/
+test-output/
+*.log
+.DS_Store
+.vite/
+# Blender autosaves, backups and bytecode
+*.blend1
+*.blend@
+__pycache__/
+# Local env
+.env
+.env.*

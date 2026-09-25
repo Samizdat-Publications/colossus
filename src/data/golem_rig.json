@@ -1,0 +1,31 @@
+{
+  "_note": "Golem skeleton in three.js space (metres, Y up, the golem faces +Z, its left side is +X). Read by blender_scripts/golem.py and by the greybox. head = joint position, tail = end of the segment, radius = collision capsule radius.",
+  "bones": [
+    { "name": "hips",       "parent": null,         "head": [0, 7.0, -0.6],   "tail": [0, 8.3, -0.5],   "radius": 2.3 },
+    { "name": "spine",      "parent": "hips",       "head": [0, 8.3, -0.5],   "tail": [0, 10.2, 0.2],   "radius": 2.4 },
+    { "name": "chest",      "parent": "spine",      "head": [0, 10.2, 0.2],   "tail": [0, 12.3, 1.3],   "radius": 3.0 },
+    { "name": "neck",       "parent": "chest",      "head": [0, 12.3, 1.3],   "tail": [0, 12.8, 2.0],   "radius": 1.2 },
+    { "name": "head",       "parent": "neck",       "head": [0, 12.8, 2.0],   "tail": [0, 14.5, 2.7],   "radius": 1.35 },
+    { "name": "shoulder_L", "parent": "chest",      "head": [1.2, 11.9, 0.7], "tail": [3.7, 12.0, 0.6], "radius": 1.6 },
+    { "name": "upperarm_L", "parent": "shoulder_L", "head": [3.7, 12.0, 0.6], "tail": [4.5, 7.6, 1.0],  "radius": 1.3 },
+    { "name": "forearm_L",  "parent": "upperarm_L", "head": [4.5, 7.6, 1.0],  "tail": [4.8, 3.2, 1.6],  "radius": 1.25 },
+    { "name": "hand_L",     "parent": "forearm_L",  "head": [4.8, 3.2, 1.6],  "tail": [4.9, 1.0, 1.9],  "radius": 1.2 },
+    { "name": "shoulder_R", "parent": "chest",      "head": [-1.2, 11.9, 0.7], "tail": [-3.7, 12.0, 0.6], "radius": 1.6 },
+    { "name": "upperarm_R", "parent": "shoulder_R", "head": [-3.7, 12.0, 0.6], "tail": [-4.5, 7.6, 1.0],  "radius": 1.3 },
+    { "name": "forearm_R",  "parent": "upperarm_R", "head": [-4.5, 7.6, 1.0],  "tail": [-4.8, 3.2, 1.6],  "radius": 1.25 },
+    { "name": "hand_R",     "parent": "forearm_R",  "head": [-4.8, 3.2, 1.6],  "tail": [-4.9, 1.0, 1.9],  "radius": 1.2 },
+    { "name": "thigh_L",    "parent": "hips",       "head": [1.7, 6.8, -0.6], "tail": [2.0, 3.7, 0.0],  "radius": 1.4 },
+    { "name": "shin_L",     "parent": "thigh_L",    "head": [2.0, 3.7, 0.0],  "tail": [2.1, 1.0, -0.4], "radius": 1.2 },
+    { "name": "foot_L",     "parent": "shin_L",     "head": [2.1, 1.0, -0.4], "tail": [2.1, 0.5, 1.4],  "radius": 1.0 },
+    { "name": "thigh_R",    "parent": "hips",       "head": [-1.7, 6.8, -0.6], "tail": [-2.0, 3.7, 0.0],  "radius": 1.4 },
+    { "name": "shin_R",     "parent": "thigh_R",    "head": [-2.0, 3.7, 0.0],  "tail": [-2.1, 1.0, -0.4], "radius": 1.2 },
+    { "name": "foot_R",     "parent": "shin_R",     "head": [-2.1, 1.0, -0.4], "tail": [-2.1, 0.5, 1.4],  "radius": 1.0 }
+  ],
+  "cores": [
+    { "name": "core_arm_L", "bone": "forearm_L", "pos": [5.75, 4.3, 1.45], "radius": 0.95, "kind": "arm" },
+    { "name": "core_arm_R", "bone": "forearm_R", "pos": [-5.75, 4.3, 1.45], "radius": 0.95, "kind": "arm" },
+    { "name": "core_back",  "bone": "hips",      "pos": [0, 7.2, -2.75],   "radius": 1.15, "kind": "back" },
+    { "name": "core_chest", "bone": "chest",     "pos": [0, 10.9, 2.9],    "radius": 1.1,  "kind": "chest" }
+  ],
+  "eyes": { "bone": "head", "left": [0.55, 13.7, 3.35], "right": [-0.55, 13.7, 3.35] }
+}
