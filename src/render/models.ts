@@ -74,6 +74,7 @@ export function buildGolemModel(assets: Assets): GolemModel {
         }),
       );
       m.castShadow = false;
+      if (!chest) m.scale.setScalar(1.35);
       cores.set(name, m);
     } else if (name.startsWith('eye_')) {
       m.material = eyeMat;
@@ -105,7 +106,7 @@ export function buildWarriorModel(assets: Assets): WarriorModel {
   const tex = assets.tex;
   const mats: Record<string, THREE.Material> = {
     warrior_steel: new THREE.MeshStandardMaterial({
-      color: 0xd2d7e0,
+      color: 0x8c95a3,
       metalness: 0.92,
       roughness: 1.35,
       roughnessMap: tex.metal_rough,
@@ -246,7 +247,7 @@ export const waterUniforms = { uWaterTime: { value: 0 }, uRain: { value: 1 } };
 
 /** Dark water with a real sheen and raindrop ripples (normals perturbed in the shader). */
 function makeWater(): THREE.MeshStandardMaterial {
-  const m = new THREE.MeshStandardMaterial({ color: 0x0b1016, roughness: 0.05, metalness: 0.0, envMapIntensity: 1.8 });
+  const m = new THREE.MeshStandardMaterial({ color: 0x1a2431, roughness: 0.12, metalness: 0.0, envMapIntensity: 1.5 });
   m.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, waterUniforms);
     shader.vertexShader = shader.vertexShader
@@ -281,7 +282,7 @@ vec2 ripples(vec2 p, float t) {
         '#include <normal_fragment_maps>',
         `#include <normal_fragment_maps>
 {
-  vec2 rp = ripples(vWaterWorld.xz * 2.2, uWaterTime) * 0.35 * uRain + ripples(vWaterWorld.xz * 3.7 + 11.0, uWaterTime * 1.3) * 0.25 * uRain;
+  vec2 rp = ripples(vWaterWorld.xz * 2.2, uWaterTime) * 0.18 * uRain + ripples(vWaterWorld.xz * 3.7 + 11.0, uWaterTime * 1.3) * 0.12 * uRain;
   vec3 nW = normalize(vec3(-rp.x, 1.0, -rp.y));
   normal = normalize((viewMatrix * vec4(nW, 0.0)).xyz);
 }`,

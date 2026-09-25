@@ -370,6 +370,48 @@ try {
     await waitFor(() => window.__CO.state().flow === 'dead', 15000);
     await sleep(700);
     await shot('death_screen');
+  } else if (scenario === 'perf') {
+    // frame times during a real fight at normal speed: the expert bot plays, the golem attacks
+    await page.click('button[data-act="begin"]');
+    await page.evaluate(() => window.__CO.skipIntro());
+    await waitFor(() => window.__CO.state().flow === 'fight', 20000);
+    await page.evaluate(() => window.__CO.god(true));
+    await page.evaluate(() => window.__CO.bot('expert'));
+    await sleep(3000);
+    const samples = await page.evaluate(async () => {
+      const out = [];
+      let last = performance.now();
+      const end = last + 20000;
+      await new Promise((resolve) => {
+        const tick = () => {
+          const now = performance.now();
+          out.push(now - last);
+          last = now;
+          if (now < end) requestAnimationFrame(tick);
+          else resolve(null);
+        };
+        requestAnimationFrame(tick);
+      });
+      return out;
+    });
+    samples.sort((a, b) => a - b);
+    const avg = samples.reduce((a, b) => a + b, 0) / samples.length;
+    const p = (q) => samples[Math.min(samples.length - 1, Math.floor(samples.length * q))];
+    // one whole frame (all passes): stop the per-call reset, count across a frame, restore
+    const info = await page.evaluate(async () => {
+      const r = window.__game.renderer.renderer;
+      const next = () => new Promise((res) => requestAnimationFrame(() => res(null)));
+      await next();
+      r.info.autoReset = false;
+      r.info.reset();
+      await next();
+      const out = { calls: r.info.render.calls, triangles: r.info.render.triangles, geometries: r.info.memory.geometries, textures: r.info.memory.textures, programs: r.info.programs?.length ?? 0 };
+      r.info.autoReset = true;
+      return out;
+    });
+    report.results.perf = { frames: samples.length, avgMs: +avg.toFixed(2), fps: +(1000 / avg).toFixed(1), p95Ms: +p(0.95).toFixed(2), p99Ms: +p(0.99).toFixed(2), ...info };
+    log('perf', JSON.stringify(report.results.perf));
+    await shot('perf_end');
   } else if (scenario === 'tour') {
     await page.click('button[data-act="begin"]');
     await page.evaluate(() => window.__CO.skipIntro());

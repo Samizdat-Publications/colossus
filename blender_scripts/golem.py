@@ -149,6 +149,8 @@ def build_list():
     add('thigh_L', 'block', along('thigh_L', 0.35, (1.05, 0.0, 0.0)), (0.6, 2.3, 1.9), bone_rot('thigh_L', C.rot_y(8)),
         chips=2, name='g_thigh_L_plate')
     add('shin_L', 'rock', along('shin_L', 0.0, (0.0, 0.1, 0.8)), (0.75, 0.68, 0.6), mat='rock', name='g_shin_L_knee')
+    add('shin_L', 'rock', along('shin_L', 0.05, (0.0, 0.0, -0.55)), (0.85, 0.75, 0.7), mat='rock', name='g_shin_L_kneeback')
+    add('thigh_L', 'rock', along('thigh_L', 0.05, (-0.2, 0.0, 0.0)), (0.95, 0.8, 1.0), mat='rock', name='g_thigh_L_hip')
     add('shin_L', 'block', along('shin_L', 0.3), (2.3, 1.4, 2.3), bone_rot('shin_L', C.rot_y(12)), chips=3)
     add('shin_L', 'block', along('shin_L', 0.72), (2.4, 1.5, 2.4), bone_rot('shin_L', C.rot_y(-9)), chips=3)
     add('foot_L', 'block', (2.1, 0.47, 0.4), (2.5, 0.95, 3.4), euler(0, 3, 0), chips=3, name='g_foot_L_slab')

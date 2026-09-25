@@ -320,8 +320,8 @@ const ROAR: PoseDef = mergeDefs(IDLE, {
   hips: [-2, 0, 0],
   spine: [-10, 0, 0],
   chest: [-22, 0, 0],
-  neck: [-14, 0, 0],
-  head: [-34, 0, 0],
+  neck: [-8, 0, 0],
+  head: [-12, 0, 0],
   shoulder_L: [0, 0, 18],
   shoulder_R: [0, 0, -18],
   upperarm_L: [-70, -10, 70],
@@ -343,7 +343,7 @@ const ROAR_SKY: PoseDef = mergeDefs(ROAR, {
   upperarm_R: [-150, 0, -40],
   forearm_L: [-20, 0, 0],
   forearm_R: [-20, 0, 0],
-  head: [-40, 0, 0],
+  head: [-16, 0, 0],
 });
 
 // ---- stagger: a giant on its knees, torso still up, head bowed, fists planted in front ----

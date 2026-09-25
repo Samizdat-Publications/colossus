@@ -27,6 +27,7 @@ import { makeEnvironment } from '../render/environment';
 import { waterUniforms } from '../render/models';
 import { Cape } from '../render/cloth';
 import { AudioEngine } from '../audio/audio';
+import { loadSettings, saveSettings, type Settings } from '../core/settings';
 import { Fx } from '../render/fx';
 import { Weather } from '../render/weather';
 import { Flames } from '../render/flames';
@@ -95,6 +96,7 @@ export class Game {
   private heatShown = 0;
 
   readonly audio: AudioEngine;
+  readonly settings: Settings = loadSettings();
   readonly fx: Fx;
   readonly weather = new Weather();
   private flames: Flames | null = null;
@@ -102,7 +104,7 @@ export class Game {
   private readonly golemPoints: THREE.Vector3[] = [];
   private readonly meteorPoints: THREE.Vector3[] = [];
   private moonBase = 2.3;
-  private hemiBase = 1.35;
+  private hemiBase = 1.15;
   /** The warrior's cloth cape (Blender assets only). */
   private cape: Cape | null = null;
   private readonly wind = new THREE.Vector3();
@@ -138,7 +140,7 @@ export class Game {
       golemLook.uRim.value = 0.1; // textured stone needs only a hint of the greybox's silhouette rim
       golemLook.uCrackScale.value = 0.15; // larger vein cells: the phase 2 cracks read from across the arena
     }
-    this.hemi = new THREE.HemisphereLight(0x8196bb, 0x2c2723, 1.35);
+    this.hemi = new THREE.HemisphereLight(0x8196bb, 0x2c2723, 1.15);
     this.scene.add(this.hemi);
     this.moon = new THREE.DirectionalLight(0xc4d2ee, 2.3);
     this.moon.position.set(-16, 40, -44);
@@ -161,7 +163,7 @@ export class Game {
       this.arenaModel = buildArenaModel(this.scene, assets);
       this.flames = new Flames(this.arenaModel.braziers.map((b) => b.clone().setY(2.02)));
       this.scene.add(this.flames.group);
-      this.threatView.setRockLook(this.arenaModel.rockGeo, this.arenaModel.meteorGeo, this.arenaModel.rockMat);
+      this.threatView.setRockLook(this.arenaModel.rockGeo, this.arenaModel.meteorGeo, this.arenaModel.rockMat, this.arenaModel.debrisGeo);
     } else {
       buildGreyboxArena(this.scene);
       addBrazierFlames(this.scene, []);
@@ -246,12 +248,22 @@ export class Game {
     const ui = document.getElementById('ui') ?? container;
     this.hud = new Hud(ui);
     this.tips = new Tips(this.hud);
-    this.screens = new Screens(ui, {
-      begin: () => this.begin(),
-      resume: () => this.resume(),
-      retry: () => this.retry(),
-      title: () => this.toTitle(),
-    });
+    this.screens = new Screens(
+      ui,
+      {
+        begin: () => this.begin(),
+        resume: () => this.resume(),
+        retry: () => this.retry(),
+        title: () => this.toTitle(),
+        settingsChanged: () => {
+          this.applySettings();
+          saveSettings(this.settings);
+        },
+        click: () => this.audio.uiClick(),
+      },
+      this.settings,
+    );
+    this.applySettings();
 
     this.wireEvents();
     this.input.onPointerLockChange = (locked) => {
@@ -406,8 +418,8 @@ export class Game {
     this.ctx.live = true;
     this.hud.bossVisible = true;
     this.hud.setVisible(true);
-    this.hud.showControls = this.attempt === 1;
-    this.controlsTimer = this.attempt === 1 ? 12 : 0;
+    this.hud.showControls = this.attempt === 1 && this.settings.showControls;
+    this.controlsTimer = this.hud.showControls ? 12 : 0;
     bus.emit('fightStart', { attempt: this.attempt });
     if (this.attempt === 1) this.tips.show('start', 'Only the <b class="core">glowing cores</b> can be harmed.', 1, 4);
   }
@@ -508,7 +520,20 @@ export class Game {
       hint: this.deathHint(),
       hits: this.player.stats.hits,
       flasks: this.player.stats.flasksUsed,
+      damageTaken: this.player.stats.damageTaken,
+      coreHits: this.player.stats.coreHits,
+      staggers: this.golem.stats.staggers,
     };
+  }
+
+  /** Push the menu settings into input, camera, audio and HUD. */
+  applySettings(): void {
+    const s = this.settings;
+    this.input.settings.sensitivity = 0.0024 * s.sensitivity;
+    this.input.settings.invertY = s.invertY;
+    this.cam.shakeScale = s.shake;
+    this.audio.settings = { master: s.master, music: s.music, sfx: s.sfx };
+    this.audio.applySettings();
   }
 
   // ------------------------------------------------------------------ loop
@@ -558,8 +583,9 @@ export class Game {
   private handleUiInput(f: InputFrame): void {
     if (this.screens.current !== 'none' && this.screens.current !== 'loading') {
       const canConfirm = this.flowTime > 0.5 || this.paused;
-      this.screens.nav(f.pressed.up, f.pressed.down, canConfirm && f.pressed.confirm);
-      if (this.paused && f.pressed.pause && this.flowTime > 0) this.resume();
+      const sub = this.screens.current === 'howto' || this.screens.current === 'settings';
+      this.screens.nav(f.pressed.up, f.pressed.down, canConfirm && f.pressed.confirm, f.pressed.left, f.pressed.right, f.pressed.pause && sub);
+      if (this.paused && f.pressed.pause && !sub && this.flowTime > 0) this.resume();
       return;
     }
     if (f.pressed.pause && (this.flow === 'fight' || this.flow === 'intro' || this.flow === 'dying')) this.pause();
@@ -1016,7 +1042,7 @@ export class Game {
       // gusty storm wind from the north-west, plus the air the warrior runs through
       const t = this.ctx.time;
       const gust = 0.6 + 0.4 * Math.sin(t * 0.7) * Math.sin(t * 1.9 + 1.3);
-      this.wind.set(2.2 * gust, 0.3, 3.0 * gust).addScaledVector(this.player.vel, -1.6);
+      this.wind.set(1.4 * gust, 0.0, 2.0 * gust).addScaledVector(this.player.vel, -1.1);
       this.cape.update(dt, this.wind);
     }
     // the seal wakes with the golem: its runes burn while it assembles, then settle to an ember
@@ -1070,7 +1096,7 @@ export class Game {
     this.hemi.color.setRGB(0.54 + 0.1 * this.heatShown, 0.58 - 0.05 * this.heatShown, 0.66 - 0.16 * this.heatShown);
     // phase 3: lava light from the cracks warms the floor and the air
     this.hemi.groundColor.setRGB(0.173 + 0.16 * this.heatShown, 0.153 + 0.05 * this.heatShown, 0.137 - 0.03 * this.heatShown);
-    (this.scene.fog as THREE.FogExp2).color.setRGB(0.118 + 0.13 * this.heatShown, 0.157 - 0.05 * this.heatShown, 0.22 - 0.14 * this.heatShown);
+    (this.scene.fog as THREE.FogExp2).color.setRGB(0.118 + 0.07 * this.heatShown, 0.157 - 0.03 * this.heatShown, 0.22 - 0.1 * this.heatShown);
     // camera-occlusion fade on the golem (off in cinematics and on the title)
     const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
     setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), false);
@@ -1138,7 +1164,7 @@ export class Game {
       if (light) light.intensity = mesh.visible ? (base * pulse * 0.6 + t.flash * 1.5) * 6 : 0;
     }
     const eyeMat = this.golemEyes[0]?.material as THREE.MeshStandardMaterial | undefined;
-    const eyeOn = this.assets ? 4.5 : 2.2;
+    const eyeOn = this.assets ? 3.2 : 2.2;
     if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, eyeOn * (1 - g.stateTime / 0.4)) : g.state === 'dormant' ? 0 : eyeOn;
     const chest = this.coreMeshes.get('core_chest');
     if (chest) {

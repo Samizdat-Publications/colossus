@@ -24,6 +24,7 @@ export class Cape {
   private readonly vertexToParticle: number[] = [];
   private readonly geo: THREE.BufferGeometry;
   private ready = false;
+  private topY = Infinity;
 
   constructor(
     private readonly mesh: THREE.Mesh,
@@ -103,6 +104,12 @@ export class Cape {
     const sh = h / steps;
     this.anchor.updateWorldMatrix(true, false);
     const spheres = this.body();
+    this.topY = Infinity;
+    for (let i = 0; i < this.pos.length; i++) {
+      if (!this.pinned[i]) continue;
+      _w.copy(this.rest[i]).applyMatrix4(this.anchor.matrixWorld);
+      this.topY = Math.min(this.topY, _w.y);
+    }
     for (let s = 0; s < steps; s++) {
       for (let i = 0; i < this.pos.length; i++) {
         const p = this.pos[i];
@@ -139,6 +146,7 @@ export class Cape {
             if (d < sp.r && d > 1e-5) p.addScaledVector(_d, (sp.r - d) / d);
           }
           if (p.y < 0.03) p.y = 0.03;
+          if (p.y > this.topY - 0.06) p.y = this.topY - 0.06;
         }
       }
     }

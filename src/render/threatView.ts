@@ -144,7 +144,8 @@ export class ThreatView {
   private rockGeo: THREE.BufferGeometry = new THREE.IcosahedronGeometry(1, 0);
   private meteorGeo: THREE.BufferGeometry | null = null;
   private readonly trailGeo = new THREE.ConeGeometry(0.7, 1, 12, 1, true);
-  private readonly spikeGeo = new THREE.ConeGeometry(0.7, 2.6, 5);
+  private spikeGeo: THREE.BufferGeometry = new THREE.ConeGeometry(0.7, 2.6, 5);
+  private spikeMat: THREE.Material | null = null;
   private readonly stripGeo = new THREE.PlaneGeometry(1, 1);
   private readonly chevGeo = (() => {
     const shape = new THREE.Shape();
@@ -163,11 +164,27 @@ export class ThreatView {
   private readonly crackTex = crackTexture();
   private rockMat: THREE.Material = new THREE.MeshStandardMaterial({ color: 0x4a4744, roughness: 0.95, flatShading: true, emissive: 0x802808, emissiveIntensity: 0.25 });
 
-  /** Use the Blender boulders (unit radius) for thrown rocks and meteors. */
-  setRockLook(rock: THREE.BufferGeometry | null, meteor: THREE.BufferGeometry | null, mat: THREE.Material | null): void {
+  /** Use the Blender boulders (unit radius) for thrown rocks and meteors, and a stretched chunk for spikes. */
+  setRockLook(rock: THREE.BufferGeometry | null, meteor: THREE.BufferGeometry | null, mat: THREE.Material | null, spike?: THREE.BufferGeometry | null): void {
     if (rock) this.rockGeo = rock;
     this.meteorGeo = meteor;
     if (mat) this.rockMat = mat;
+    if (spike) {
+      // a shard: the debris chunk stretched upward and pinched at the top
+      const g = spike.clone();
+      g.computeBoundingBox();
+      const bb = g.boundingBox!;
+      const pos = g.getAttribute('position') as THREE.BufferAttribute;
+      const h = bb.max.y - bb.min.y || 1;
+      for (let i = 0; i < pos.count; i++) {
+        const t = (pos.getY(i) - bb.min.y) / h;
+        const pinch = 1 - 0.75 * t;
+        pos.setXYZ(i, pos.getX(i) * pinch * 1.3, t * 2.6, pos.getZ(i) * pinch * 1.3);
+      }
+      g.computeVertexNormals();
+      this.spikeGeo = g;
+      this.spikeMat = mat;
+    }
   }
   private readonly trailMat = new THREE.ShaderMaterial({
     vertexShader: /* glsl */ `
@@ -503,8 +520,9 @@ export class ThreatView {
     this.sync(th.spikes, this.spikeMeshes, (s) => {
       const m = new THREE.Mesh(
         this.spikeGeo,
-        new THREE.MeshStandardMaterial({ color: 0x5a5550, emissive: s.kind === 'lava' ? 0xff4a10 : 0xa03a0c, emissiveIntensity: 1.1, flatShading: true }),
+        this.spikeMat ?? new THREE.MeshStandardMaterial({ color: 0x5a5550, emissive: s.kind === 'lava' ? 0xff4a10 : 0xa03a0c, emissiveIntensity: 1.1, flatShading: true }),
       );
+      m.castShadow = true;
       m.position.copy(s.pos);
       m.rotation.set((Math.random() - 0.5) * 0.5, Math.random() * 6, (Math.random() - 0.5) * 0.5);
       return m;

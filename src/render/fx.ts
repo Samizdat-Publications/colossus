@@ -6,8 +6,8 @@ import type { Hazard } from '../game/threats';
 const _v = new THREE.Vector3();
 const _p = new THREE.Vector3();
 const _n = new THREE.Vector3();
-const DUST = new THREE.Color(0.42, 0.4, 0.37);
-const DUST_DARK = new THREE.Color(0.25, 0.24, 0.23);
+const DUST = new THREE.Color(0.26, 0.25, 0.24);
+const DUST_DARK = new THREE.Color(0.16, 0.155, 0.15);
 const WATER = new THREE.Color(0.62, 0.7, 0.8);
 const EMBER = new THREE.Color(1.0, 0.55, 0.16);
 const EMBER_HOT = new THREE.Color(1.0, 0.78, 0.4);
@@ -57,7 +57,7 @@ export class Fx {
       const r = r0 * Math.sqrt(Math.random());
       _p.set(pos.x + Math.cos(a) * r, 0.3 + Math.random() * 0.6, pos.z + Math.sin(a) * r);
       _v.set(Math.cos(a) * speed * rnd(0.5, 1.1), rnd(0.4, 2.2), Math.sin(a) * speed * rnd(0.5, 1.1));
-      this.dust.emit({ pos: _p, vel: _v, life: life * rnd(0.7, 1.2), size: size * rnd(0.6, 1.3), grow: 2.6, color: dark ? DUST_DARK : DUST, alpha: 0.42, drag: 1.8, gravity: -0.3 });
+      this.dust.emit({ pos: _p, vel: _v, life: life * rnd(0.7, 1.2), size: size * rnd(0.6, 1.3), grow: 2.6, color: dark ? DUST_DARK : DUST, alpha: 0.32, drag: 1.8, gravity: -0.3 });
     }
   }
 
@@ -101,6 +101,15 @@ export class Fx {
       _v.set(rnd(-0.4, 0.4) + 0.5, rnd(rise * 0.5, rise * 1.2), rnd(-0.4, 0.4) + 0.3);
       this.glow.emit({ pos: _p, vel: _v, life: rnd(0.9, 1.8), size: rnd(0.06, 0.13), grow: 0.5, color: Math.random() < 0.3 ? EMBER_HOT : EMBER, alpha: 1, gravity: -0.4, drag: 0.6, flicker: 0.7 });
     }
+  }
+
+  /** A tongue of flame: a big soft glow sprite that rises and shrinks quickly. */
+  flameLick(pos: THREE.Vector3, spread: number): void {
+    const a = Math.random() * Math.PI * 2;
+    const r = spread * Math.sqrt(Math.random());
+    _p.set(pos.x + Math.cos(a) * r, 0.15, pos.z + Math.sin(a) * r);
+    _v.set(rnd(-0.2, 0.2), rnd(1.4, 2.4), rnd(-0.2, 0.2));
+    this.glow.emit({ pos: _p, vel: _v, life: rnd(0.35, 0.6), size: rnd(0.45, 0.8), grow: 0.3, color: Math.random() < 0.5 ? EMBER : EMBER_HOT, alpha: 0.55, drag: 0.5, flicker: 0.4 });
   }
 
   smoke(pos: THREE.Vector3, count: number, spread: number): void {
@@ -217,7 +226,10 @@ export class Fx {
       if (h.t < h.arm - 1 || h.dur - h.t < 0.3) continue;
       const burning = h.t >= h.arm;
       this.rate(`hz${h.seed}`, (burning ? 10 : 4) * h.radius * 0.4, dt, () => this.embers(h.pos, 1, h.radius * 0.85, burning ? 2 : 1));
-      if (burning) this.rate(`hs${h.seed}`, 2.2, dt, () => this.smoke(h.pos, 1, h.radius * 0.7));
+      if (burning) {
+        this.rate(`hs${h.seed}`, 2.2, dt, () => this.smoke(h.pos, 1, h.radius * 0.7));
+        this.rate(`hf${h.seed}`, 7 * h.radius, dt, () => this.flameLick(h.pos, h.radius * 0.8));
+      }
     }
     ctx.braziers.forEach((b, i) => {
       this.rate(`br${i}`, 5, dt, () => this.embers(_p.copy(b).setY(b.y + 0.3), 1, 0.3, 2.2));

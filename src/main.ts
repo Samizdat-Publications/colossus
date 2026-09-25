@@ -1,3 +1,9 @@
+import '@fontsource/cinzel/500.css';
+import '@fontsource/cinzel/600.css';
+import '@fontsource/cinzel/700.css';
+import '@fontsource/eb-garamond/400.css';
+import '@fontsource/eb-garamond/400-italic.css';
+import '@fontsource/eb-garamond/600.css';
 import './ui/styles.css';
 import { runPoseSheet } from './debug/poseSheet';
 import { loadBalance } from './core/balance';
@@ -19,12 +25,12 @@ async function boot(): Promise<void> {
   const app = document.getElementById('app')!;
   // Blender assets (greybox primitives with ?greybox=1 or if loading fails)
   const ui = document.getElementById('ui');
-  if (ui) ui.innerHTML = `<div class="screens loading"><div class="panel center"><h1 class="logo">COLOSSUS</h1><p class="sub" id="load-progress">Loading the ruin...</p></div></div>`;
+  if (ui) ui.innerHTML = `<div class="screens loading"><div class="center-col"><h1 class="logo">COLOSSUS</h1><div class="load-bar"><i id="load-bar"></i></div><p class="whisper">The ruin is gathering itself...</p></div></div>`;
   const assets = params.has('greybox')
     ? null
     : await loadAssets((f) => {
-        const el = document.getElementById('load-progress');
-        if (el) el.textContent = `Loading the ruin... ${Math.round(f * 100)}%`;
+        const el = document.getElementById('load-bar');
+        if (el) el.style.width = `${Math.round(f * 100)}%`;
       });
   if (ui) ui.innerHTML = '';
   const game = new Game(app, {

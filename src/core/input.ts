@@ -11,7 +11,9 @@ export type ActionName =
   | 'back'
   | 'hints'
   | 'up'
-  | 'down';
+  | 'down'
+  | 'left'
+  | 'right';
 
 export const ACTIONS: ActionName[] = [
   'light',
@@ -27,6 +29,8 @@ export const ACTIONS: ActionName[] = [
   'hints',
   'up',
   'down',
+  'left',
+  'right',
 ];
 
 interface Binding {
@@ -50,6 +54,8 @@ const BINDINGS: Record<ActionName, Binding> = {
   hints: { keys: ['KeyH'], mouse: [], pad: [8] },
   up: { keys: ['ArrowUp', 'KeyW'], mouse: [], pad: [12] },
   down: { keys: ['ArrowDown', 'KeyS'], mouse: [], pad: [13] },
+  left: { keys: ['ArrowLeft', 'KeyA'], mouse: [], pad: [14] },
+  right: { keys: ['ArrowRight', 'KeyD'], mouse: [], pad: [15] },
 };
 
 const PREVENT = new Set(['Space', 'Tab', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyF', 'KeyQ', 'KeyR', 'KeyH']);

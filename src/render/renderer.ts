@@ -41,7 +41,7 @@ export class Renderer {
     r.setPixelRatio(this.pixelRatio);
     r.setSize(window.innerWidth, window.innerHeight);
     r.toneMapping = THREE.ACESFilmicToneMapping;
-    r.toneMappingExposure = 1.0;
+    r.toneMappingExposure = 0.9; // night
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFShadowMap;
