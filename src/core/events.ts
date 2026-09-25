@@ -13,6 +13,8 @@ export interface GameEvents {
   justGuard: { pos: THREE.Vector3 };
   guardBreak: { pos: THREE.Vector3 };
   hazardBurn: { pos: THREE.Vector3 };
+  /** a thrown rock or a meteor broke apart (pos: where; vel: how it was travelling; size: its radius) */
+  rockShatter: { pos: THREE.Vector3; vel: THREE.Vector3; size: number };
   /** the staggered golem's knees hit the floor */
   golemKneel: { pos: THREE.Vector3 };
   /** a heavy attack is charging (pos: the blade's middle; charge 0..1) */

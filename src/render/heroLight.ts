@@ -36,7 +36,7 @@ export function addHeroLight<T extends THREE.Material>(mat: T): T {
   float heroNdV = saturate(dot(normal, normalize(vViewPosition)));
   totalEmissiveRadiance += diffuseColor.rgb * uHeroFill * (0.3 + 0.7 * heroNdV);
   totalEmissiveRadiance += uHeroRim * pow(1.0 - heroNdV, 3.0);
-  totalEmissiveRadiance += vec3(1.6, 0.36, 0.24) * uHeroHit * (0.7 + 1.5 * pow(1.0 - heroNdV, 2.0));
+  totalEmissiveRadiance += vec3(1.3, 0.22, 0.12) * uHeroHit * (0.15 + 1.6 * pow(1.0 - heroNdV, 2.5));
 }`,
       );
   };

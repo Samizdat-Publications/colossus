@@ -73,7 +73,7 @@ export function installHooks(game: Game): void {
           targets: g.targets.map((t) => ({ name: t.name, pos: vec(t.pos), open: t.open, r: t.radius })),
         },
         threats: {
-          hazards: game.threats.hazards.map((h) => ({ pos: vec(h.pos), r: h.radius, left: r2(h.dur - h.t) })),
+          hazards: game.threats.hazards.map((h) => ({ pos: vec(h.pos), r: h.radius, left: r2(h.dur - h.t), burning: h.t >= h.arm && h.dur - h.t > 1 })),
           waves: game.threats.waves.map((w) => ({ c: vec(w.center), r: r2(w.r), speed: w.speed, h: w.height, hit: w.hit })),
           rocks: game.threats.rocks.map((r) => ({ pos: vec(r.pos), target: vec(r.target), left: r2(r.flight - r.t), radius: r.radius })),
           telegraphs: game.threats.telegraphs.map((t) => ({ pos: vec(t.pos), r: t.radius, left: r2(t.dur - t.t), kind: t.kind })),

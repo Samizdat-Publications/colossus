@@ -272,6 +272,7 @@ export class Threats {
       const center = r.pos.clone();
       center.y = Math.max(0, center.y);
       bus.emit('rockImpact', { pos: center.clone(), radius: r.radius });
+      bus.emit('rockShatter', { pos: r.pos.clone(), vel: r.vel.clone(), size: r.size });
       if (pl.alive && ctx.live) {
         const d = Math.hypot(pl.pos.x - center.x, pl.pos.z - center.z);
         if (d < r.radius + PLAYER_RADIUS && pl.y < center.y + 2.2) {

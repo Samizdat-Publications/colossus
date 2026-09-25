@@ -1015,7 +1015,7 @@ export class Game {
     dz /= l;
     // over the warrior's shoulder: the warrior in the foreground, the collapse beyond
     // the closer the warrior stands to the falling giant, the further back the camera steps
-    const back = clamp(22 - l, 10, 16);
+    const back = clamp(25 - l, 13, 19);
     let px = p.x + dx * back - dz * 4;
     let pz = p.z + dz * back + dx * 4;
     const d = Math.hypot(px, pz);
@@ -1025,8 +1025,8 @@ export class Game {
       pz *= 28 / d;
     }
     // high and wide: the collapsing arms stay below the lens
-    c.pos.set(px, 8.5, pz);
-    c.look.set(lerp(p.x, g.x, 0.72), 2.8, lerp(p.z, g.z, 0.72));
+    c.pos.set(px, 9.5, pz);
+    c.look.set(lerp(p.x, g.x, 0.72), 4.2, lerp(p.z, g.z, 0.72));
     c.fov = 56;
   }
 
@@ -1443,7 +1443,7 @@ export class Game {
       l.intensity = 12 * hz.radius * lit * fade * flick;
       l.distance = 5 + hz.radius * 3;
     });
-    this.heroHit = Math.max(0, this.heroHit - dt * 3.2);
+    this.heroHit = Math.max(0, this.heroHit - dt * 4.5);
     heroUniforms.uHeroHit.value = this.heroHit;
     const camPos = this.cam.camera.position;
     setHeroLight(Math.hypot(camPos.x - this.player.pos.x, camPos.z - this.player.pos.z), this.flow === 'dying' || this.flow === 'dead' ? 1.3 : 1);
@@ -1518,13 +1518,13 @@ export class Game {
     this.updateCoreBeam(g.staggered && this.flow === 'fight' ? this.hud.markCore : null);
     // death: the Ruin falls back into rubble
     if (g.state === 'dead') {
-      if (this.crumbleT < 0 && g.stateTime > 0.8) {
+      if (this.crumbleT < 0 && g.stateTime > 0.5) {
         this.crumbleT = 0;
         this.assembler.setCenter(g.pos);
       }
       if (this.crumbleT >= 0) {
         this.crumbleT += dt;
-        this.assembler.apply(1 - Math.min(1, this.crumbleT / 2.4), this.ctx.time);
+        this.assembler.apply(1 - Math.min(1, this.crumbleT / 2.1), this.ctx.time);
       }
     } else this.crumbleT = -1;
     let cyanBest: THREE.Mesh | null = null;

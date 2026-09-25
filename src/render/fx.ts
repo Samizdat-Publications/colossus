@@ -152,6 +152,24 @@ export class Fx {
       this.dustRing(e.pos, 1.8, Math.round(8 * e.strength), 2.5, 0.9, 1.2);
       this.splash(e.pos, Math.round(10 * e.strength), 4);
     }));
+    u.push(on('rockShatter', (e) => {
+      // the boulder breaks into big fragments that carry on in its direction, and a burst of grit
+      if (this.debris) {
+        for (let i = 0; i < 10; i++) {
+          _v.copy(e.vel).multiplyScalar(rnd(0.15, 0.35));
+          _v.x += rnd(-4, 4);
+          _v.y = Math.abs(_v.y) * 0.2 + rnd(2, 6);
+          _v.z += rnd(-4, 4);
+          _p.set(e.pos.x + rnd(-0.5, 0.5) * e.size, Math.max(0.3, e.pos.y + rnd(-0.4, 0.4) * e.size), e.pos.z + rnd(-0.5, 0.5) * e.size);
+          this.debris.emit(_p, _v, e.size * rnd(0.3, 0.55), rnd(2, 3.2));
+        }
+      }
+      for (let i = 0; i < 14; i++) {
+        _v.set(rnd(-1, 1) * 3, rnd(0.2, 2.2), rnd(-1, 1) * 3);
+        _p.set(e.pos.x, Math.max(0.3, e.pos.y), e.pos.z);
+        this.dust.emit({ pos: _p, vel: _v, life: rnd(0.8, 1.4), size: e.size * rnd(0.8, 1.4), grow: 2.4, color: DUST, alpha: 0.38, drag: 2, gravity: -0.2 });
+      }
+    }));
     u.push(on('rockImpact', (e) => {
       this.dustRing(e.pos, e.radius * 0.7, 26, 6, 1.2, 1.6);
       this.chunks(e.pos, 8, e.radius, 8, 0.35);

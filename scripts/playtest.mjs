@@ -606,16 +606,17 @@ try {
     // three-hit combo in the open
     await page.evaluate(() => window.__CO.teleportPlayer(0, 14));
     await sleep(700);
+    // each frame lands mid-strike (after the wind-up), when the blade is moving and the trail is drawn
     await click('left');
-    await sleep(130);
+    await sleep(190);
     await frozenShot('combo_swing_1');
-    await sleep(250);
+    await sleep(230);
     await click('left');
-    await sleep(170);
+    await sleep(190);
     await frozenShot('combo_swing_2');
-    await sleep(280);
+    await sleep(260);
     await click('left');
-    await sleep(210);
+    await sleep(270);
     await frozenShot('combo_swing_3');
     await sleep(700);
     // heavy charge
@@ -623,7 +624,7 @@ try {
     await sleep(700);
     await frozenShot('heavy_charging');
     await page.mouse.up({ button: 'right' });
-    await sleep(220);
+    await sleep(90);
     await frozenShot('heavy_release');
     await sleep(900);
     // slam impact near the warrior
@@ -675,8 +676,12 @@ try {
     await page.evaluate(() => window.__CO.teleportPlayer(-4, 13));
     await sleep(700);
     await page.evaluate(() => window.__CO.forceAttack('slam', 'R'));
-    await waitFor(() => window.__CO.state().threats.hazards.length > 0, 10000).catch(() => {});
-    await sleep(3400);
+    await waitFor(() => window.__CO.state().threats.hazards.some((h) => h.burning), 12000).catch(() => {});
+    await page.evaluate(() => {
+      const h = window.__CO.state().threats.hazards.find((z) => z.burning);
+      if (h) window.__CO.teleportPlayer(h.pos.x + 0.6, h.pos.z + 0.4);
+    });
+    await sleep(600);
     await frozenShot('burning_ground');
     // lightning
     await page.evaluate(() => window.__game.weather.strike(1));
@@ -685,15 +690,15 @@ try {
     // stagger collapse
     await idle();
     await page.evaluate(() => window.__game.golem.startStagger());
-    await sleep(450);
+    await sleep(950);
     await burst('stagger_collapse', 3, 300);
     await waitFor(() => window.__CO.state().golem.state === 'combat', 15000).catch(() => {});
     // victory crumble
     await idle();
     await page.evaluate(() => window.__CO.killGolem());
     await waitFor(() => window.__CO.state().flow === 'victoryCine', 20000).catch(() => {});
-    await sleep(1300);
-    await burst('golem_crumbles', 2, 600);
+    await sleep(1100);
+    await burst('golem_crumbles', 2, 700);
   } else if (scenario === 'perf') {
     // frame times during a real fight at normal speed: the expert bot plays, the golem attacks
     await page.click('button[data-act="begin"]');
