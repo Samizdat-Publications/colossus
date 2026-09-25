@@ -55,6 +55,7 @@ export class Game {
   readonly ctx: FightContext;
   private readonly assembler: Assembler;
   private readonly coreMeshes: Map<string, THREE.Mesh>;
+  private readonly golemEyes: THREE.Mesh[];
   private readonly coreLights = new Map<string, THREE.PointLight>();
   private readonly golemParts: THREE.Mesh[];
   private readonly fader: PartFader;
@@ -119,6 +120,7 @@ export class Game {
     const gRig = Rig.fromJoints(GOLEM_RIG.bones);
     const gb = buildGreyboxGolem(gRig);
     this.coreMeshes = gb.cores;
+    this.golemEyes = gb.eyes;
     this.golemParts = gb.parts;
     this.scene.add(gRig.root);
     this.golem = new Golem(gRig);
@@ -208,6 +210,9 @@ export class Game {
       if (e.phase === 3) this.tips.show('phase3', 'Its core is molten. Watch the sky.', 1, 4);
     });
     bus.on('hazardBurn', () => this.tips.show('burn', 'The cracked floor <b>burns</b>. Step out of it.', 2, 3.5));
+    bus.on('shockwave', () => this.tips.showNow('wave', 'Shockwave: <b>roll</b> (Space) or <b>jump</b> (F) through the ring.', 2, 3));
+    bus.on('playerHit', (e) => this.hud.flash(e.knockdown ? 1 : 0.6));
+    bus.on('playerDeath', () => this.hud.flash(1.4));
   }
 
   // ------------------------------------------------------------------ flow
@@ -670,10 +675,14 @@ export class Game {
     must.length = 0;
     const cam = this.cam.camera.position;
     const p = this.player.pos;
-    for (const t of this.threats.telegraphs) {
-      if (t.kind === 'sector') continue;
-      const d = Math.hypot(t.pos.x - p.x, t.pos.z - p.z);
-      if (d > t.radius + 1.2) continue; // only rings the warrior is in (or about to be) are hard constraints
+    // rings the warrior is in, plus the nearest ring just behind them (a reflex roll lands there)
+    const near = this.threats.telegraphs
+      .filter((t) => t.kind !== 'sector')
+      .map((t) => ({ t, d: Math.hypot(t.pos.x - p.x, t.pos.z - p.z) - t.radius }))
+      .filter((e) => e.d < 3)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 2);
+    for (const { t } of near) {
       let dx = cam.x - t.pos.x;
       let dz = cam.z - t.pos.z;
       const l = Math.hypot(dx, dz) || 1;
@@ -756,18 +765,21 @@ export class Game {
       if (!mesh) continue;
       const mat = mesh.material as THREE.MeshStandardMaterial;
       const lit = g.state !== 'dormant' && (g.state !== 'assemble' || g.step === 'roar' || g.step === 'roarHold' || g.step === 'settle');
-      let base = t.kind === 'back' ? (t.open ? 2.4 : 0) : !lit ? 0 : 1.5 + 0.35 * (g.phase - 1);
+      let base = t.kind === 'back' ? (t.open ? 2.4 : 0) : !lit ? 0 : 1.1 + 0.25 * (g.phase - 1);
       if (t.kind === 'arm' && g.staggered) base *= 0.35; // the back core is the one to go for
+      if (t.kind === 'arm' && !g.staggered && t.pos.y < 3.4) base *= 1.7; // low enough to hit: burn bright
       if (g.state === 'dead') base = Math.max(0.0, base * (1 - g.stateTime / 0.25));
       const low = t.open && t.pos.y < 3.4 && g.state !== 'dead';
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;
       mat.emissiveIntensity = base * pulse + t.flash * 5;
-      // sealed cores are dark stone sockets, not dim teal balls; arm cores ignite at the roar
-      mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x1b1d22);
+      // sealed cores are plain stone knobs, not dim teal balls; arm cores ignite at the roar
+      mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x80848c);
       mesh.visible = t.kind === 'back' ? g.state !== 'dormant' && g.state !== 'assemble' : lit;
       const light = this.coreLights.get(t.name);
       if (light) light.intensity = (base * pulse * 0.6 + t.flash * 3) * 6;
     }
+    const eyeMat = this.golemEyes[0]?.material as THREE.MeshStandardMaterial | undefined;
+    if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, 2.2 * (1 - g.stateTime / 0.4)) : g.state === 'dormant' ? 0 : 2.2;
     const chest = this.coreMeshes.get('core_chest');
     if (chest) {
       const on = g.phase >= 3 && g.state !== 'dormant' && g.state !== 'dead' ? 1 : 0;
@@ -775,9 +787,9 @@ export class Game {
       const mat = chest.material as THREE.MeshStandardMaterial;
       // molten (orange) while sealed away up high; it turns cyan only when it can be struck
       mat.emissive.setHex(ct?.open ? 0x5ff0ff : 0xff5a14);
-      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 0.9) + 0.3 * Math.sin(this.ctx.time * 5)) + (ct?.flash ?? 0) * 5;
+      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 0.45) + 0.15 * Math.sin(this.ctx.time * 5)) + (ct?.flash ?? 0) * 5;
       chest.visible = on > 0;
-      chest.scale.setScalar(1.5);
+      chest.scale.setScalar(ct?.open ? 1.5 : 1.1);
       const l = this.coreLights.get('core_chest');
       if (l) {
         l.color.setHex(0xff6a20);

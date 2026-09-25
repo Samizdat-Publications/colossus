@@ -114,8 +114,22 @@ export class ThreatView {
   private readonly trailGeo = new THREE.ConeGeometry(0.7, 1, 12, 1, true);
   private readonly spikeGeo = new THREE.ConeGeometry(0.7, 2.6, 5);
   private readonly stripGeo = new THREE.PlaneGeometry(1, 1);
+  private readonly chevGeo = (() => {
+    const shape = new THREE.Shape();
+    shape.moveTo(-0.5, -0.35);
+    shape.lineTo(0, 0.25);
+    shape.lineTo(0.5, -0.35);
+    shape.lineTo(0.5, -0.05);
+    shape.lineTo(0, 0.55);
+    shape.lineTo(-0.5, -0.05);
+    shape.closePath();
+    const g = new THREE.ShapeGeometry(shape);
+    g.rotateX(-Math.PI / 2);
+    return g;
+  })();
+  private readonly hazardEdgeGeo = new THREE.RingGeometry(0.93, 1, 48);
   private readonly crackTex = crackTexture();
-  private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x57524c, roughness: 0.92, flatShading: true, emissive: 0xff4a10, emissiveIntensity: 0.35 });
+  private readonly rockMat = new THREE.MeshStandardMaterial({ color: 0x4a4744, roughness: 0.95, flatShading: true, emissive: 0x802808, emissiveIntensity: 0.25 });
   private readonly trailMat = new THREE.ShaderMaterial({
     vertexShader: /* glsl */ `
       varying float vK;
@@ -142,9 +156,9 @@ export class ThreatView {
       cv.width = cv.height = 64;
       const g = cv.getContext('2d')!;
       const grd = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-      grd.addColorStop(0, 'rgba(255,190,120,0.9)');
-      grd.addColorStop(0.35, 'rgba(255,110,40,0.35)');
-      grd.addColorStop(1, 'rgba(255,80,20,0)');
+      grd.addColorStop(0, 'rgba(255,210,150,0.55)');
+      grd.addColorStop(0.35, 'rgba(255,150,60,0.22)');
+      grd.addColorStop(1, 'rgba(255,120,40,0)');
       g.fillStyle = grd;
       g.fillRect(0, 0, 64, 64);
       return new THREE.CanvasTexture(cv);
@@ -160,6 +174,7 @@ export class ThreatView {
     this.quadGeo.rotateX(-Math.PI / 2);
     this.stripGeo.rotateX(-Math.PI / 2);
     this.stripGeo.translate(0, 0, 0.5);
+    this.hazardEdgeGeo.rotateX(-Math.PI / 2);
     this.bandGeo.translate(0, 0.5, 0);
     // comet trail: wide end at the rock, tapering away behind it (local -Y = behind)
     this.trailGeo.rotateX(Math.PI);
@@ -209,6 +224,12 @@ export class ThreatView {
           blending: THREE.AdditiveBlending,
         }),
       );
+      const edge = new THREE.Mesh(
+        this.hazardEdgeGeo,
+        new THREE.MeshBasicMaterial({ color: EMBER, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }),
+      );
+      edge.position.y = 0.01;
+      m.add(edge);
       m.position.copy(h.pos).setY(0.05);
       m.rotation.y = h.seed;
       m.renderOrder = 2;
@@ -231,6 +252,8 @@ export class ThreatView {
         const flick = armed ? 0.85 + 0.15 * Math.sin(this.time * 7 + h.seed) : 0.5 + 0.5 * Math.sin(this.time * 26 + h.seed);
         mat.opacity = Math.max(0, (armed ? 1 : 0.35 * warn) * flick * fade);
       }
+      const edgeMat = (m.children[0] as THREE.Mesh).material as THREE.MeshBasicMaterial;
+      edgeMat.opacity = (armed ? 0.75 : 0.3 * warn) * fade;
       m.scale.setScalar(h.radius * (0.35 + 0.65 * grow));
     }
   }
@@ -335,6 +358,20 @@ export class ThreatView {
           new THREE.Mesh(band, new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending })),
           new THREE.Mesh(edge, new THREE.MeshBasicMaterial({ color: RED, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending })),
         );
+        // chevrons along the arc, pointing the way the arm will travel
+        const dir = Math.sign(t.a1! - t.a0!) || 1;
+        const chevMat = new THREE.MeshBasicMaterial({ color: 0xffd0c0, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+        const rMid = (t.inner! + t.radius) / 2;
+        const n = 5;
+        for (let i = 0; i < n; i++) {
+          const a = t.a0! + ((i + 0.5) / n) * (t.a1! - t.a0!);
+          const chev = new THREE.Mesh(this.chevGeo, chevMat);
+          chev.position.set(Math.sin(a) * rMid, 0.02, Math.cos(a) * rMid);
+          // tangent direction of travel around the golem
+          chev.rotation.y = a + (dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+          chev.scale.setScalar(1.6);
+          g.add(chev);
+        }
         g.userData.sector = true;
         g.renderOrder = 3;
         return g;
@@ -357,6 +394,8 @@ export class ThreatView {
         const u = Math.min(1, t.t / t.dur);
         (((g.children[0] as THREE.Mesh).material) as THREE.MeshBasicMaterial).opacity = 0.1 + 0.25 * u;
         (((g.children[1] as THREE.Mesh).material) as THREE.MeshBasicMaterial).opacity = 0.4 + 0.5 * u + (u > 0.7 ? 0.2 * Math.sin(this.time * 40) : 0);
+        const chev = g.children[2] as THREE.Mesh | undefined;
+        if (chev) (chev.material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.45 * (0.5 + 0.5 * Math.sin(this.time * 12));
         continue;
       }
       g.position.copy(t.pos).setY(0.07);

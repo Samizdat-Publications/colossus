@@ -30,6 +30,13 @@ export class Hud {
   private readonly stWrap: HTMLDivElement;
   private readonly flaskWrap: HTMLDivElement;
   private readonly reticle: HTMLDivElement;
+  private readonly flashEl: HTMLDivElement;
+  private flashAmt = 0;
+
+  /** Red edge flash when the warrior is hit. */
+  flash(amount: number): void {
+    this.flashAmt = Math.max(this.flashAmt, amount);
+  }
   private readonly marker: HTMLDivElement;
   private readonly coreDots: HTMLDivElement[] = [];
   /** A core to point at with a pulsing chevron (punish windows, first attempts). */
@@ -69,6 +76,7 @@ export class Hud {
     this.stFill = el('div', 'fill', this.stWrap);
     this.flaskWrap = el('div', 'flasks', pl);
 
+    this.flashEl = el('div', 'hurt-flash', this.root);
     this.reticle = el('div', 'reticle', this.root);
     this.marker = el('div', 'core-marker', this.root, '<i></i><span>STRIKE</span>');
     for (let i = 0; i < 3; i++) this.coreDots.push(el('div', 'core-dot', this.root));
@@ -183,6 +191,8 @@ export class Hud {
       this.marker.style.transform = `translate(${p.x}px, ${p.y}px)`;
     } else this.marker.style.display = 'none';
 
+    this.flashAmt = Math.max(0, this.flashAmt - dt * 2.2);
+    this.flashEl.style.opacity = String(Math.min(1, this.flashAmt));
     if (this.tipTimer > 0) {
       this.tipTimer -= dt;
       if (this.tipTimer <= 0) this.tip.classList.remove('on');
@@ -193,7 +203,7 @@ export class Hud {
       const f = this.pending[i];
       f.t += dt;
       const p = f.pos.clone();
-      p.y += f.t * 1.2;
+      p.y += 1.4 + f.t * 1.2; // float above the glow so the number stays readable
       p.project(this.camera);
       if (f.t > 1.1 || p.z > 1) {
         f.el.remove();
@@ -231,6 +241,14 @@ export class Tips {
     this.perAttempt.add(id);
     this.current = id;
     this.hud.showTip(text, seconds);
+  }
+
+  /** Like show(), but allowed while danger is up (for tips that explain the danger itself). */
+  showNow(id: string, text: string, maxTotal = 2, seconds = 3): void {
+    const q = this.quiet;
+    this.quiet = false;
+    this.show(id, text, maxTotal, seconds);
+    this.quiet = q;
   }
 
   /** Clear whatever tip is showing (danger starts: the warrior's eyes belong on the fight). */

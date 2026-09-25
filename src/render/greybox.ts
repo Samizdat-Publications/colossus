@@ -68,8 +68,8 @@ export function buildGreyboxGolem(rig: Rig): { cores: Map<string, THREE.Mesh>; e
 
 /** Primitive stand-ins for the warrior: capsule limbs, box torso, sword on the right hand. */
 export function buildGreyboxWarrior(rig: Rig): { sword: THREE.Object3D; parts: THREE.Mesh[] } {
-  const armor = new THREE.MeshStandardMaterial({ color: 0x8a8f99, roughness: 0.4, metalness: 0.7 });
-  const cloth = new THREE.MeshStandardMaterial({ color: 0x7a1c1f, roughness: 0.8 });
+  const armor = new THREE.MeshStandardMaterial({ color: 0xaab0bc, roughness: 0.35, metalness: 0.6, emissive: 0x1a2030, emissiveIntensity: 0.6 });
+  const cloth = new THREE.MeshStandardMaterial({ color: 0xa82228, roughness: 0.75, emissive: 0x300608, emissiveIntensity: 0.6 });
   const parts: THREE.Mesh[] = [];
   for (let i = 0; i < rig.count; i++) {
     const name = rig.names[i];
