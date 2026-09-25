@@ -219,7 +219,7 @@ export class ThreatView {
       const grow = Math.min(1, h.t / 0.3);
       const fade = Math.min(1, (h.dur - h.t) / 1.2);
       const armed = h.t >= h.arm;
-      const warn = Math.max(0, 1 - (h.arm - h.t) / 0.8); // last 0.8 s before burning
+      const warn = Math.max(0, 1 - (h.arm - h.t) / 0.5); // last 0.5 s before burning
       if (!armed && warn <= 0) {
         // cold cracks: dark fissures in the stone, safe to stand on
         mat.blending = THREE.NormalBlending;

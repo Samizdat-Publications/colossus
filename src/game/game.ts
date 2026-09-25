@@ -622,9 +622,31 @@ export class Game {
 
   private crumbleT = -1;
   private heroLight: THREE.PointLight | null = null;
+  private heldRockMesh: THREE.Mesh | null = null;
+
+  private updateHeldRock(): void {
+    const side = this.golem.heldRock;
+    if (!this.heldRockMesh) {
+      this.heldRockMesh = new THREE.Mesh(
+        new THREE.IcosahedronGeometry(1.5, 0),
+        new THREE.MeshStandardMaterial({ color: 0x5a554e, roughness: 0.92, flatShading: true, emissive: 0xff4a10, emissiveIntensity: 0.3 }),
+      );
+      this.heldRockMesh.castShadow = true;
+      this.scene.add(this.heldRockMesh);
+    }
+    const m = this.heldRockMesh;
+    m.visible = !!side && this.golem.state === 'combat';
+    if (m.visible) {
+      this.golem.rig.tailWorld(this.golem.rig.i(`hand_${side}`), m.position);
+      m.rotation.y += 0.02;
+    }
+  }
 
   /** Near edges of warning rings around the warrior: the camera must keep them in frame. */
   private updateMustSee(): void {
+    const nice = this.cam.niceToSee;
+    nice.length = 0;
+    for (const r of this.threats.rocks) if (!r.meteor && r.t >= 0) nice.push(r.pos);
     const must = this.cam.mustSee;
     must.length = 0;
     const cam = this.cam.camera.position;
@@ -646,6 +668,7 @@ export class Game {
     this.threatView.update(this.threats, this.ctx.time);
     const g = this.golem;
     this.updateMustSee();
+    this.updateHeldRock();
     this.cam.wide = this.flow === 'fight' || this.flow === 'victoryCine' ? g.wantsWide : 0;
     if (g.riseTele) {
       this.threats.telegraph(g.riseTele, balance.golem.stagger.risePushRadius, balance.golem.stagger.rise * 0.75, 'push');
@@ -659,7 +682,7 @@ export class Game {
     this.heroLight.position.set(this.player.pos.x, this.player.y + 2.8, this.player.pos.z);
     // phase look: veins crack open in phase 2, molten in phase 3; the arena takes the lava light
     const dormant = g.state === 'dormant' || g.state === 'assemble';
-    const crackWant = g.state === 'dead' ? 0 : dormant ? 0 : g.phase >= 3 ? 1.15 : g.phase >= 2 ? 0.8 : 0;
+    const crackWant = g.state === 'dead' ? 0 : dormant ? 0 : g.phase >= 3 ? 1.0 : g.phase >= 2 ? 0.6 : 0;
     const heatWant = g.state === 'dead' ? 0 : g.phase >= 3 ? 1 : 0;
     this.crackShown += (crackWant - this.crackShown) * Math.min(1, dt * (g.state === 'transition' ? 1.4 : 3));
     this.heatShown += (heatWant - this.heatShown) * Math.min(1, dt * 1.2);
@@ -678,9 +701,17 @@ export class Game {
       if (t.kind === 'sector') return true;
       return Math.hypot(t.pos.x - this.player.pos.x, t.pos.z - this.player.pos.z) < t.radius + 1;
     });
+    if (underThreat && !this.tips.quiet) this.tips.hush();
     this.tips.quiet = underThreat;
     if (this.flow === 'fight' && g.windowOpen && !underThreat) {
-      if (g.staggered) this.hud.markCore = g.targets.find((t) => t.kind === 'back') ?? null;
+      if (g.staggered) {
+        let best: (typeof g.targets)[number] | null = null;
+        for (const t of g.targets) {
+          if (!t.open || t.kind === 'arm') continue;
+          if (!best || t.pos.distanceTo(this.player.pos) < best.pos.distanceTo(this.player.pos)) best = t;
+        }
+        this.hud.markCore = best;
+      }
       else {
         const arm = g.focusCore(this.player.pos);
         this.hud.markCore = arm && arm.pos.y < 3.4 ? arm : null;
@@ -715,8 +746,9 @@ export class Game {
       const on = g.phase >= 3 && g.state !== 'dormant' && g.state !== 'dead' ? 1 : 0;
       const ct = g.targets.find((t) => t.kind === 'chest');
       const mat = chest.material as THREE.MeshStandardMaterial;
-      mat.emissive.setHex(0x5ff0ff);
-      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 1.4) + 0.3 * Math.sin(this.ctx.time * 5)) + (ct?.flash ?? 0) * 5;
+      // molten (orange) while sealed away up high; it turns cyan only when it can be struck
+      mat.emissive.setHex(ct?.open ? 0x5ff0ff : 0xff5a14);
+      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 0.9) + 0.3 * Math.sin(this.ctx.time * 5)) + (ct?.flash ?? 0) * 5;
       chest.visible = on > 0;
       chest.scale.setScalar(1.5);
       const l = this.coreLights.get('core_chest');

@@ -28,7 +28,7 @@ const _lookPos = new THREE.Vector3();
 const TOP_MARGIN = 0.1; // leaves the top strip for tips
 const BOTTOM_MARGIN = 0.21; // keeps the feet above the boss health panel
 const FOV_MIN = 58;
-const FOV_MAX = 80;
+const FOV_MAX = 76;
 
 /**
  * Third-person camera.
@@ -101,6 +101,8 @@ export class CameraRig {
 
   /** Ground points that must stay in frame (near edges of warning rings around the warrior). */
   readonly mustSee: THREE.Vector3[] = [];
+  /** Points the camera tries to keep in frame when it can (rocks in flight). */
+  readonly niceToSee: THREE.Vector3[] = [];
   /** Extra pull-back requested by the director for big moments (leap, stagger), in metres. */
   wide = 0;
   private wideNow = 0;
@@ -140,9 +142,9 @@ export class CameraRig {
     // ---------------- lock-on framing solve
     if (this.lockW > 0.001) {
       const close = smoothstep(14, 4, dGolem);
-      this.wideNow = damp(this.wideNow, this.wide, this.wide > this.wideNow ? 4 : 1.5, dt);
-      const wantDist = 8.2 + close * 2.4 + this.pullBack + this.wideNow;
-      this.lockDist = damp(this.lockDist, wantDist, 5, dt);
+      this.wideNow = damp(this.wideNow, this.wide, this.wide > this.wideNow ? 2.5 : 1.2, dt);
+      const wantDist = 8.6 + close * 1.6 + this.pullBack + this.wideNow;
+      this.lockDist = damp(this.lockDist, wantDist, 3, dt);
       const camH = this.pivot.y + 1.1 + close * 1.4 + (this.pullBack + this.wideNow) * 0.35;
       _lockPos.set(this.pivot.x - _f.x * this.lockDist, camH, this.pivot.z - _f.z * this.lockDist);
       this.collide(world, _t.set(this.pivot.x, camH, this.pivot.z), _lockPos);
@@ -171,6 +173,10 @@ export class CameraRig {
           if (a !== null && a > top) top = a;
         }
       }
+      for (const n of this.niceToSee) {
+        const a = angleOf(n.x, n.y + 1, n.z);
+        if (a !== null && a > top) top = a;
+      }
       const span = top - feet;
       const needFov = span / (1 - TOP_MARGIN - BOTTOM_MARGIN);
       const fov = clamp(needFov / DEG, FOV_MIN, FOV_MAX + Math.min(8, this.wideNow)) * DEG;
@@ -178,10 +184,10 @@ export class CameraRig {
       const hi = feet + fov * (0.5 - BOTTOM_MARGIN);
       // when both cannot fit, the ground around the warrior wins and the camera pulls back
       const pitch = lo <= hi ? (lo + hi) / 2 : hi;
-      if (needFov > FOV_MAX * DEG * 1.02) this.pullBack = Math.min(10, this.pullBack + dt * 4);
-      else if (needFov < FOV_MAX * DEG * 0.85) this.pullBack = Math.max(0, this.pullBack - dt * 1.2);
-      this.lockPitch = damp(this.lockPitch, pitch, 7, dt);
-      this.lockFov = damp(this.lockFov, fov / DEG, 5, dt);
+      if (needFov > FOV_MAX * DEG * 1.02) this.pullBack = Math.min(3, this.pullBack + dt * 2);
+      else if (needFov < FOV_MAX * DEG * 0.85) this.pullBack = Math.max(0, this.pullBack - dt * 0.8);
+      this.lockPitch = damp(this.lockPitch, pitch, 4, dt);
+      this.lockFov = damp(this.lockFov, fov / DEG, 3, dt);
       _lockLook.set(
         _lockPos.x + _f.x * Math.cos(this.lockPitch) * 10,
         _lockPos.y + Math.sin(this.lockPitch) * 10,

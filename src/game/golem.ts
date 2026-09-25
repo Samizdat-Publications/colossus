@@ -352,11 +352,19 @@ export class Golem {
     ]);
   }
 
+  /** Fraction of the stagger opening left (1 -> 0) while down, -1 otherwise. */
+  get staggerLeft(): number {
+    if (this.state !== 'stagger') return -1;
+    const S = this.G.stagger;
+    const total = S.collapse + S.duration;
+    return Math.max(0, 1 - this.stateTime / total);
+  }
+
   /** How much wider the camera should frame right now (leap, stagger). */
   get wantsWide(): number {
-    if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 9;
-    if (this.state === 'stagger') return 3;
-    if (this.state === 'dead') return 6;
+    if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 4;
+    if (this.state === 'stagger') return 2;
+    if (this.state === 'dead') return 3;
     return 0;
   }
 
@@ -1138,7 +1146,8 @@ export class Golem {
     let thrown = 0;
     const throwOne = (offset: number) => {
       const from = this.rig.tailWorld(hi, new THREE.Vector3());
-      from.y = Math.max(from.y, 3);
+      // release low enough that the whole flight stays in the player's view
+      from.y = clamp(from.y, 3, 10.5);
       const pl = ctx.player;
       const lead = (volley ? 0.3 : this.A.throw.lead) * this.A.throw.flightTime;
       const to = new THREE.Vector3(pl.pos.x + pl.vel.x * lead, 0, pl.pos.z + pl.vel.z * lead);
@@ -1180,7 +1189,7 @@ export class Golem {
         ease: 'outCubic',
         update: (t) => {
           if (!volley) {
-            if (thrown === 0 && t > 0.3) {
+            if (thrown === 0 && t > 0.55) {
               thrown = 1;
               this.heldRock = '';
               throwOne(0);

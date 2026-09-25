@@ -23,6 +23,7 @@ export class Hud {
   private readonly bossDmg: HTMLDivElement;
   private readonly breakFill: HTMLDivElement;
   private readonly breakWrap: HTMLDivElement;
+  private readonly breakLabel: HTMLSpanElement;
   private readonly hpFill: HTMLDivElement;
   private readonly hpTrail: HTMLDivElement;
   private readonly stFill: HTMLDivElement;
@@ -56,7 +57,7 @@ export class Hud {
     el('i', 'notch', bar).style.left = '33%';
     this.bossDmg = el('div', 'boss-dmg', this.boss);
     this.breakWrap = el('div', 'break', this.boss);
-    el('span', 'break-label', this.breakWrap, 'BREAK');
+    this.breakLabel = el('span', 'break-label', this.breakWrap, 'BREAK');
     const bb = el('div', 'break-bar', this.breakWrap);
     this.breakFill = el('div', 'fill', bb);
 
@@ -126,8 +127,11 @@ export class Hud {
     if (this.bossTrailFrac < bf) this.bossTrailFrac = bf;
     else if (this.dmgTimer < 1.4) this.bossTrailFrac = Math.max(bf, this.bossTrailFrac - dt * 0.35);
     this.bossTrail.style.width = `${this.bossTrailFrac * 100}%`;
-    this.breakFill.style.width = `${golem.breakFrac * 100}%`;
-    this.breakWrap.classList.toggle('staggered', golem.staggered);
+    // while the golem is down the BREAK bar becomes a countdown of the opening
+    const down = golem.staggerLeft;
+    this.breakFill.style.width = `${(down >= 0 ? down : golem.breakFrac) * 100}%`;
+    this.breakWrap.classList.toggle('staggered', down >= 0);
+    this.breakLabel.textContent = down >= 0 ? 'DOWN' : 'BREAK';
     this.boss.dataset.phase = String(golem.phase);
     if (this.dmgTimer > 0) {
       this.dmgTimer -= dt;
@@ -227,6 +231,14 @@ export class Tips {
     this.perAttempt.add(id);
     this.current = id;
     this.hud.showTip(text, seconds);
+  }
+
+  /** Clear whatever tip is showing (danger starts: the warrior's eyes belong on the fight). */
+  hush(): void {
+    if (this.current && !this.current.startsWith('stagger')) {
+      this.hud.hideTip();
+      this.current = '';
+    }
   }
 
   /** Hide the tip if it is still the one on screen (e.g. "press Q" once the player has locked on). */

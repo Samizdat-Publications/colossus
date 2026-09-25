@@ -54,7 +54,7 @@ body {
   bottom: 26px;
   left: 50%;
   transform: translateX(-50%);
-  width: min(820px, 62vw);
+  width: min(820px, 56vw);
   opacity: 0;
   transition: opacity 0.8s;
 }
@@ -124,8 +124,12 @@ body {
   box-shadow: 0 0 6px rgba(111, 243, 255, 0.6);
 }
 .break.staggered .break-bar .fill {
-  width: 100% !important;
   animation: pulse 0.4s infinite alternate;
+  background: #d8ffff;
+}
+.break.staggered .break-label {
+  color: #d8ffff;
+  font-weight: bold;
 }
 @keyframes pulse {
   from {
