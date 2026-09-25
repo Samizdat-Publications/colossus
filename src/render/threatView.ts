@@ -211,7 +211,7 @@ void main() {
   float r = length(vP);
   float n = 0.85 + 0.15 * sin(uTime * 1.7 + vW.x * 0.3) * sin(uTime * 1.3 + vW.y * 0.27);
   float a = pow(max(0.0, 1.0 - r), 1.8) * uAlpha * n;
-  gl_FragColor = vec4(vec3(1.0, 0.42, 0.12) * a, 1.0);
+  gl_FragColor = vec4(vec3(1.0, 0.22, 0.06) * a, 1.0);
 }`;
 
 export class ThreatView {
@@ -342,7 +342,7 @@ export class ThreatView {
       }),
     );
     this.lavaPool.renderOrder = 1;
-    this.lavaPool.scale.setScalar(24);
+    this.lavaPool.scale.setScalar(19);
     this.lavaPool.position.y = 0.04;
     this.lavaPool.visible = false;
     this.group.add(this.lavaPool);

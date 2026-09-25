@@ -402,6 +402,12 @@ try {
     // The six final screenshots for screenshots/ (run at 1920x1080): one per beat of the fight.
     const idle = () => waitFor(() => !window.__CO.state().golem.attack && window.__CO.state().golem.state === 'combat', 20000).catch(() => {});
     const still = async (label) => {
+      // a clean HUD: god mode keeps the warrior alive but lets the bar drain
+      await page.evaluate(() => {
+        const pl = window.__game.player;
+        pl.hp = 88;
+        pl.stamina = 100;
+      });
       await page.evaluate(() => window.__CO.setTimeScale(0));
       await sleep(120);
       await shot(label);
@@ -425,7 +431,6 @@ try {
     await page.evaluate(() => window.__CO.bot('expert'));
     const since = (await state()).time;
     await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'coreHit'), 8000, since).catch(() => {});
-    await sleep(60);
     await still('strike_the_core');
     await page.evaluate(() => {
       window.__CO.stopBot();

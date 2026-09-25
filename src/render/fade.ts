@@ -52,12 +52,19 @@ if (uFadeOn > 0.5) {
 }
 `;
 
+/** A second set for the arena's pillars (the golem uses whole-part fading instead). */
+export const propFadeUniforms = {
+  uFadeCam: { value: new THREE.Vector3() },
+  uFadeFocus: { value: new THREE.Vector3() },
+  uFadeOn: { value: 0 },
+};
+
 /** Patch a built-in material (Standard/Physical/Basic) with the camera fade. */
-export function addCameraFade<T extends THREE.Material>(mat: T): T {
+export function addCameraFade<T extends THREE.Material>(mat: T, uniforms: typeof fadeUniforms = fadeUniforms): T {
   const prev = mat.onBeforeCompile;
   mat.onBeforeCompile = (shader, renderer) => {
     prev?.call(mat, shader, renderer);
-    Object.assign(shader.uniforms, fadeUniforms);
+    Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${FADE_VERT_HEAD}`)
       .replace('#include <project_vertex>', `#include <project_vertex>\n${FADE_VERT_BODY}`);

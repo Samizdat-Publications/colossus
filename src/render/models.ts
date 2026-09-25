@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { Rig } from '../anim/rig';
-import { addCameraFade } from './fade';
+import { addCameraFade, propFadeUniforms } from './fade';
 import { makeGolemStoneMaterial } from './stoneMaterial';
 import { addHeroLight } from './heroLight';
 import type { Assets, TexName } from './assets';
@@ -337,7 +337,8 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
     wall_stone: new THREE.MeshStandardMaterial(stoneParams(tex, 'ashlar', 0x8d9098, 0.95)),
     tier_stone: new THREE.MeshStandardMaterial(stoneParams(tex, 'ashlar', 0x6f727a, 1.0)),
     cliff_rock: new THREE.MeshStandardMaterial(stoneParams(tex, 'rock', 0x545760, 1.0)),
-    pillar_stone: new THREE.MeshStandardMaterial(stoneParams(tex, 'ashlar', 0x9a9da6, 0.95)),
+    // a column between the lens and the fight dithers away (the meteor rain had one filling a side of the frame)
+    pillar_stone: addCameraFade(new THREE.MeshStandardMaterial(stoneParams(tex, 'ashlar', 0x9a9da6, 0.95)), propFadeUniforms),
     brazier_iron: new THREE.MeshStandardMaterial({ color: 0x2c2926, metalness: 0.7, roughness: 0.55 }),
     coals: new THREE.MeshStandardMaterial({ color: 0x1a0804, emissive: 0xff5a14, emissiveIntensity: 1.6, roughness: 0.9 }),
     rubble_rock: new THREE.MeshStandardMaterial(stoneParams(tex, 'rock', 0xa3a5ab, 1.0)),

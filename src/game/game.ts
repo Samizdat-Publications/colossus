@@ -24,6 +24,7 @@ import { createSky, skyUniforms } from '../render/sky';
 import type { Assets } from '../render/assets';
 import { addBrazierFlames, buildArenaModel, buildGolemModel, buildWarriorModel, type ArenaModel } from '../render/models';
 import { setHeroLight } from '../render/heroLight';
+import { propFadeUniforms } from '../render/fade';
 import { heartUniforms } from '../render/models';
 import { makeEnvironment } from '../render/environment';
 import { waterUniforms } from '../render/models';
@@ -1175,15 +1176,15 @@ export class Game {
 
   private updateCoreBeam(core: { pos: THREE.Vector3 } | null): void {
     if (!this.coreBeam) {
-      const geo = new THREE.CylinderGeometry(0.35, 1.1, 14, 24, 1, true);
-      geo.translate(0, 7, 0);
+      const geo = new THREE.CylinderGeometry(0.25, 0.8, 7, 24, 1, true);
+      geo.translate(0, 3.5, 0);
       const mat = new THREE.ShaderMaterial({
         vertexShader: /* glsl */ `
           varying float vH;
           varying vec3 vN;
           varying vec3 vV;
           void main() {
-            vH = position.y / 14.0;
+            vH = position.y / 7.0;
             vec4 mv = modelViewMatrix * vec4(position, 1.0);
             vN = normalize(normalMatrix * normal);
             vV = normalize(-mv.xyz);
@@ -1424,6 +1425,9 @@ export class Game {
     // camera-occlusion fade on the golem (off in cinematics and on the title)
     const gameplayCam = this.flow === 'fight' || this.flow === 'dying' || this.flow === 'victoryCine' || (this.flow === 'intro' && this.introQuick);
     setFade(this.cam.camera.position, _v.set(this.player.pos.x, this.player.y + 1.2, this.player.pos.z), false);
+    propFadeUniforms.uFadeCam.value.copy(this.cam.camera.position);
+    propFadeUniforms.uFadeFocus.value.copy(_v);
+    propFadeUniforms.uFadeOn.value = this.flow === 'fight' ? 1 : 0;
     const gs = this.golem.state;
     const merged = !!this.golemMerge && (this.flow === 'fight' || this.flow === 'dying' || this.flow === 'dead') && gs !== 'dormant' && gs !== 'assemble' && gs !== 'dead';
     this.golemMerge?.use(merged);
@@ -1461,7 +1465,7 @@ export class Game {
         this.tips.show('window', 'Its fist is stuck: strike the <b class="core">glowing core</b> on its arm!', 3, 3.5);
       }
     } else this.hud.markCore = null;
-    this.updateStrikeSpot(g.staggered && this.flow === 'fight' ? this.hud.markCore : null, dt);
+    this.updateStrikeSpot(null, dt); // the floor ring under the back core is gone: the STRIKE tag and the shaft say enough
     this.updateCoreBeam(g.staggered && this.flow === 'fight' ? this.hud.markCore : null);
     // death: the Ruin falls back into rubble
     if (g.state === 'dead') {
@@ -1550,7 +1554,7 @@ export class Game {
         l.position.x += Math.sin(g.yaw) * 2.5;
         l.position.z += Math.cos(g.yaw) * 2.5;
         l.color.setHex(0xff6a20);
-        l.intensity = on * (ct?.open ? 230 : 190) * (0.9 + 0.1 * Math.sin(this.ctx.time * 4.2));
+        l.intensity = on * (ct?.open ? 160 : 110) * (0.9 + 0.1 * Math.sin(this.ctx.time * 4.2));
       }
       // molten light pooling on the floor around its feet (a soft glow, no hot spot)
       const pool = this.threatView.lavaPool;
@@ -1559,7 +1563,7 @@ export class Game {
         pool.position.x = g.pos.x + Math.sin(g.yaw) * 2;
         pool.position.z = g.pos.z + Math.cos(g.yaw) * 2;
         const pm = pool.material as THREE.ShaderMaterial;
-        pm.uniforms.uAlpha.value = 0.62 * on * this.heatShown;
+        pm.uniforms.uAlpha.value = 0.4 * on * this.heatShown;
         pm.uniforms.uTime.value = this.ctx.time;
       }
     }

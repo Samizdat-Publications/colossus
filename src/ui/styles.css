@@ -84,7 +84,7 @@ body {
   opacity: 1;
 }
 .hud .boss.on.dim {
-  opacity: 0.28;
+  opacity: 0.55;
   transition: opacity 0.2s;
 }
 .hud::after {
