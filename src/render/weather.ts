@@ -27,7 +27,7 @@ void main() {
   p.xz += uWind * (h - y) / uSpeed;
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   float d = -mv.z;
-  vFade = smoothstep(1.2, 4.0, d) * (1.0 - smoothstep(18.0, 26.0, d)) * (1.0 - aEnd * 0.7);
+  vFade = smoothstep(1.2, 4.0, d) * (1.0 - smoothstep(18.0, 26.0, d)) * (1.0 - aEnd * 0.7) * mix(1.0, 0.3, smoothstep(5.0, 20.0, d));
   gl_Position = projectionMatrix * mv;
 }`;
 const RAIN_FRAG = /* glsl */ `

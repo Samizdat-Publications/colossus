@@ -17,6 +17,7 @@ import bmesh  # noqa: E402
 import math  # noqa: E402
 import random  # noqa: E402
 import co_common as C  # noqa: E402
+from mathutils import Vector, noise  # noqa: E402
 
 ROCK, ASHLAR = range(2)
 
@@ -36,6 +37,27 @@ class Batch:
 def boulder(rng, size, n=26, blocky=0.25, cuts=3, bevel=0.06):
     bm = C.hull_bm(C.rock_points(rng, size, n=n, blocky=blocky, cuts=cuts))
     C.bevel_bm(bm, min(size) * bevel, segments=1)
+    return bm
+
+
+def rough_boulder(rng, size, n=64, cuts=3, disp=0.13, blocky=0.12):
+    """A boulder with a broken, uneven surface: a faceted hull, subdivided and pushed in and out by noise,
+    so it has dents and ridges instead of the smooth convex look of a plain hull."""
+    bm = C.hull_bm(C.rock_points(rng, size, n=n, blocky=blocky, cuts=cuts, jitter=0.35))
+    bmesh.ops.subdivide_edges(bm, edges=bm.edges[:], cuts=1, use_grid_fill=True)
+    bmesh.ops.triangulate(bm, faces=bm.faces[:])
+    bm.normal_update()
+    off = Vector((rng.uniform(0, 100), rng.uniform(0, 100), rng.uniform(0, 100)))
+    s = min(size)
+    moves = []
+    for v in bm.verts:
+        p = v.co.copy()
+        n1 = noise.noise(p * (1.6 / s) + off)
+        n2 = noise.noise(p * (4.2 / s) + off * 1.7)
+        moves.append((v, p + v.normal * ((n1 * 0.7 + n2 * 0.3) * disp * s)))
+    for v, q in moves:
+        v.co = q
+    bm.normal_update()
     return bm
 
 
@@ -73,8 +95,9 @@ def main():
     ]
     rng = random.Random(505)
     objs = []
-    objs.append(C.new_object('rock_throw', single(rng, boulder(rng, (1.0, 0.88, 0.95), n=28)).bm, mats, smooth=35))
-    objs.append(C.new_object('meteor', single(rng, boulder(rng, (1.0, 0.95, 1.0), n=22, blocky=0.1, cuts=4)).bm, mats, smooth=30))
+    # the thrown boulder and the falling rubble: broken, dented rock (a plain hull read as a smooth blob)
+    objs.append(C.new_object('rock_throw', single(rng, rough_boulder(rng, (1.0, 0.86, 0.94), n=64, cuts=3)).bm, mats, smooth=24))
+    objs.append(C.new_object('meteor', single(rng, rough_boulder(rng, (1.0, 0.8, 0.9), n=56, cuts=5, disp=0.16)).bm, mats, smooth=22))
     for i in range(6):
         if i % 2:
             bm = C.hull_bm(C.block_points(rng, (1.0, 0.55, 0.75), chips=3, chip=(0.1, 0.3)))

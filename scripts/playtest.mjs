@@ -394,6 +394,195 @@ try {
     await waitFor(() => window.__CO.state().flow === 'dead', 15000);
     await sleep(700);
     await shot('death_screen');
+  } else if (scenario === 'uicritic') {
+    // Every screen and HUD state, for the milestone 4 (UI) critic.
+    // hold the models back for a moment so the loading screen can be seen
+    await page.route('**/*.glb', async (route) => {
+      await sleep(2500);
+      await route.continue();
+    });
+    await page.goto(page.url());
+    await sleep(1200);
+    await page.screenshot({ path: path.join(outDir, '01_loading.png') });
+    shotN++;
+    await page.unroute('**/*.glb');
+    await waitFor(() => window.__CO && window.__CO.ready && window.__CO.state().flow === 'title', 90000);
+    await sleep(1200);
+    await shot('title');
+    await page.click('button[data-act="howto"]');
+    await sleep(400);
+    await shot('how_to_fight');
+    await page.click('button[data-act="back"]');
+    await sleep(250);
+    await page.click('button[data-act="settings"]');
+    await sleep(400);
+    await shot('settings');
+    await page.click('button[data-act="back"]');
+    await sleep(250);
+    await page.click('button[data-act="begin"]');
+    await page.evaluate(() => window.__CO.skipIntro());
+    await waitFor(() => window.__CO.state().flow === 'fight', 20000);
+    await page.evaluate(() => {
+      window.__game.golem.cooldown = 8;
+    });
+    await sleep(1600);
+    await shot('fight_start_hud');
+    await key('KeyQ');
+    await page.evaluate(() => window.__CO.god(true));
+    await page.evaluate(() => window.__CO.bot('expert'));
+    const since = (await state()).time;
+    await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'coreHit'), 40000, since).catch(() => {});
+    await sleep(250);
+    await shot('hud_core_hit');
+    await page.evaluate(() => window.__CO.stopBot());
+    await page.evaluate(() => {
+      const g = window.__game;
+      g.player.hp = 22;
+      g.player.flasks = 1;
+    });
+    await sleep(600);
+    await shot('hud_low_health');
+    await key('Escape');
+    await sleep(400);
+    await shot('pause_menu');
+    await page.click('button[data-act="resume"]');
+    await sleep(300);
+    await page.evaluate(() => window.__CO.killGolem());
+    await waitFor(() => window.__CO.state().flow === 'victory', 30000);
+    await sleep(900);
+    await shot('victory_screen');
+    await page.click('button[data-act="retry"]');
+    await waitFor(() => window.__CO.state().flow === 'fight', 20000);
+    await page.evaluate(() => window.__CO.god(false));
+    await page.evaluate(() => {
+      window.__game.player.hp = 5;
+      window.__CO.teleportPlayer(0, 8);
+    });
+    await page.evaluate(() => window.__CO.forceAttack('slam', 'R'));
+    await waitFor(() => window.__CO.state().flow === 'dead', 20000);
+    await sleep(900);
+    await shot('death_screen');
+  } else if (scenario === 'feelcritic') {
+    // Bursts of consecutive frames around hits, impacts and weather, for the milestone 3 (feel) critic.
+    // The golem's own attack choice is held, so each beat is forced and nothing else interferes.
+    const burst = async (label, n, gap) => {
+      for (let i = 0; i < n; i++) {
+        await shot(`${label}_${String.fromCharCode(97 + i)}`);
+        if (i < n - 1) await sleep(gap);
+      }
+    };
+    const idle = () => waitFor(() => !window.__CO.state().golem.attack && window.__CO.state().golem.state === 'combat', 20000).catch(() => {});
+    await page.click('button[data-act="begin"]');
+    await page.evaluate(() => window.__CO.skipIntro());
+    await waitFor(() => window.__CO.state().flow === 'fight', 20000);
+    await page.evaluate(() => {
+      window.__CO.god(true);
+      window.__CO.holdGolem(true);
+      window.__game.hud.showControls = false;
+    });
+    await idle();
+    await key('KeyQ');
+    // deflect: a light attack on the stone shin
+    await page.evaluate(() => {
+      const g = window.__game.golem.pos;
+      window.__CO.teleportPlayer(g.x + 2.0, g.z + 3.2);
+    });
+    await sleep(900);
+    await click('left');
+    await sleep(190);
+    await burst('deflect_on_stone', 2, 90);
+    await sleep(700);
+    // three-hit combo in the open
+    await page.evaluate(() => window.__CO.teleportPlayer(0, 14));
+    await sleep(700);
+    await click('left');
+    await sleep(130);
+    await shot('combo_swing_1');
+    await sleep(250);
+    await click('left');
+    await sleep(170);
+    await shot('combo_swing_2');
+    await sleep(280);
+    await click('left');
+    await sleep(210);
+    await shot('combo_swing_3');
+    await sleep(700);
+    // heavy charge
+    await page.mouse.down({ button: 'right' });
+    await sleep(700);
+    await shot('heavy_charging');
+    await page.mouse.up({ button: 'right' });
+    await sleep(220);
+    await shot('heavy_release');
+    await sleep(900);
+    // slam impact near the warrior
+    await idle();
+    await page.evaluate(() => window.__CO.forceAttack('slam', 'L'));
+    await waitFor(() => window.__CO.state().golem.step === 'stuck', 10000).catch(() => {});
+    await burst('slam_impact', 3, 110);
+    // the bot punishes the stuck fist: capture a core hit
+    await page.evaluate(() => window.__CO.bot('expert'));
+    const since = (await state()).time;
+    await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'coreHit'), 8000, since).catch(() => {});
+    await sleep(40);
+    await burst('core_hit', 2, 80);
+    await page.evaluate(() => window.__CO.stopBot());
+    await page.evaluate(() => window.__CO.holdGolem(true));
+    // shockwave: roll through the ring
+    await idle();
+    await page.evaluate(() => window.__CO.teleportPlayer(0, 11));
+    await sleep(900);
+    await page.evaluate(() => window.__CO.forceAttack('stomp', 'L'));
+    await waitFor(() => window.__CO.state().threats.waves.length > 0, 10000).catch(() => {});
+    await waitFor(() => {
+      const s = window.__CO.state();
+      const w = s.threats.waves[0];
+      if (!w) return true;
+      const d = Math.hypot(s.player.pos.x - w.c.x, s.player.pos.z - w.c.z);
+      return d - w.r < 2.2;
+    }, 6000).catch(() => {});
+    await key('Space');
+    await sleep(60);
+    await burst('roll_through_shockwave', 3, 110);
+    // player hit by a thrown rock
+    await idle();
+    await page.evaluate(() => window.__CO.teleportPlayer(3, 22));
+    await sleep(800);
+    await page.evaluate(() => {
+      window.__CO.god(false);
+      window.__game.player.hp = 100;
+    });
+    await page.evaluate(() => window.__CO.forceAttack('throw', 'R'));
+    const s2 = (await state()).time;
+    await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'playerHit'), 12000, s2).catch(() => {});
+    await sleep(30);
+    await burst('player_hit_by_rock', 2, 110);
+    await page.evaluate(() => window.__CO.god(true));
+    await sleep(1500);
+    // burning ground after a slam
+    await idle();
+    await page.evaluate(() => window.__CO.teleportPlayer(-4, 13));
+    await sleep(700);
+    await page.evaluate(() => window.__CO.forceAttack('slam', 'R'));
+    await waitFor(() => window.__CO.state().threats.hazards.length > 0, 10000).catch(() => {});
+    await sleep(3400);
+    await shot('burning_ground');
+    // lightning
+    await page.evaluate(() => window.__game.weather.strike(1));
+    await sleep(80);
+    await burst('lightning', 2, 110);
+    // stagger collapse
+    await idle();
+    await page.evaluate(() => window.__game.golem.startStagger());
+    await sleep(450);
+    await burst('stagger_collapse', 3, 300);
+    await waitFor(() => window.__CO.state().golem.state === 'combat', 15000).catch(() => {});
+    // victory crumble
+    await idle();
+    await page.evaluate(() => window.__CO.killGolem());
+    await waitFor(() => window.__CO.state().flow === 'victoryCine', 20000).catch(() => {});
+    await sleep(1300);
+    await burst('golem_crumbles', 2, 600);
   } else if (scenario === 'perf') {
     // frame times during a real fight at normal speed: the expert bot plays, the golem attacks
     await page.click('button[data-act="begin"]');

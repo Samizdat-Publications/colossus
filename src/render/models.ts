@@ -138,8 +138,47 @@ export function buildWarriorModel(assets: Assets): WarriorModel {
   }
   const sword = rig.root.getObjectByName('sword') ?? new THREE.Group();
   const cape = (rig.root.getObjectByName('cape') as THREE.Mesh | undefined) ?? null;
+  if (cape) cape.material = pleated(mats.warrior_cloth as THREE.MeshStandardMaterial);
   const flask = rig.root.getObjectByName('flask') ?? null;
   return { rig, sword, cape, flask };
+}
+
+/** Rough, dull bevels on floor stones: any face tilted away from straight up gets a matte finish. */
+function matteBevels(m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
+  m.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <roughnessmap_fragment>',
+      `#include <roughnessmap_fragment>
+{
+  vec3 upV = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+  float level = smoothstep(0.9, 0.985, dot(normalize(vNormal), upV));
+  roughnessFactor = mix(0.97, roughnessFactor, level);
+}`,
+    );
+  };
+  m.customProgramCacheKey = () => 'floor-matte-bevels';
+  return m;
+}
+
+/** A copy of the cloth material with vertical pleats: the normal swings left and right across the width. */
+function pleated(base: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial {
+  const m = base.clone();
+  const prev = base.onBeforeCompile;
+  m.onBeforeCompile = (shader, renderer) => {
+    prev.call(m, shader, renderer);
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      `#include <normal_fragment_maps>
+#ifdef USE_NORMALMAP_TANGENTSPACE
+{
+  float pleat = sin(vNormalMapUv.x * 6.2831853 * 4.5);
+  normal = normalize(normal + tbn[0] * pleat * 0.55);
+}
+#endif`,
+    );
+  };
+  m.customProgramCacheKey = () => `${base.customProgramCacheKey()}|pleats`;
+  return m;
 }
 
 // ------------------------------------------------------------------ arena and props
@@ -162,7 +201,7 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
   const runes = new THREE.MeshStandardMaterial({ color: 0x0a0c10, emissive: 0x9fb4d8, emissiveIntensity: 0.3, roughness: 0.6 });
   const water = makeWater();
   const mats: Record<string, THREE.Material> = {
-    floor_stone: new THREE.MeshStandardMaterial({ ...stoneParams(tex, 'ashlar', 0x959aa4, 0.6), envMapIntensity: 0.85 }),
+    floor_stone: matteBevels(new THREE.MeshStandardMaterial({ ...stoneParams(tex, 'ashlar', 0x959aa4, 0.6), envMapIntensity: 0.85 })),
     floor_water: water,
     seal_stone: new THREE.MeshStandardMaterial(stoneParams(tex, 'ashlar', 0x8e9098, 0.8)),
     seal_rune: runes,
@@ -232,7 +271,7 @@ export function buildArenaModel(scene: THREE.Scene, assets: Assets): ArenaModel 
   // projectiles use the rubble boulders (unit radius)
   const rockMesh = proto(assets.models.rubble, 'rock_throw') as THREE.Mesh;
   const meteorMesh = proto(assets.models.rubble, 'meteor') as THREE.Mesh;
-  const rockMat = new THREE.MeshStandardMaterial({ ...stoneParams(tex, 'rock', 0x8e8a85, 1.0), emissive: 0x802808, emissiveIntensity: 0.3 });
+  const rockMat = new THREE.MeshStandardMaterial({ ...stoneParams(tex, 'rock', 0x9a968f, 1.0), emissive: 0x401406, emissiveIntensity: 0.1 });
   return {
     braziers,
     runes,
@@ -305,9 +344,9 @@ vec2 ripples(vec2 p, float t) {
 if (uWaterHeat > 0.001) {
   vec2 q = vWaterWorld.xz * 0.35;
   float churn = wNoise(q + vec2(uWaterTime * 0.07, -uWaterTime * 0.05)) * 0.6 + wNoise(q * 2.7 - uWaterTime * 0.11) * 0.4;
-  float hot = smoothstep(0.25, 0.85, churn);
-  // deep red, dimmer than the amber of burning ground: light from below, not fire on the floor
-  totalEmissiveRadiance += mix(vec3(0.32, 0.03, 0.006), vec3(0.85, 0.17, 0.025), hot) * (0.25 + 0.65 * hot) * uWaterHeat;
+  float hot = smoothstep(0.45, 0.9, churn);
+  // a dim deep-red seep, far below the amber of burning ground: light from beneath, not fire on the floor
+  totalEmissiveRadiance += mix(vec3(0.16, 0.012, 0.003), vec3(0.55, 0.07, 0.012), hot) * (0.2 + 0.5 * hot) * uWaterHeat;
 }`,
       );
   };

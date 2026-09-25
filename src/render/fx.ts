@@ -221,7 +221,17 @@ export class Fx {
     golemPoints: THREE.Vector3[];
     phase: number;
     meteors: THREE.Vector3[];
+    waves?: { center: THREE.Vector3; r: number; maxR: number }[];
   }): void {
+    for (const [i, w] of (ctx.waves ?? []).entries()) {
+      if (w.r < 1 || w.r > w.maxR - 0.5) continue;
+      this.rate(`wv${i}`, 26 + w.r * 3, dt, () => {
+        const a = Math.random() * Math.PI * 2;
+        _p.set(w.center.x + Math.sin(a) * w.r, 0.25, w.center.z + Math.cos(a) * w.r);
+        _v.set(Math.sin(a) * 2.2, rnd(0.6, 1.6), Math.cos(a) * 2.2);
+        this.dust.emit({ pos: _p, vel: _v, life: rnd(0.5, 0.9), size: rnd(0.7, 1.2), grow: 2.2, color: DUST, alpha: 0.3, drag: 2.2, gravity: -0.2 });
+      });
+    }
     for (const h of ctx.hazards) {
       if (h.t < h.arm - 1 || h.dur - h.t < 0.3) continue;
       const burning = h.t >= h.arm;

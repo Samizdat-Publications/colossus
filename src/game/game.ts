@@ -117,7 +117,7 @@ export class Game {
   /** The Blender-made arena, when the assets loaded (null = greybox primitives). */
   private readonly arenaModel: ArenaModel | null = null;
   /** Chest plates that burst off in phase 3, with where they sit on the golem. */
-  private readonly plates: { mesh: THREE.Mesh; parent: THREE.Object3D; pos: THREE.Vector3; quat: THREE.Quaternion; vel: THREE.Vector3; spin: THREE.Vector3; flying: boolean }[] = [];
+  private readonly plates: { mesh: THREE.Mesh; parent: THREE.Object3D; pos: THREE.Vector3; quat: THREE.Quaternion; vel: THREE.Vector3; spin: THREE.Vector3; flying: boolean; rest?: number }[] = [];
 
   constructor(
     readonly container: HTMLElement,
@@ -462,10 +462,10 @@ export class Game {
   private onPlayerDeath(): void {
     if (this.flow !== 'fight') return;
     this.tips.dismiss('lock');
-    this.hitstop = Math.max(this.hitstop, 0.22);
+    this.hitstop = Math.max(this.hitstop, 0.12);
     this.setFlow('dying');
-    this.slowmo = 0.35;
-    this.slowmoTimer = 1.3;
+    this.slowmo = 0.55;
+    this.slowmoTimer = 1.0;
     this.player.control = false;
     this.ctx.live = false;
     this.screenDelay = balance.fight.deathScreenDelay;
@@ -664,7 +664,8 @@ export class Game {
       case 'title': {
         cam.cineBlend = 0;
         this.assembler.apply(0, this.ctx.time);
-        cam.orbit(rawDt, _v.set(0, 3, ARENA.golemHome[1]), 30, 10, 0.05);
+        // inside the colonnade (pillar ring at 31 m): a wider orbit grazed the pillar tops
+        cam.orbit(rawDt, _v.set(0, 3, ARENA.golemHome[1]), 24, 9, 0.05);
         break;
       }
       case 'intro': {
@@ -765,7 +766,7 @@ export class Game {
         const r = (21 * i) / 8;
         const x = g.x + Math.sin(a) * r;
         const z = g.z + Math.cos(a) * r;
-        if (this.world.blocked(x, 2.5, z, 0.8) || Math.hypot(x, z) > ARENA.wallRadius - 2) clear = false;
+        if (this.world.blocked(x, 2.5, z, 0.8) || Math.hypot(x, z) > 28) clear = false;
       }
       if (clear) {
         best = a;
@@ -785,7 +786,7 @@ export class Game {
     let px = g.x + this.phaseCamDir.x * r;
     let pz = g.z + this.phaseCamDir.z * r;
     const d = Math.hypot(px, pz);
-    const lim = ARENA.wallRadius - 2;
+    const lim = 28; // inside the pillar ring
     if (d > lim) {
       px *= lim / d;
       pz *= lim / d;
@@ -816,9 +817,10 @@ export class Game {
     let px = p.x + rx * back;
     let pz = p.z + rz * back;
     const d = Math.hypot(px, pz);
-    if (d > 36) {
-      px *= 36 / d;
-      pz *= 36 / d;
+    // stay inside the pillar ring (31 m)
+    if (d > 28) {
+      px *= 28 / d;
+      pz *= 28 / d;
     }
     c.pos.set(px, 1.5 + 1.6 * t, pz);
     // never inside the golem
@@ -857,9 +859,10 @@ export class Game {
     let px = p.x + dx * back - dz * 4;
     let pz = p.z + dz * back + dx * 4;
     const d = Math.hypot(px, pz);
-    if (d > 36) {
-      px *= 36 / d;
-      pz *= 36 / d;
+    // stay inside the pillar ring (31 m)
+    if (d > 28) {
+      px *= 28 / d;
+      pz *= 28 / d;
     }
     // high and wide: the collapsing arms stay below the lens
     c.pos.set(px, 8.5, pz);
@@ -936,6 +939,7 @@ export class Game {
       golemPoints: active ? this.golemPoints : [],
       phase: g.phase,
       meteors: this.meteorPoints,
+      waves: this.threats.waves,
     });
     if (this.trail) {
       const a = this.player.atk;
@@ -973,6 +977,7 @@ export class Game {
       p.vel.copy(out).multiplyScalar(7 + Math.random() * 3).setY(5 + Math.random() * 2);
       p.spin.set((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 4);
       p.flying = true;
+      p.rest = 0;
     }
     if (this.plates.length) bus.emit('rockImpact', { pos: c.clone(), radius: 3 });
   }
@@ -981,7 +986,13 @@ export class Game {
     for (const p of this.plates) {
       if (!p.flying) continue;
       const m = p.mesh;
-      if (p.vel.lengthSq() < 1e-6) continue;
+      if (p.vel.lengthSq() < 1e-6) {
+        // at rest: after a moment the shard sinks into the flooded floor (no hot rubble cluttering phase 3)
+        p.rest = (p.rest ?? 0) + dt;
+        if (p.rest > 1.5) m.position.y -= dt * 0.7;
+        if (m.position.y < -1.2) m.visible = false;
+        continue;
+      }
       p.vel.y -= 22 * dt;
       m.position.addScaledVector(p.vel, dt);
       m.rotation.x += p.spin.x * dt;
@@ -1010,7 +1021,9 @@ export class Game {
       p.mesh.position.copy(p.pos);
       p.mesh.quaternion.copy(p.quat);
       p.mesh.userData.detached = false;
+      p.mesh.visible = true;
       p.flying = false;
+      p.rest = 0;
     }
   }
 
@@ -1179,7 +1192,9 @@ export class Game {
     this.cam.topBoost = !leaping ? 0 : g.step === 'windup' ? LEAP_APEX : rising ? Math.max(0, LEAP_APEX - g.pos.y) : 0;
     const shoving = this.flow === 'fight' && g.attack?.name === 'meteor' && (g.step === 'windup' || g.step === 'rain');
     this.cam.snappy = leaping ? 1 : shoving ? 0.6 : 0;
-    this.cam.maxPull = leaping ? 5 : 3;
+    // the telegraph is the golem's body: extra room while a big blow is wound up or a rock is in the air
+    const bigWindup = this.flow === 'fight' && !!g.attack && g.step === 'windup' && ['slam', 'doubleSlam', 'throw', 'volley'].includes(g.attack.name);
+    this.cam.maxPull = leaping ? 9 : bigWindup || this.threats.rocks.length > 0 ? 4.5 : 3;
     this.prevGolemY = g.pos.y;
     if (g.pushTele) {
       this.threats.telegraph(g.pushTele.pos, g.pushTele.radius, g.pushTele.dur, 'push');
@@ -1301,9 +1316,10 @@ export class Game {
       const mat = chest.material as THREE.MeshStandardMaterial;
       // molten (orange) while sealed away up high; it turns cyan only when it can be struck
       mat.emissive.setHex(ct?.open ? 0x5ff0ff : 0xff5a14);
-      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 0.45) + 0.15 * Math.sin(this.ctx.time * 5)) + (ct?.flash ?? 0) * 5;
+      mat.emissiveIntensity = on * ((ct?.open ? 2.4 : 0.9) + 0.15 * Math.sin(this.ctx.time * 5)) + (ct?.flash ?? 0) * 5;
       chest.visible = on > 0;
-      chest.scale.setScalar(ct?.open ? 1.5 : 1.1);
+      // sealed it is a small ember deep in the chest, not a weak-point crystal; open it is the big cyan core
+      chest.scale.setScalar(ct?.open ? 1.5 : 0.55);
       const l = this.coreLights.get('core_chest');
       if (l) {
         chest.getWorldPosition(l.position);

@@ -57,6 +57,8 @@ export class Golem {
   stateTime = 0;
   attack: { name: AttackName; side: Side | '' } | null = null;
   private cooldown = 2;
+  /** Tests only: the golem stops choosing attacks (forced attacks still play). */
+  aiHold = false;
   private history: AttackName[] = [];
   private meteorCooldown = 12;
   private walkTimer = 0;
@@ -287,7 +289,7 @@ export class Golem {
         name: 'down',
         dur: S.duration,
         pose: (out, t) => {
-          out.blend(P.kneel, P.kneelSlump, Math.min(1, t * 3));
+          out.blend(P.kneel, this.phase >= 3 ? P.kneelBow : P.kneelSlump, Math.min(1, t * 3));
           golemBreath(out, this.rig, this.time * 1.6, 1.5);
         },
       },
@@ -370,7 +372,8 @@ export class Golem {
 
   /** How much wider the camera should frame right now (leap, stagger). */
   get wantsWide(): number {
-    if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 3;
+    // the leap is the one move worth a small warrior: the whole airborne golem over its landing ring
+    if (this.attack?.name === 'leap' && (this.step === 'windup' || this.step === 'air' || this.step === 'land')) return 5;
     if (this.state === 'stagger') return 3;
     if (this.state === 'dead') return 3;
     // the phase-change roar has its own cinematic; this only covers the blend back
@@ -441,7 +444,7 @@ export class Golem {
         walk = r.walk;
         turn = r.turn;
         this.cooldown -= dt;
-        if (this.cooldown <= 0) this.decide(ctx);
+        if (this.cooldown <= 0 && !this.aiHold) this.decide(ctx);
         break;
       }
       case 'stagger':

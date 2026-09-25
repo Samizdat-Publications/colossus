@@ -38,7 +38,7 @@ if (what === 'stagger') {
     g.cancelAttack?.();
     g.startStagger();
   });
-  await sleep(2200);
+  await sleep(Number(opt('--wait', '2200')));
 } else if (what === 'dead') {
   await page.evaluate(() => window.__CO.killGolem());
   await sleep(1500);
@@ -52,6 +52,7 @@ const joints = await page.evaluate(() => {
     g.rig.tailWorld(i, v);
     out[b] = [v.x, v.y, v.z].map((n) => Math.round(n * 10) / 10);
   }
+  out.targets = g.targets.map((t) => ({ n: t.name, open: t.open, r: t.radius, p: [t.pos.x, t.pos.y, t.pos.z].map((n) => Math.round(n * 100) / 100) }));
   return out;
 });
 console.log(JSON.stringify(joints));

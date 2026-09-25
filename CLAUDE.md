@@ -235,3 +235,18 @@ Newest at the bottom. Record every non-obvious choice.
   something to reflect.
 - 2026-09-25 (M2): the warrior's accent colour is ivory, not red: red is reserved for danger, amber for
   fire, cyan for cores.
+- 2026-09-25 (M2 critic r5): the warrior has its own light (`heroLight.ts`): a camera-side fill and a cool
+  rim patched into the warrior's materials only, stronger the further the camera is. The moon sits behind
+  the golem, so without it the warrior showed the camera its unlit side and vanished on wet stone.
+- 2026-09-25 (M2 critic r5): the lock-on camera trades some golem for a bigger warrior: FOV cap 72, automatic
+  pull-back 3 m (5 in the leap), smaller director widening. Critic shots log the warrior's on-screen height.
+- 2026-09-25 (M2 critic r5): phase changes cut to a short cinematic of the roaring golem (the roar is
+  harmless, so taking the camera for 3 s is safe); death gets a low camera over the fallen warrior.
+- 2026-09-25 (M2 critic r5): phase 3 "lava light" is molten red light in the flooded flagstone joints (deep
+  red, dimmer than the amber of burning ground so the colour language holds), a dark sky with a red
+  horizon and black ridges, instead of an overall warm tint that read as a brown haze.
+- 2026-09-25 (perf): lights are never parented to meshes whose visibility changes. A hidden parent drops its
+  light from the scene, the light count changes and three.js recompiles every shader (1-2 s freezes). A
+  warm-up pass compiles and renders the whole scene once behind the loading screen.
+- 2026-09-25 (perf): adaptive quality governor: after 2.5 s above 19.5 ms per frame it steps render scale
+  1.5 / 1.0 / 0.85 (with 1024 shadows) / 0.7; after 12 s under 13.5 ms it steps back up. `?quality=` pins it.

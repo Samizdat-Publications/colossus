@@ -88,6 +88,7 @@ export function installHooks(game: Game): void {
     pause: () => game.pause(),
     resume: () => game.resume(),
     god: (on: boolean) => (game.player.god = on),
+    holdGolem: (on: boolean) => (game.golem.aiHold = on),
     forceAttack: (name: AttackName, side: 'L' | 'R' = 'L') => game.golem.startAttack(name, side, game.ctx),
     setGolemHp: (frac: number) => {
       game.golem.hp = game.golem.maxHp * frac;

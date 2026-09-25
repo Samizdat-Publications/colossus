@@ -541,7 +541,8 @@ export class Player {
     this.locked = false;
     this.setState('dead');
     this.anim.play([
-      { name: 'kneel', dur: 0.55, pose: this.poses.kneelDeath, ease: 'outQuad' },
+      { name: 'recoil', dur: 0.12, pose: this.poses.hit, ease: 'outQuad' },
+      { name: 'kneel', dur: 0.5, pose: this.poses.kneelDeath, ease: 'outQuad' },
       { name: 'hold', dur: 0.35, pose: this.poses.kneelDeath },
       { name: 'fall', dur: 0.6, pose: this.poses.faceDown, ease: 'inQuad' },
       { name: 'still', dur: 100, pose: this.poses.faceDown },

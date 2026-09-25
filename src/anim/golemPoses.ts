@@ -397,6 +397,17 @@ const KNEEL_SLUMP: PoseDef = mergeDefs(KNEEL, {
   head: [38, -8, 0],
 });
 
+// phase 3 stagger: bowed low over its knees, the bared heart comes down within a sword's reach
+const KNEEL_BOW: PoseDef = mergeDefs(KNEEL, {
+  $pos: [0, -4.8, 0.4],
+  spine: [50, 6, -4],
+  chest: [36, 4, -5],
+  neck: [14, 0, 0],
+  head: [34, -8, 0],
+  upperarm_L: [-72, 0, 26],
+  upperarm_R: [-50, 0, -8],
+});
+
 const KNEEL_SYM_SLUMP: PoseDef = mergeDefs(KNEEL_SYM, {
   $pos: [0, -4.35, 0.35],
   spine: [25, 0, 0],
@@ -489,6 +500,7 @@ export const GOLEM_POSE_DEFS = {
   roarSky: ROAR_SKY,
   kneel: KNEEL,
   kneelSlump: KNEEL_SLUMP,
+  kneelBow: KNEEL_BOW,
   pushUp: PUSH_UP,
   leapCrouch: LEAP_CROUCH,
   leapAir: LEAP_AIR,

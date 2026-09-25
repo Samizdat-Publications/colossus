@@ -172,8 +172,7 @@ export class Screens {
               <button data-act="settings">Settings</button>
             </nav>
             <p class="hint"><span class="core">Only the glowing cores can be harmed.</span></p>
-          </div>
-          <p class="credit">Every stone modelled in Blender by script · every sound synthesized as you play</p>`;
+          </div>`;
         break;
       case 'howto':
         this.root.innerHTML = `<div class="sheet">
