@@ -645,6 +645,7 @@ export class Game {
   }
 
   private crumbleT = -1;
+  private readonly airborneParts = new Set(['hips', 'spine', 'chest', 'neck', 'head', 'shoulder_L', 'shoulder_R']);
   private heroLight: THREE.PointLight | null = null;
   private heldRockMesh: THREE.Mesh | null = null;
 
@@ -699,6 +700,10 @@ export class Game {
     this.updateHeldRock();
     this.cam.wide = this.flow === 'fight' || this.flow === 'victoryCine' ? g.wantsWide : 0;
     this.cam.rise = this.flow === 'fight' ? g.wantsRise : 0;
+    // meteor rain: the danger is the sky around the warrior, so frame the warrior, not the golem
+    this.cam.focusPlayer = this.flow === 'fight' && g.attack?.name === 'meteor' && (g.step === 'rain' || this.threats.rocks.some((r) => r.meteor)) ? 1 : 0;
+    // airborne golem: its torso is what matters, the raised arms may leave the frame
+    this.cam.topParts = g.pos.y > 0.4 ? this.airborneParts : null;
     if (g.riseTele) {
       this.threats.telegraph(g.riseTele, balance.golem.stagger.risePushRadius, balance.golem.stagger.rise * 0.75, 'push');
       g.riseTele = null;

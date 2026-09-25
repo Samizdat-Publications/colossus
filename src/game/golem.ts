@@ -446,7 +446,7 @@ export class Golem {
       case 'transition':
         if (!this.anim.busy) {
           this.setState('combat');
-          this.cooldown = 0.8;
+          this.cooldown = 1.8; // a breather after the roar: never an attack straight out of it
         }
         break;
       case 'dead':

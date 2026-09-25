@@ -44,7 +44,9 @@ if (flag('preview')) {
   server = await preview({ root, preview: { port: 4619, strictPort: false }, logLevel: 'warn' });
   baseUrl = server.resolvedUrls.local[0];
 } else {
-  server = await createServer({ root, server: { port: 5619, strictPort: false }, logLevel: 'warn' });
+  // Random port: a port the local Chromium refuses (seen with 5619) must never block the self-test.
+  const port = 5630 + Math.floor(Math.random() * 60);
+  server = await createServer({ root, server: { port, strictPort: false }, logLevel: 'warn' });
   await server.listen();
   baseUrl = server.resolvedUrls.local[0];
 }
@@ -322,7 +324,8 @@ try {
     await waitFor(() => window.__CO.state().golem.state === 'combat', 15000).catch(() => {});
     // phase 2
     await page.evaluate(() => window.__CO.setGolemPhase(2));
-    await sleep(1200);
+    await waitFor(() => window.__CO.state().golem.state === 'transition', 10000).catch(() => {});
+    await sleep(1300);
     await shot('phase2_roar');
     await force('doubleSlam', 'L', 'stuck', 'phase2_double_slam', 500);
     // phase 3
