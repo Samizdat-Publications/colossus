@@ -99,7 +99,7 @@ phase-change roar, `killGolem()` starts the victory, `forceAttack(name, side)`.
 3. [x] **Feel**: animation, camera, particles, screen shake, hit stop and feedback, rain, lightning,
    dust and debris, synthesized sound and music.
 4. [x] **UI**: title, HUD, pause menu, death and victory screens. Consistent font, palette and spacing.
-5. [ ] **Polish and perf**: steady 60 fps on a mid-range laptop, zero console errors, final balance,
+5. [x] **Polish and perf**: steady 60 fps on a mid-range laptop, zero console errors, final balance,
    README, 6 final screenshots.
 
 Self-test loop after every milestone: Playwright plays via scripted input, captures player-camera
@@ -125,6 +125,11 @@ Milestone 4 closed after 5 critic rounds (see `docs/critic/m4-r5.md`): MAJOR, MI
 round 5 asking to reverse a round 1 fix. From round 8 of milestone 3 on, the critic read copies of the screenshots
 in the session scratchpad: inside the repo, Claude Code auto-loads this file into the subagent, which breaks the
 "screenshots and pitch only" rule.
+
+Milestone 5 closed on 2026-09-26: 59.9 fps average, p95 18.7 ms and 272 draw calls in the 20 s perf scenario on the
+production build (`test-output/final-perf`); zero console errors in smoke, lose, win, every capture and the live site;
+the decent bot wins 3 attempts in 10; README, six full-HD screenshots in `screenshots/`, and the public site on
+Cloudflare Pages (https://colossus-bem.pages.dev, the game at /play/).
 
 ## Asset list
 
