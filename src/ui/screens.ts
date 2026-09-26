@@ -31,11 +31,11 @@ export interface EndStats {
 /** keys (one keycap each), what they do, the gamepad button. The in-fight card uses the same words. */
 export const CONTROLS: [string[], string, string][] = [
   [['W', 'A', 'S', 'D'], 'move', 'L stick'],
-  [['Mouse'], 'camera (click the game to capture it)', 'R stick'],
+  [['Mouse'], 'camera (click to capture it)', 'R stick'],
   [['Left click'], 'light attack, three-hit combo', 'RB'],
   [['Right click'], 'heavy attack, hold to charge', 'RT'],
   [['Shift'], 'block', 'LB'],
-  [['Space'], 'dodge roll (invulnerable for a moment)', 'B'],
+  [['Space'], 'dodge roll, briefly invulnerable', 'B'],
   [['F'], 'jump', 'A'],
   [['Q', 'Tab'], 'lock on to the golem', 'R3'],
   [['R'], 'drink a flask (3 per attempt)', 'X'],
@@ -197,8 +197,8 @@ export class Screens {
               </section>
               <section>
                 <h3>Controls</h3>
-                <table class="keys"><tr class="head"><td>Keyboard</td><td></td><td>Pad</td></tr>${CONTROLS.map(([k, v, pad]) => `<tr><td class="caps">${k.map((x) => `<kbd>${x}</kbd>`).join('')}</td><td>${v}</td><td class="pad">${pad}</td></tr>`).join('')}</table>
-                <p class="small">Every action is buffered: press it during another move and it fires as soon as it can.</p>
+                <table class="keys"><tr class="head"><td>Keyboard</td><td></td><td>Pad</td></tr>${CONTROLS.map(([k, v, pad]) => `<tr><td class="caps">${k.map((x) => `<kbd>${x}</kbd>`).join(k.length === 2 ? '<span class="or">/</span>' : '')}</td><td>${v}</td><td class="pad">${pad}</td></tr>`).join('')}</table>
+                <p class="small">Every action is buffered: press it mid-move and it fires as soon as it can.</p>
               </section>
             </div>
             <nav class="menu row"><button data-act="back" class="primary">Back</button></nav>
@@ -259,7 +259,7 @@ export class Screens {
               <div><span>Health lost</span><b>${Math.round(st?.damageTaken ?? 0)} HP</b></div>
               <div><span>Flasks drunk</span><b>${st?.flasks ?? 0}</b></div>
               <div><span>Core strikes</span><b>${st?.coreHits ?? 0}</b></div>
-              <div><span>Times it fell</span><b>${st?.staggers ?? 0}</b></div>
+              <div><span>Times broken</span><b>${st?.staggers ?? 0}</b></div>
             </div>
             <nav class="menu row"><button data-act="retry" class="primary">Fight again</button><button data-act="title">Title</button></nav>
           </div>`;

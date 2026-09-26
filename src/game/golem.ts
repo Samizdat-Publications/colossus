@@ -351,13 +351,15 @@ export class Golem {
   }
 
   private die(): void {
+    const kneeling = this.state === 'stagger';
     this.cancelAttack();
     this.hp = 0;
     this.setState('dead');
     const P = this.poses;
     bus.emit('golemDeath', { pos: this.pos.clone() });
     this.anim.play([
-      { name: 'stagger', dur: 0.45, pose: P.reelBack, ease: 'outCubic' },
+      // a standing golem reels back first; a kneeling one (the usual killing blow) just slumps
+      { name: 'stagger', dur: kneeling ? 0.2 : 0.45, pose: kneeling ? undefined : P.reelBack, ease: 'outCubic' },
       { name: 'collapse', dur: 0.9, pose: P.fallBack, ease: 'inQuad' },
       { name: 'slump', dur: 1.4, pose: P.fallBack, ease: 'inOutSine' },
       { name: 'still', dur: 1000, pose: P.fallBack },

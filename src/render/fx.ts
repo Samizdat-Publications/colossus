@@ -16,6 +16,7 @@ const EMBER = new THREE.Color(1.0, 0.55, 0.16);
 const EMBER_HOT = new THREE.Color(1.0, 0.78, 0.4);
 const SPARK = new THREE.Color(1.0, 0.72, 0.4);
 const STEEL_SPARK = new THREE.Color(0.85, 0.9, 1.0);
+const SLASH = new THREE.Color(1.6, 2.2, 2.4);
 const CYAN = new THREE.Color(0.45, 0.95, 1.0);
 const GOLD = new THREE.Color(1.0, 0.8, 0.45);
 const SMOKE = new THREE.Color(0.16, 0.15, 0.15);
@@ -179,7 +180,8 @@ export class Fx {
     const on = bus.on.bind(bus);
     const u = this.unsub;
     u.push(on('slamImpact', (e) => {
-      // a low, fast dust wave rolling out, a slower cloud, chunks thrown high and a water splash
+      // a crater in the flagstones, a low, fast dust wave rolling out, a slower cloud, chunks thrown high and a splash
+      this.scar(e.pos, e.radius * (e.big ? 1.5 : 1.25));
       this.dustRing(e.pos, e.radius * 0.5, e.big ? 64 : 44, 16, 1.5, 1.2, true, 0.42);
       this.dustRing(e.pos, e.radius * 0.8, e.big ? 60 : 42, 7, 1.9, 2.4, false, 0.36);
       this.chunks(e.pos, e.big ? 26 : 18, e.radius, 11, 0.62);
@@ -230,6 +232,20 @@ export class Fx {
       this.chunks(e.pos, 2, 1.2, 6, 0.25);
     }));
     u.push(on('coreHit', (e) => {
+      // a bright slash across the core: the cut itself, whatever frame the eye catches
+      _q.crossVectors(e.normal, UP);
+      if (_q.lengthSq() < 1e-4) _q.set(1, 0, 0);
+      _q.normalize();
+      _q.y += 0.45;
+      _q.normalize();
+      const n = e.crit ? 15 : 11;
+      const len = e.heavy || e.crit ? 1.5 : 1.1;
+      for (let i = 0; i < n; i++) {
+        const k = i / (n - 1) - 0.5;
+        _p.copy(e.pos).addScaledVector(_q, k * len).addScaledVector(e.normal, 0.15);
+        const mid = 1 - Math.abs(k) * 1.4;
+        this.glow.emit({ pos: _p, vel: _v.copy(_q).multiplyScalar(k * 1.2), life: 0.15, size: 0.08 + 0.2 * mid, grow: 0.3, color: SLASH, alpha: 1, drag: 3 });
+      }
       this.sparks(e.pos, e.normal, e.crit ? 30 : 16, CYAN, 9, 0.5, 0.13);
       this.sparks(e.pos, e.normal, 6, STEEL_SPARK, 6, 0.3, 0.08);
       this.flash(e.pos, CYAN, e.crit ? 1.9 : 1.15);

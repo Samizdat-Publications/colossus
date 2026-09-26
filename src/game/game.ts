@@ -1554,10 +1554,11 @@ export class Game {
       if (this.crumbleT < 0 && g.stateTime > 0.5) {
         this.crumbleT = 0;
         this.assembler.setCenter(g.pos);
+        this.assembler.collapse(g.pos);
       }
       if (this.crumbleT >= 0) {
         this.crumbleT += dt;
-        this.assembler.apply(1 - Math.min(1, this.crumbleT / 2.1), this.ctx.time);
+        this.assembler.updateCollapse(dt);
       }
     } else this.crumbleT = -1;
     let cyanBest: THREE.Mesh | null = null;

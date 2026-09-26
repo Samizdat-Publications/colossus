@@ -104,6 +104,8 @@ export class Player {
   comboTimer = 0;
   staminaDelay = 0;
   god = false;
+  /** with god on, health never drops below this */
+  godFloor = 1;
   control = true;
   atk: AttackRun | null = null;
   readonly rollDir = new THREE.Vector3();
@@ -391,7 +393,8 @@ export class Player {
       ctx.golem.lockPoint(_v);
       aimYaw = Math.atan2(_v.x - this.pos.x, _v.z - this.pos.z);
     } else if (this.moveMag > 0.2) aimYaw = dirToYaw(this.moveWish.x, this.moveWish.z);
-    if (aimYaw !== null) this.yaw += angleDiff(this.yaw, aimYaw) * 0.6;
+    // a core in reach: turn onto it fully, so the blade's arc crosses the glow; otherwise most of the way
+    if (aimYaw !== null) this.yaw += angleDiff(this.yaw, aimYaw) * (target ? 1 : 0.6);
     this.vel.multiplyScalar(0.3);
   }
 
@@ -634,7 +637,7 @@ export class Player {
     if (d <= 0) return;
     this.hp -= d;
     this.stats.damageTaken += d;
-    if (this.god && this.hp < 1) this.hp = 1;
+    if (this.god && this.hp < this.godFloor) this.hp = this.godFloor;
   }
 
   private knockdown(): void {
@@ -954,11 +957,11 @@ export class Player {
       this.rig.bone('upperarm_L').rotation.z += 0.3 * k;
     }
     const tgt = this.atk?.target;
-    const aimWant = tgt ? Math.min(1, Math.max(0, (tgt.pos.y - (this.y + 1.3)) / 1.8)) : 0;
+    const aimWant = tgt ? Math.min(1, Math.max(0, (tgt.pos.y - (this.y + 1.3)) / 1.5)) : 0;
     this.aimW += (aimWant - this.aimW) * Math.min(1, dt * 12);
     if (this.aimW > 0.01) {
-      this.rig.bone('chest').rotation.x -= 0.3 * this.aimW;
-      this.rig.bone('upperarm_R').rotation.x -= 0.55 * this.aimW;
+      this.rig.bone('chest').rotation.x -= 0.36 * this.aimW;
+      this.rig.bone('upperarm_R').rotation.x -= 0.75 * this.aimW;
     }
     this.syncRig();
   }

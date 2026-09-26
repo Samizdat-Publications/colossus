@@ -18,6 +18,19 @@ const _pos = new THREE.Vector3();
 const _quat = new THREE.Quaternion();
 const _scl = new THREE.Vector3();
 const _fw = new THREE.Matrix4();
+const _dq = new THREE.Quaternion();
+const GRAVITY = 17;
+
+interface Fall {
+  pos: THREE.Vector3;
+  vel: THREE.Vector3;
+  quat: THREE.Quaternion;
+  spin: THREE.Vector3;
+  delay: number;
+  floor: number;
+  bounces: number;
+  rest: boolean;
+}
 
 /**
  * Makes a bone-parented model assemble itself from rubble: every piece starts lying on the
@@ -59,8 +72,82 @@ export class Assembler {
     });
   }
 
+  private falls: Fall[] | null = null;
+  private fallT = 0;
+
+  /**
+   * The victory crumble: every stone drops from where it is under gravity, tumbling and drifting outward,
+   * bounces once or twice and settles into a heap round the golem's feet. (Lerping each stone from the body
+   * to a ring of rubble read as an exploded diagram hanging in the air.)
+   */
+  collapse(center: THREE.Vector3, seed = 11): void {
+    const rng = new RNG(seed);
+    this.falls = [];
+    this.fallT = 0;
+    for (const pc of this.pieces) {
+      const pos = pc.obj.getWorldPosition(new THREE.Vector3());
+      const quat = pc.obj.getWorldQuaternion(new THREE.Quaternion());
+      const box = new THREE.Box3().setFromObject(pc.obj);
+      const half = box.getSize(_scl).y * 0.5;
+      const out = new THREE.Vector3(pos.x - center.x, 0, pos.z - center.z);
+      const d = out.length();
+      if (d > 1e-3) out.divideScalar(d);
+      else out.set(rng.range(-1, 1), 0, rng.range(-1, 1)).normalize();
+      // higher stones fall further and spread wider; the whole body gives way at once
+      const h = clamp(pos.y / 14, 0, 1);
+      const vel = out.multiplyScalar(rng.range(0.6, 2.2) + h * 2.4);
+      vel.y = rng.range(-0.5, 1.2);
+      const spin = new THREE.Vector3(rng.range(-1, 1), rng.range(-1, 1), rng.range(-1, 1)).normalize().multiplyScalar(rng.range(1, 3.5));
+      this.falls.push({ pos, vel, quat, spin, delay: rng.range(0, 0.14), floor: Math.max(0.12, Math.min(half, 1.2) * 0.7), bounces: 0, rest: false });
+    }
+  }
+
+  get collapsing(): boolean {
+    return !!this.falls;
+  }
+
+  /** Advance the crumble. Call after the skeleton has been posed and matrices updated. */
+  updateCollapse(dt: number): void {
+    const falls = this.falls;
+    if (!falls) return;
+    this.fallT += dt;
+    for (let i = 0; i < this.pieces.length; i++) {
+      const pc = this.pieces[i];
+      const f = falls[i];
+      if (pc.obj.userData.detached) continue;
+      const parent = pc.obj.parent;
+      if (!parent) continue;
+      if (!f.rest && this.fallT > f.delay) {
+        f.vel.y -= GRAVITY * dt;
+        f.pos.addScaledVector(f.vel, dt);
+        if (f.pos.y < f.floor) {
+          f.pos.y = f.floor;
+          if (f.vel.y < -2.5 && f.bounces < 2) {
+            // a thud: stones knock back up a little, lose most of their speed and raise dust
+            if (f.bounces === 0 && i % 3 === 0 && this.onPieceLanded) this.onPieceLanded(f.pos.clone().setY(0), 1);
+            f.vel.y *= -0.22;
+            f.vel.x *= 0.45;
+            f.vel.z *= 0.45;
+            f.spin.multiplyScalar(0.4);
+            f.bounces++;
+          } else {
+            f.rest = true;
+          }
+        }
+        const w = f.spin.length();
+        if (w > 1e-4) f.quat.premultiply(_dq.setFromAxisAngle(_pos.copy(f.spin).divideScalar(w), w * dt));
+      }
+      // world transform back to the (still posed) bone's space
+      _fw.compose(f.pos, f.quat, _scl.copy(pc.finalScale).multiply(parent.getWorldScale(_pos)));
+      _mInv.copy(parent.matrixWorld).invert();
+      _m.multiplyMatrices(_mInv, _fw);
+      _m.decompose(pc.obj.position, pc.obj.quaternion, pc.obj.scale);
+    }
+  }
+
   /** Apply the assembly state. Call after the skeleton has been posed and matrices updated. */
   apply(progress: number, time: number): void {
+    this.falls = null;
     const p = clamp(progress, 0, 1);
     if (p >= 1 && this.lastProgress >= 1) return;
     const flight = 0.3;
@@ -108,6 +195,7 @@ export class Assembler {
   /** Reset to rubble (for retries). */
   reset(): void {
     this.lastProgress = -1;
+    this.falls = null;
     if (this.home) this.setCenter(this.home);
   }
 

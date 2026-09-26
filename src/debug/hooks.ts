@@ -25,12 +25,35 @@ export function installHooks(game: Game): void {
     'playerBlock',
     'heal',
     'golemWindup',
+    // for film marks (scripts/film.mjs cuts clips at these)
+    'dodged',
+    'slamImpact',
+    'stompImpact',
+    'shockwave',
+    'rockThrow',
+    'rockImpact',
+    'fissure',
+    'leapTakeoff',
+    'meteorWarn',
+    'golemKneel',
+    'heavyLand',
+    'roar',
+    'victory',
+    'assembleStart',
+    'fightStart',
   ];
+  // everything since the last drain() (film mode reads it after every frame)
+  let fresh: { t: number; type: string; info?: string }[] = [];
   for (const w of watch) {
     bus.on(w, (e: unknown) => {
-      const info = w === 'golemWindup' ? (e as GameEvents['golemWindup']).attack : w === 'playerHit' ? (e as GameEvents['playerHit']).source : undefined;
-      log.push({ t: Math.round(game.ctx.time * 100) / 100, type: w, info });
+      const ev = e as Record<string, unknown>;
+      const info =
+        w === 'golemWindup' ? (e as GameEvents['golemWindup']).attack : w === 'playerHit' ? (e as GameEvents['playerHit']).source : w === 'coreHit' ? `${ev.core}${ev.crit ? ' crit' : ''}` : w === 'phaseChange' ? String(ev.phase ?? '') : undefined;
+      const entry = { t: Math.round(game.ctx.time * 100) / 100, type: w, info };
+      log.push(entry);
       if (log.length > 400) log.shift();
+      fresh.push(entry);
+      if (fresh.length > 2000) fresh.shift();
     });
   }
   const api = {
@@ -82,6 +105,13 @@ export function installHooks(game: Game): void {
       };
     },
     events: (since = 0) => log.filter((e) => e.t >= since),
+    drain: () => {
+      const out = fresh;
+      fresh = [];
+      return out;
+    },
+    /** god mode keeps at least this much health (film runs: real hits, but never the low-health state) */
+    godFloor: (hp: number) => (game.player.godFloor = hp),
     setTimeScale: (s: number) => (game.timeScale = s),
     begin: () => game.begin(),
     retry: () => game.retry(),
