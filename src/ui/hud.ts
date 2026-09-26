@@ -245,7 +245,10 @@ export class Hud {
         this.pending.splice(i, 1);
         continue;
       }
-      f.el.style.transform = `translate(${((p.x + 1) / 2) * width + (word ? 58 : 58 + f.t * 30)}px, ${((1 - p.y) / 2) * height}px) translate(-50%, -50%)`;
+      // inside a safe inset: never up among the top panels or off the edge
+      const fx = Math.min(width - 60, Math.max(60, ((p.x + 1) / 2) * width + (word ? 58 : 58 + f.t * 30)));
+      const fy = Math.min(height - 120, Math.max(110, ((1 - p.y) / 2) * height));
+      f.el.style.transform = `translate(${fx}px, ${fy}px) translate(-50%, -50%)`;
       f.el.style.opacity = String(Math.min(1, (1.1 - f.t) * 3));
     }
   }

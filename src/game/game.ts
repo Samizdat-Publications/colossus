@@ -327,7 +327,7 @@ export class Game {
       this.hitstop = Math.max(this.hitstop, 0.07);
       this.cam.shake(0.16);
       this.cam.kick(0.25);
-      this.tips.show('deflect', 'Stone <b>deflects</b> your blade. Strike the <b class="core">glowing cores</b> on its arms.', 3, 5);
+      this.tips.show('deflect', 'Stone <b>deflects</b> your blade. Strike the <b class="core">cyan cores</b> on its arms.', 3, 5);
     });
     bus.on('playerHit', (e) => {
       this.cam.shake(e.knockdown ? 0.5 : 0.32);
@@ -481,7 +481,7 @@ export class Game {
     this.hud.showControls = this.attempt === 1 && this.settings.showControls;
     this.controlsTimer = this.hud.showControls ? 10 : 0;
     bus.emit('fightStart', { attempt: this.attempt });
-    if (this.attempt === 1) this.tips.show('start', 'Only the <b class="core">glowing cores</b> can be harmed.', 1, 4);
+    if (this.attempt === 1) this.tips.show('start', 'Only the <b class="core">cyan cores</b> can be harmed.', 1, 4);
   }
   private controlsTimer = 0;
 
@@ -552,7 +552,7 @@ export class Game {
       case 'push':
         return 'When it rises from its knees it throws you back. Back off as it starts to rise.';
       default:
-        return 'Only the glowing cores take damage. Strike an arm core while its fist is stuck in the ground.';
+        return 'Only the cyan cores take damage. Strike an arm core while its fist is stuck in the ground.';
     }
   }
 
@@ -1545,7 +1545,7 @@ export class Game {
       const reeling = this.player.state === 'down' || this.player.state === 'hit';
       this.hud.markCore = arm && arm.kind === 'arm' && arm.pos.y < REACH && g.windowOpen && !danger && !reeling ? arm : null;
       if (this.hud.markCore) {
-        this.tips.show('window', 'Its fist is stuck: strike the <b class="core">glowing core</b> on its arm!', 3, 3.5);
+        this.tips.show('window', 'Its fist is stuck: strike the <b class="core">cyan core</b> on its arm!', 3, 3.5);
       }
     } else this.hud.markCore = null;
     this.updateStrikeSpot(null, dt); // the floor ring under the back core is gone: the STRIKE tag and the shaft say enough

@@ -173,7 +173,7 @@ export class Screens {
               <button data-act="howto">How to fight</button>
               <button data-act="settings">Settings</button>
             </nav>
-            <p class="hint"><span class="core">Only the glowing cores can be harmed.</span></p>
+            <p class="hint"><span class="core">Only the glowing cyan cores can be harmed.</span></p>
           </div>`;
         break;
       case 'howto':
