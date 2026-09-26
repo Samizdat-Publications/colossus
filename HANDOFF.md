@@ -34,7 +34,7 @@ All five milestones are closed (see `CLAUDE.md` and `docs/critic/`):
 
 - Redeploy after a change: `npm run site -- --deploy` (it rebuilds the game with base `/play/`).
 - New footage after a gameplay change: `npm run film -- --shoot intro`, `npm run film -- --shoot fight --nobuild`,
-  `npm run film -- --shoot lose --nobuild`, then `npm run media` (it also needs `test-output/final-critic`,
+  `npm run film -- --shoot lose --nobuild`, `npm run film -- --shoot showcase --nobuild`, then `npm run media` (it also needs `test-output/final-critic`,
   `test-output/m1-critic-r16` and `test-output/m2-critic-r1` for the greybox-to-finished slider; the first comes from
   `npm run playtest -- --scenario critic --out test-output/final-critic`). `test-output/` is gitignored, so on a new
   machine the slider stills already in `site/media/` are the only copy.

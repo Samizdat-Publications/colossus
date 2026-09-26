@@ -172,6 +172,7 @@ frame number, and `scripts/make-media.mjs` cuts each clip at its event, so a new
 npm run film -- --shoot intro          # the title and the intro, no HUD (the landing page's scroll-scrubbed hero)
 npm run film -- --shoot fight --nobuild
 npm run film -- --shoot lose --nobuild
+npm run film -- --shoot showcase --nobuild   # beats the bot never plays: a combo on the stone shin (deflects)
 npm run media                          # clips, posters, scrub frames, chapters.json, README GIFs
 ```
 
@@ -182,7 +183,9 @@ once.
 
 `site/` is the landing page (static HTML, CSS and JS; its media in `site/media/`). `npm run site` builds `site-dist/`
 with the landing page at `/` and the game, built with base `/play/`, at `/play/`. `npm run site -- --deploy` also
-deploys it to Cloudflare Pages (project `colossus`, https://colossus-bem.pages.dev).
+deploys it to Cloudflare Pages (project `colossus`, https://colossus-bem.pages.dev). Pages ignores byte-range
+requests, so the page downloads the whole-fight video into a local blob before seeking into it (the short clips only
+loop and need no seeking). `node scripts/shot-site.mjs [url]` screenshots the page at fixed scroll points for review.
 
 ## Assets
 

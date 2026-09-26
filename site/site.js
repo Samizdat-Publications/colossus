@@ -289,6 +289,56 @@
   const now = document.getElementById('now');
   const tally = document.getElementById('tally');
   const kindColour = { start: 'var(--bone)', break: 'var(--core)', phase: 'var(--ember)', danger: '#ff6a45', end: 'var(--gold)' };
+
+  // The static host ignores byte-range requests, so a browser cannot seek into the part of the video it has not
+  // downloaded yet. The whole fight is fetched once into a local blob instead; after that, seeking is instant.
+  let whole = null;
+  let loadNote = '';
+  function ensureWhole() {
+    if (whole) return whole;
+    const src = run.querySelector('source').src;
+    whole = fetch(src)
+      .then(async (r) => {
+        const total = Number(r.headers.get('content-length')) || 0;
+        const reader = r.body.getReader();
+        const parts = [];
+        let got = 0;
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          parts.push(value);
+          got += value.length;
+          if (total) {
+            loadNote = `Loading the whole fight: ${Math.round((got / total) * 100)}%`;
+            if (!run.currentTime) now.textContent = loadNote;
+          }
+        }
+        return new Blob(parts, { type: 'video/mp4' });
+      })
+      .then((blob) => {
+        const t = run.currentTime;
+        const playing = !run.paused;
+        run.src = URL.createObjectURL(blob);
+        run.currentTime = t;
+        if (playing) run.play().catch(() => undefined);
+        loadNote = '';
+        if (now.textContent.startsWith('Loading')) now.textContent = '';
+      })
+      .catch(() => {
+        loadNote = '';
+      });
+    return whole;
+  }
+  if ('IntersectionObserver' in window && !saveData) {
+    const near = new IntersectionObserver((es) => {
+      if (es.some((e) => e.isIntersecting)) {
+        ensureWhole();
+        near.disconnect();
+      }
+    }, { rootMargin: '600px 0px' });
+    near.observe(run);
+  }
+  run.addEventListener('play', () => ensureWhole(), { once: true });
   chapters.then((data) => {
     if (!data) return;
     const dur = data.duration;
@@ -330,9 +380,11 @@
       b.appendChild(tip);
       b.setAttribute('aria-label', `Jump to ${at}: ${ev.label}`);
       b.addEventListener('click', () => {
-        if (run.preload === 'none') run.preload = 'auto';
-        run.currentTime = Math.max(0, ev.t - 1.5);
-        run.play().catch(() => undefined);
+        if (loadNote) now.textContent = loadNote;
+        ensureWhole().then(() => {
+          run.currentTime = Math.max(0, ev.t - 1.5);
+          run.play().catch(() => undefined);
+        });
       });
       tl.appendChild(b);
       return { ev, b, at };
