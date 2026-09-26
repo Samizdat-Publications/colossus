@@ -323,6 +323,10 @@
       const at = mmss(Math.max(0, ev.t - start));
       const tip = document.createElement('span');
       tip.textContent = `${at} ${ev.label}`;
+      // labels near either end open inward, so they never run off the page
+      const f = ev.t / dur;
+      if (f > 0.7) tip.className = 'to-left';
+      else if (f < 0.2) tip.className = 'to-right';
       b.appendChild(tip);
       b.setAttribute('aria-label', `Jump to ${at}: ${ev.label}`);
       b.addEventListener('click', () => {

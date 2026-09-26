@@ -290,7 +290,7 @@ p {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
-  margin: 34px 0 16px;
+  margin: 58px 0 16px;
   opacity: 0;
   transform: translateY(10px);
   transition: opacity 0.6s, transform 0.6s;
@@ -302,11 +302,15 @@ p {
   pointer-events: auto;
 }
 /* the game's own STRIKE marker, pointing at the one button that matters */
+.btn-marked {
+  position: relative;
+}
 .strike-tag {
   position: absolute;
   left: 0;
-  width: 238px;
-  bottom: calc(100% + 6px);
+  right: 0;
+  bottom: calc(100% + 8px);
+  pointer-events: none;
   text-align: center;
   font-family: var(--display);
   font-weight: 700;
@@ -726,6 +730,15 @@ p {
   pointer-events: none;
   transition: opacity 0.15s;
 }
+.tick span.to-left {
+  left: auto;
+  right: 4px;
+  translate: 0 0;
+}
+.tick span.to-right {
+  left: 4px;
+  translate: 0 0;
+}
 .tick:hover span,
 .tick:focus-visible span {
   opacity: 1;
@@ -1037,6 +1050,7 @@ kbd {
 }
 .milestones img {
   width: 100%;
+  height: auto;
   aspect-ratio: 16 / 9;
   object-fit: cover;
   outline: 1px solid var(--line);
@@ -1183,5 +1197,17 @@ kbd {
   .shot,
   .shot.is-active {
     transition: none;
+  }
+}
+
+/* phones: the wordmark fits the width */
+@media (max-width: 560px) {
+  .wordmark {
+    font-size: 12.4vw;
+    letter-spacing: 0.06em;
+  }
+  .btn {
+    font-size: 15px;
+    padding: 12px 18px 11px;
   }
 }

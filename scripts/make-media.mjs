@@ -5,6 +5,7 @@
  *   node scripts/film.mjs --shoot intro
  *   node scripts/film.mjs --shoot fight --nobuild
  *   node scripts/film.mjs --shoot lose --nobuild
+ *   node scripts/film.mjs --shoot showcase --nobuild
  *   node scripts/make-media.mjs
  *
  * Writes site/media/ (hero scrub frames, MP4 clips with posters, the whole fight, chapters.json, the
@@ -43,6 +44,7 @@ function run(name) {
 const intro = run('intro');
 const fight = run('fight');
 const lose = run('lose');
+const showcase = run('showcase');
 
 // ---------------------------------------------------------------- hero: the rubble rises, frame by frame
 // The page scrubs these with the scroll position.
@@ -71,23 +73,34 @@ const lose = run('lose');
 const p2 = fight.at('phaseChange', { info: '2' });
 const p3 = fight.at('phaseChange', { info: '3' });
 const stag = fight.at('staggerStart');
-const CLIPS = [
-  { name: 'deflect', r: fight, start: fight.at('deflect') - 1.4, dur: 4.6, poster: 1.5 },
-  { name: 'strike', r: fight, start: fight.at('coreHit', { info: 'core_arm' }) - 3.2, dur: 6, poster: 3.25 },
-  { name: 'dodge', r: fight, start: fight.at('dodged') - 2.2, dur: 5, poster: 2.2 },
-  { name: 'break', r: fight, start: stag - 1.2, dur: 8.5, poster: 3.2 },
-  { name: 'phase2', r: fight, start: p2 - 0.6, dur: 7.5, poster: 3 },
-  { name: 'fissure', r: fight, start: fight.at('fissure', { after: p2 }) - 2.6, dur: 6, poster: 2.9 },
-  { name: 'phase3', r: fight, start: p3 - 0.6, dur: 8, poster: 4 },
-  { name: 'leap', r: fight, start: fight.at('leapTakeoff', { after: p3 }) - 1.8, dur: 6, poster: 2.6 },
-  { name: 'meteors', r: fight, start: fight.at('meteorWarn', { after: p3 }) - 0.5, dur: 7.5, poster: 4.2 },
-  { name: 'victory', r: fight, start: fight.at('victoryCine') - 1.6, dur: 10, poster: 5 },
-  { name: 'fallen', r: lose, start: lose.at('playerHit', { last: true }) - 1.6, dur: 8.5, poster: 7.5 },
+// start is a function: a run without that event skips the clip (with a note) instead of failing the cut
+const CLIP_DEFS = [
+  // the bot never hits stone: the deflect comes from the scripted showcase run
+  { name: 'deflect', r: showcase, start: () => showcase.at('deflect') - 1.0, dur: 4.2, poster: 1.12 },
+  { name: 'strike', r: fight, start: () => fight.at('coreHit', { info: 'core_arm' }) - 3.2, dur: 6, poster: 3.25 },
+  { name: 'dodge', r: fight, start: () => fight.at('dodged') - 2.2, dur: 5, poster: 2.2 },
+  { name: 'break', r: fight, start: () => stag - 1.2, dur: 8.5, poster: 3.2 },
+  { name: 'phase2', r: fight, start: () => p2 - 0.6, dur: 7.5, poster: 3 },
+  { name: 'fissure', r: fight, start: () => fight.at('fissure', { after: p2 }) - 2.6, dur: 6, poster: 2.9 },
+  { name: 'phase3', r: fight, start: () => p3 - 0.6, dur: 8, poster: 4 },
+  { name: 'leap', r: fight, start: () => fight.at('leapTakeoff', { after: p3 }) - 1.8, dur: 6, poster: 2.6 },
+  { name: 'meteors', r: fight, start: () => fight.at('meteorWarn', { after: p3 }) - 0.5, dur: 7.5, poster: 4.2 },
+  { name: 'victory', r: fight, start: () => fight.at('victoryCine') - 1.6, dur: 10, poster: 2.9 },
+  { name: 'fallen', r: lose, start: () => lose.at('playerHit', { last: true }) - 1.6, dur: 8.5, poster: 7.5 },
 ];
+const CLIPS = [];
+for (const d of CLIP_DEFS) {
+  try {
+    CLIPS.push({ ...d, start: d.start() });
+  } catch (e) {
+    console.log(`skip clip ${d.name}: ${e.message}`);
+  }
+}
 for (const c of CLIPS) {
   c.start = Math.max(0, Math.min(c.start, c.r.dur - c.dur));
   const file = path.join(out, `${c.name}.mp4`);
-  ff(['-ss', c.start.toFixed(3), '-t', String(c.dur), '-i', c.r.file, '-vf', 'scale=1280:-2:flags=lanczos', ...x264(24), file]);
+  // rain is noise to an encoder: CRF 27 keeps a clip near 2 to 4 MB at 720p
+  ff(['-ss', c.start.toFixed(3), '-t', String(c.dur), '-i', c.r.file, '-vf', 'scale=1280:-2:flags=lanczos', ...x264(27), file]);
   ff(['-ss', (c.start + c.poster).toFixed(3), '-i', c.r.file, '-frames:v', '1', '-vf', 'scale=1280:-2:flags=lanczos', '-q:v', '4', path.join(out, `${c.name}.jpg`)]);
   console.log(`clip ${c.name}: ${c.start.toFixed(1)} s +${c.dur}, ${mb(file)} MB`);
 }
@@ -192,11 +205,12 @@ for (const c of CLIPS) {
 // ---------------------------------------------------------------- README GIFs: small, short, one palette each
 for (const n of ['strike', 'dodge', 'break', 'phase3', 'meteors', 'victory']) {
   const c = CLIPS.find((x) => x.name === n);
-  const dur = Math.min(c.dur, 4.5);
+  if (!c) continue;
+  const dur = Math.min(c.dur, 3.8);
   const start = c.start + Math.max(0, Math.min(c.poster - 2, c.dur - dur));
   const file = path.join(gifs, `${n}.gif`);
   ff(['-ss', start.toFixed(3), '-t', String(dur), '-i', c.r.file, '-vf',
-    'fps=12,scale=560:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle', file]);
+    'fps=10,scale=480:-2:flags=lanczos,split[a][b];[a]palettegen=max_colors=96:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle', file]);
   console.log(`gif ${n}: ${mb(file)} MB`);
 }
 console.log('done');

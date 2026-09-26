@@ -1,0 +1,86 @@
+{
+ "duration": 239.9,
+ "clips": {
+  "strike": 9.5,
+  "dodge": 4.9,
+  "break": 56,
+  "phase2": 66.4,
+  "fissure": 130.4,
+  "phase3": 158.5,
+  "leap": 194.7,
+  "meteors": 174.1,
+  "victory": 230.9
+ },
+ "phases": [
+  {
+   "n": 1,
+   "from": 0.1,
+   "to": 64
+  },
+  {
+   "n": 2,
+   "from": 64,
+   "to": 155.1
+  },
+  {
+   "n": 3,
+   "from": 155.1,
+   "to": 234.9
+  }
+ ],
+ "events": [
+  {
+   "t": 0.1,
+   "kind": "start",
+   "label": "The fight begins"
+  },
+  {
+   "t": 54,
+   "kind": "break",
+   "label": "First break: it falls to its knees"
+  },
+  {
+   "t": 64,
+   "kind": "phase",
+   "label": "Phase II: the cracks wake"
+  },
+  {
+   "t": 155.1,
+   "kind": "phase",
+   "label": "Phase III: the molten heart"
+  },
+  {
+   "t": 170.4,
+   "kind": "danger",
+   "label": "Meteor rain"
+  },
+  {
+   "t": 193.9,
+   "kind": "danger",
+   "label": "The first leap"
+  },
+  {
+   "t": 223.6,
+   "kind": "break",
+   "label": "Break 2"
+  },
+  {
+   "t": 229.6,
+   "kind": "end",
+   "label": "The killing blow"
+  },
+  {
+   "t": 234.9,
+   "kind": "end",
+   "label": "Ruin silenced"
+  }
+ ],
+ "stats": {
+  "fightSeconds": 226,
+  "coreHits": 38,
+  "deflects": 0,
+  "dodges": 25,
+  "breaks": 2,
+  "hitsTaken": 5
+ }
+}

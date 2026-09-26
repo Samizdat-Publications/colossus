@@ -2,12 +2,13 @@
 /**
  * Film mode: records the finished game as smooth 60 fps footage for the landing page and the README.
  *
- *   node scripts/film.mjs --shoot intro|fight|lose [--width 1920 --height 1080] [--out dir] [--nobuild] [--minutes 9]
+ *   node scripts/film.mjs --shoot intro|fight|lose|showcase [--width 1920 --height 1080] [--out dir] [--nobuild] [--minutes 9]
  *
  * intro : the title screen, then the whole intro (the rubble rises into the golem), with no HUD
  * fight : the expert bot fights to the victory screen (god mode with a health floor, so the HUD shows real
  *         hits but never the low-health state), HUD on
  * lose  : a warrior who stands still until the golem kills them, then the FALLEN screen
+ * showcase: beats the bot never plays, forced by script: a light combo on the golem's stone shin (deflects)
  *
  * The page's clock is virtual: an init script replaces requestAnimationFrame and performance.now, and the
  * script advances the game one 1/60 s frame at a time, capturing each frame over CDP into ffmpeg (x264,
@@ -168,6 +169,50 @@ try {
     await until(() => window.__CO.state().flow === 'victory', 30);
     mark('victory_screen');
     await frames(5);
+  } else if (shoot === 'showcase') {
+    // beats the bot never plays: a light combo on the stone shin (the deflect lesson), locked on as a player would be
+    await page.evaluate(() => {
+      window.__CO.begin();
+      window.__CO.skipIntro();
+      window.__CO.god(true);
+    });
+    await until(() => window.__CO.state().flow === 'fight' && window.__CO.state().golem.state === 'combat', 20);
+    await page.evaluate(() => {
+      const game = window.__game;
+      const g = game.golem;
+      window.__CO.holdGolem(true);
+      game.hud.showControls = false;
+      // the point of the shin at sword height, approached from in front of the golem and a little to the side
+      const shin = g.capsules.find((c) => c.name === 'shin_L');
+      const lo = shin.a.y < shin.b.y ? shin.a : shin.b;
+      const hi = shin.a.y < shin.b.y ? shin.b : shin.a;
+      const k = Math.min(1, Math.max(0, (1.3 - lo.y) / Math.max(0.01, hi.y - lo.y)));
+      const px = lo.x + (hi.x - lo.x) * k;
+      const pz = lo.z + (hi.z - lo.z) * k;
+      const fy = g.yaw;
+      let dx = Math.sin(fy) * 0.85 + (px - g.pos.x) * 0.15;
+      let dz = Math.cos(fy) * 0.85 + (pz - g.pos.z) * 0.15;
+      const l = Math.hypot(dx, dz) || 1;
+      dx /= l;
+      dz /= l;
+      game.player.pos.set(px + dx * (shin.r + 0.8), 0, pz + dz * (shin.r + 0.8));
+      game.player.yaw = Math.atan2(-dx, -dz);
+      game.player.locked = false;
+    });
+    // let the lock-on camera settle, then three swings on the stone
+    await frames(2);
+    log('showcase at', JSON.stringify(await page.evaluate(() => {
+      const g = window.__game.golem;
+      const shin = g.capsules.find((c) => c.name === 'shin_L');
+      const p = window.__game.player;
+      return { p: [p.pos.x, p.pos.z].map((v) => +v.toFixed(2)), shin: [shin.a.x, shin.a.z, shin.r].map((v) => +v.toFixed(2)), g: [g.pos.x, g.pos.z].map((v) => +v.toFixed(2)), state: p.state, flow: window.__game.flow };
+    })));
+    mark('shin');
+    for (let i = 0; i < 3; i++) {
+      await page.evaluate(() => window.__game.player.startLight(window.__game.ctx));
+      await frames(0.75);
+    }
+    await frames(1.5);
   } else if (shoot === 'lose') {
     await page.evaluate(() => {
       window.__CO.begin();
