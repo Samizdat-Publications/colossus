@@ -60,6 +60,13 @@ interface RollShape {
   heightAt: (tuck: number, angle: number) => number;
 }
 
+/**
+ * The somersault turns about the character's left-right axis tilted 32 degrees toward forward, so a forward
+ * roll dives over the right shoulder. Seen from behind (the usual camera), a roll about the plain side axis
+ * went end-on to the lens and read as nothing; the shoulder roll topples visibly sideways from any angle.
+ */
+const ROLL_AXIS = new THREE.Vector3(Math.cos(32 * DEG), 0, Math.sin(32 * DEG));
+
 export const PLAYER_RADIUS = 0.42;
 /** Extra radius around cores for sword checks (forgiving aim). */
 const CORE_GRACE = 0.45;
@@ -356,8 +363,14 @@ export class Player {
         name: 'strike',
         dur: H.active,
         pose: P.heavyStrike,
-        ease: 'inQuad',
+        // the blade comes down at once: a released charge is a blow, not a slow lean
+        ease: 'outCubic',
         enter: () => bus.emit('swing', { heavy: true, charged: !!this.atk?.charged, pos: this.pos }),
+        exit: () => {
+          // the chop ends in the flagstones a blade's length ahead
+          yawToDir(this.yaw, _fwd);
+          bus.emit('heavyLand', { pos: new THREE.Vector3(this.pos.x + _fwd.x * 1.55, 0, this.pos.z + _fwd.z * 1.55), charged: !!this.atk?.charged });
+        },
       },
       { name: 'recover', dur: H.recovery, pose: P.idle, ease: 'inOutSine' },
     ];
@@ -412,11 +425,11 @@ export class Player {
           out.blend(P.idle, P.rollTuck, tuck);
           const r = clamp((t - 0.03) / 0.75, 0, 1);
           const a = ease.inOutSine(r) * Math.PI * 2 * dir;
-          out.rot.setFromAxisAngle(_v2.set(1, 0, 0), a);
+          out.rot.setFromAxisAngle(ROLL_AXIS, a);
           // p' = R (p - C) + C, then drop the centre to the height where the lowest point touches the floor
           const drop = shape.heightAt(tuck, a) - C.y;
           _v2.copy(C).applyQuaternion(out.rot);
-          out.pos.set(0, C.y - _v2.y + drop, C.z - _v2.z);
+          out.pos.set(C.x - _v2.x, C.y - _v2.y + drop, C.z - _v2.z);
         },
       },
     ]);
@@ -435,12 +448,13 @@ export class Player {
     const pose = this.anim.out.clone();
     const W = 5; // tuck weights 0, 0.25 .. 1
     const N = 72; // angles
-    const clouds: { ys: number[]; zs: number[] }[] = [];
+    const clouds: { xs: number[]; ys: number[]; zs: number[] }[] = [];
     const box = new THREE.Box3();
     for (let w = 0; w < W; w++) {
       pose.blend(this.poses.idle, this.poses.rollTuck, w / (W - 1)).applyTo(rig);
       rig.root.updateMatrixWorld(true);
       const toRig = new THREE.Matrix4().copy(rig.root.matrixWorld).invert();
+      const xs: number[] = [];
       const ys: number[] = [];
       const zs: number[] = [];
       rig.offset.traverse((o) => {
@@ -451,28 +465,27 @@ export class Player {
         const step = Math.max(1, Math.floor(pos.count / 400));
         for (let i = 0; i < pos.count; i += step) {
           _v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).applyMatrix4(toRig);
+          xs.push(_v.x);
           ys.push(_v.y);
           zs.push(_v.z);
           if (w === W - 1) box.expandByPoint(_v);
         }
       });
-      clouds.push({ ys, zs });
+      clouds.push({ xs, ys, zs });
     }
     // restore the pose shown this frame
     this.anim.out.applyTo(rig);
     rig.root.updateMatrixWorld(true);
     const centre = box.isEmpty() ? new THREE.Vector3(0, 0.62, 0.05) : box.getCenter(new THREE.Vector3());
-    centre.x = 0;
     const table = new Float32Array(W * (N + 1));
+    const rot = new THREE.Matrix4();
     for (let w = 0; w < W; w++) {
-      const { ys, zs } = clouds[w];
+      const { xs, ys, zs } = clouds[w];
       for (let k = 0; k <= N; k++) {
-        const a = (k / N) * Math.PI * 2;
-        const ca = Math.cos(a);
-        const sa = Math.sin(a);
-        // rotated about +X: y' = y cos a - z sin a (relative to the centre)
+        // height of each point relative to the centre after turning by a about the roll axis (row y of R)
+        const e = rot.makeRotationAxis(ROLL_AXIS, (k / N) * Math.PI * 2).elements;
         let lowest = Infinity;
-        for (let i = 0; i < ys.length; i++) lowest = Math.min(lowest, (ys[i] - centre.y) * ca - (zs[i] - centre.z) * sa);
+        for (let i = 0; i < ys.length; i++) lowest = Math.min(lowest, e[1] * (xs[i] - centre.x) + e[5] * (ys[i] - centre.y) + e[9] * (zs[i] - centre.z));
         table[w * (N + 1) + k] = Number.isFinite(lowest) ? -lowest : centre.y;
       }
     }
@@ -628,7 +641,10 @@ export class Player {
     const K = this.B.knockdown;
     this.setState('down');
     this.anim.play([
-      { name: 'fall', dur: K.fall, pose: this.poses.down, ease: 'outQuad' },
+      // the blow snaps the body back and round first, then it falls: from behind (the usual camera) a
+      // straight fall toward the lens read as nothing
+      { name: 'snap', dur: 0.08, pose: this.poses.hit, ease: 'outQuad' },
+      { name: 'fall', dur: Math.max(0.1, K.fall - 0.08), pose: this.poses.down, ease: 'outQuad' },
       { name: 'lie', dur: K.lie, pose: this.poses.down },
       { name: 'getup', dur: K.getup * 0.55, pose: this.poses.getup, ease: 'inOutSine' },
       { name: 'stand', dur: K.getup * 0.45, pose: this.poses.idle, ease: 'outQuad' },

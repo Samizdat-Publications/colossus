@@ -112,6 +112,7 @@ export class Game {
   readonly weather = new Weather();
   private flames: Flames | null = null;
   private trail: SwordTrail | null = null;
+  private trailHold = 0;
   private readonly golemPoints: THREE.Vector3[] = [];
   private readonly meteorPoints: THREE.Vector3[] = [];
   private moonBase = 2.3;
@@ -336,6 +337,7 @@ export class Game {
     bus.on('guardBreak', () => this.cam.shake(0.3));
     bus.on('playerDeath', () => this.onPlayerDeath());
     bus.on('golemDeath', () => this.onGolemDeath());
+    bus.on('heavyLand', (e) => this.cam.shake(e.charged ? 0.4 : 0.26));
     bus.on('swing', (e) => {
       if (!e.heavy) return;
       this.cam.kick(e.charged ? 0.45 : 0.3);
@@ -854,7 +856,11 @@ export class Game {
       _v3.set(p.pos.x, p.y + h, p.pos.z);
       for (let i = 0; i < caps.length; i++) {
         const c = caps[i];
-        if (segSegDist(cam, _v3, c.a, c.b) < c.r * (wide ? 1.15 : 0.85) + (wide ? 0.6 : 0.3)) out.add(bones[i]);
+        // a fist is a heap of blocks that sticks out well past its bone's capsule: a wider margin, or a
+        // hanging fist hid the warrior at the golem's shin without ever counting as in the way
+        const fist = /hand|forearm/.test(c.name);
+        const margin = wide ? c.r * 1.15 + 0.6 : fist ? c.r * 1.3 + 0.7 : c.r * 0.85 + 0.3;
+        if (segSegDist(cam, _v3, c.a, c.b) < margin) out.add(bones[i]);
       }
     }
     return out;
@@ -1130,7 +1136,9 @@ export class Game {
     if (this.trail) {
       const a = this.player.atk;
       const striking = !!a && this.player.anim.seq?.stepName === 'strike';
-      this.trail.update(dt, striking, !!a?.heavy);
+      // the trail keeps drawing through a short follow-through after the strike window
+      this.trailHold = striking ? 0.07 : Math.max(0, this.trailHold - dt);
+      this.trail.update(dt, striking || (!!a && this.trailHold > 0), !!a?.heavy);
       // a held heavy attack heats the blade; a full charge flashes once and burns bright into the strike
       if (this.swordMat) {
         const charging = !!a?.heavy && !a.chargeDone;

@@ -229,20 +229,29 @@ body {
   position: absolute;
   left: 24px;
   top: 24px;
-  width: min(360px, 40vw);
-  padding: 12px 16px;
-  background: linear-gradient(90deg, rgba(8, 9, 12, 0.72), rgba(8, 9, 12, 0.25));
+  width: min(320px, 40vw);
+  padding: 10px 14px 10px 12px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 7px;
+  align-items: center;
+  background: linear-gradient(90deg, rgba(8, 9, 12, 0.66), rgba(8, 9, 12, 0.12));
   border-left: 2px solid var(--line-strong);
+}
+.plabel {
+  font-family: var(--text);
+  font-variant: small-caps;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  color: var(--ash);
 }
 .pbar {
   position: relative;
   height: 10px;
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid var(--line-strong);
-  margin-top: 8px;
-}
-.pbar:first-child {
-  margin-top: 0;
 }
 .pbar .fill,
 .pbar .trail {
@@ -253,10 +262,42 @@ body {
   background: linear-gradient(#c2323a, var(--blood));
 }
 .pbar.hp .trail {
-  background: rgba(230, 200, 160, 0.45);
+  /* the health just lost: a dark blood chip that drains quickly (a pale chip read as health still there) */
+  background: rgba(110, 18, 22, 0.9);
 }
 .pbar.st {
-  height: 6px;
+  height: 7px;
+}
+.hud.low .pbar.hp {
+  animation: low-pulse 0.8s ease-in-out infinite alternate;
+}
+@keyframes low-pulse {
+  from { box-shadow: 0 0 0 1px rgba(200, 40, 40, 0.5); }
+  to { box-shadow: 0 0 0 1px rgba(255, 70, 60, 0.95), 0 0 14px rgba(220, 40, 40, 0.75); }
+}
+.low-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(ellipse at center, rgba(120, 10, 12, 0) 55%, rgba(130, 12, 14, 0.42) 100%);
+}
+.hud.low .low-vignette {
+  opacity: 1;
+  animation: low-throb 1.6s ease-in-out infinite alternate;
+}
+@keyframes low-throb {
+  from { opacity: 0.55; }
+  to { opacity: 1; }
+}
+.flasks.drink .key {
+  border-color: var(--gold);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(224, 178, 90, 0.8);
+}
+.flasks.drink i.full {
+  box-shadow: 0 0 10px rgba(255, 190, 90, 0.95);
 }
 .pbar.st .fill {
   background: var(--moss);
@@ -265,7 +306,8 @@ body {
   border-color: var(--ember);
 }
 .flasks {
-  margin-top: 12px;
+  grid-column: 1 / -1;
+  margin-top: 3px;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -656,6 +698,42 @@ h3 {
   grid-template-columns: 1fr 1fr;
   gap: 48px;
 }
+/* short screens (720p and laptops): How to fight fits without scrolling */
+@media (max-height: 860px) {
+  .sheet {
+    padding: 22px 40px;
+  }
+  .sheet h2 {
+    font-size: 28px;
+    margin-bottom: 0;
+  }
+  .sheet h3 {
+    margin: 14px 0 4px;
+  }
+  .sheet p {
+    font-size: 16px;
+    line-height: 1.38;
+    margin: 5px 0;
+  }
+  .sheet .legend li {
+    font-size: 15px;
+  }
+  .keys {
+    font-size: 15px;
+  }
+  .keys td {
+    padding: 2px 12px 2px 0;
+  }
+  .keys kbd {
+    padding: 1px 6px;
+  }
+  .sheet .small {
+    font-size: 14px;
+  }
+  .sheet .menu {
+    margin-top: 14px;
+  }
+}
 @media (max-width: 760px) {
   .cols {
     grid-template-columns: 1fr;
@@ -705,6 +783,38 @@ h3 {
   padding: 4px 16px 4px 0;
   vertical-align: middle;
 }
+.keys tr.head td {
+  font-family: var(--display);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ash);
+  padding-bottom: 6px;
+}
+.keys td.caps {
+  white-space: nowrap;
+}
+.keys kbd {
+  display: inline-block;
+  min-width: 26px;
+  text-align: center;
+  margin-right: 4px;
+  font-size: 13px;
+  padding: 2px 7px;
+}
+.keys td.pad {
+  font-family: var(--display);
+  font-size: 13px;
+  color: var(--ash);
+  white-space: nowrap;
+  padding-right: 0;
+}
+.sheet .hp {
+  color: #e4545a;
+}
+.sheet .st {
+  color: #9cc47a;
+}
 
 /* settings form */
 .form {
@@ -727,9 +837,9 @@ h3 {
 }
 .field output {
   font-family: var(--display);
-  font-size: 13px;
-  color: var(--ash);
-  text-align: right;
+  font-size: 14px;
+  color: var(--bone);
+  text-align: left;
 }
 input[type='range'] {
   accent-color: var(--gold);
@@ -737,11 +847,30 @@ input[type='range'] {
   pointer-events: auto;
 }
 input[type='checkbox'] {
-  accent-color: var(--gold);
+  appearance: none;
+  -webkit-appearance: none;
   width: 18px;
   height: 18px;
+  margin: 0;
   justify-self: start;
   pointer-events: auto;
+  border: 1px solid rgba(224, 178, 90, 0.7);
+  background: rgba(0, 0, 0, 0.35);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+input[type='checkbox']:checked {
+  background: var(--gold);
+}
+input[type='checkbox']:checked::after {
+  content: '';
+  width: 5px;
+  height: 10px;
+  margin-top: -2px;
+  border: solid var(--ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 /* buttons */
@@ -786,6 +915,27 @@ input[type='checkbox'] {
 /* end screens */
 .end {
   max-width: 960px;
+}
+/* victory: the column sits at the left so the warrior and the rubble stay clear on the right */
+.screens.victory {
+  justify-content: flex-start;
+}
+.end.side {
+  margin-left: 6vw;
+  max-width: min(600px, 48vw);
+  align-items: flex-start;
+  text-align: left;
+}
+.end.side .victory-title {
+  font-size: clamp(30px, 4.2vw, 60px);
+  letter-spacing: 0.16em;
+  margin-right: 0;
+}
+.end.side .menu.row {
+  margin-left: 0;
+}
+.end.side .stats {
+  grid-template-columns: repeat(3, minmax(110px, 1fr));
 }
 /* (class names differ from the .screens.dead / .screens.victory roots on purpose) */
 .death-title {
@@ -854,4 +1004,11 @@ input[type='checkbox'] {
   color: #f88;
   font: 16px monospace;
   text-align: center;
+}
+.end.side .rule {
+  margin-left: 0;
+  margin-right: 0;
+}
+.end.side .rule.gold {
+  background: linear-gradient(90deg, var(--gold), rgba(224, 178, 90, 0));
 }

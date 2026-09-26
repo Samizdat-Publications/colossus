@@ -18,9 +18,9 @@
     "light": {
       "stamina": 12,
       "combo": [
-        { "windup": 0.13, "active": 0.12, "recovery": 0.3, "damage": 26, "break": 12, "reach": 2.55, "arc": 75, "lunge": 0.45 },
-        { "windup": 0.12, "active": 0.12, "recovery": 0.3, "damage": 28, "break": 12, "reach": 2.55, "arc": 75, "lunge": 0.45 },
-        { "windup": 0.19, "active": 0.14, "recovery": 0.42, "damage": 38, "break": 16, "reach": 2.75, "arc": 45, "lunge": 0.6 }
+        { "windup": 0.13, "active": 0.12, "recovery": 0.3, "damage": 26, "break": 12, "reach": 2.55, "arc": 75, "lunge": 0.65 },
+        { "windup": 0.12, "active": 0.12, "recovery": 0.3, "damage": 28, "break": 12, "reach": 2.55, "arc": 75, "lunge": 0.65 },
+        { "windup": 0.19, "active": 0.14, "recovery": 0.42, "damage": 38, "break": 16, "reach": 2.75, "arc": 45, "lunge": 0.95 }
       ],
       "chainAfter": 0.06,
       "comboResetTime": 0.55

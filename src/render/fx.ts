@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import { bus } from '../core/events';
 import { Debris, Particles } from './particles';
+import { crackTexture } from './threatView';
 import type { Hazard } from '../game/threats';
 
 const _v = new THREE.Vector3();
 const _p = new THREE.Vector3();
+const _q = new THREE.Vector3();
+const UP = new THREE.Vector3(0, 1, 0);
 const _n = new THREE.Vector3();
 const DUST = new THREE.Color(0.26, 0.25, 0.24);
 const DUST_DARK = new THREE.Color(0.16, 0.155, 0.15);
@@ -48,6 +51,43 @@ export class Fx {
     this.dust.clear();
     this.glow.clear();
     this.debris?.clear();
+    for (const s of this.scars) s.mesh.visible = false;
+  }
+
+  // ------------------------------------------------------------------ crack scars
+
+  private readonly scars: { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; t: number }[] = [];
+  private scarNext = 0;
+
+  /** A fresh crack in the flagstones (pale grit in broken stone) that fades over a couple of seconds. */
+  scar(pos: THREE.Vector3, size: number): void {
+    if (!this.scars.length) {
+      const tex = crackTexture();
+      const geo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+      for (let i = 0; i < 3; i++) {
+        const mat = new THREE.MeshBasicMaterial({ color: 0x8a837b, alphaMap: tex, transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.visible = false;
+        mesh.renderOrder = 2;
+        this.group.add(mesh);
+        this.scars.push({ mesh, mat, t: 99 });
+      }
+    }
+    const s = this.scars[this.scarNext++ % this.scars.length];
+    s.mesh.position.set(pos.x, 0.03, pos.z);
+    s.mesh.rotation.y = Math.random() * Math.PI * 2;
+    s.mesh.scale.setScalar(size);
+    s.mesh.visible = true;
+    s.t = 0;
+  }
+
+  private updateScars(dt: number): void {
+    for (const s of this.scars) {
+      if (!s.mesh.visible) continue;
+      s.t += dt;
+      s.mat.opacity = 0.85 * Math.min(1, s.t / 0.04) * Math.max(0, 1 - Math.max(0, s.t - 1.4) / 1.2);
+      if (s.t > 2.6) s.mesh.visible = false;
+    }
   }
 
   // ------------------------------------------------------------------ building blocks
@@ -200,8 +240,9 @@ export class Fx {
     }));
     u.push(on('deflect', (e) => {
       // blade on stone: a fan of hot sparks, white steel sparks, stone chips and a puff of grit
-      this.sparks(e.pos, e.normal, e.heavy ? 40 : 28, SPARK, 11, 0.55, 0.17);
-      this.sparks(e.pos, e.normal, 14, STEEL_SPARK, 8, 0.35, 0.11);
+      // mostly white steel on grey stone (hot orange belongs to fire, cyan to cores)
+      this.sparks(e.pos, e.normal, e.heavy ? 24 : 16, SPARK, 11, 0.5, 0.15);
+      this.sparks(e.pos, e.normal, e.heavy ? 40 : 30, STEEL_SPARK, 12, 0.5, 0.15);
       this.flash(e.pos, SPARK, e.heavy ? 2.4 : 1.8, 0.12);
       if (this.debris) {
         for (let i = 0; i < (e.heavy ? 7 : 4); i++) {
@@ -224,22 +265,44 @@ export class Fx {
       _p.copy(e.pos).setY(1.15);
       this.dustRing(e.pos, 0.8, heavy ? 16 : 10, heavy ? 4 : 2.5, 0.7, 1.1);
       this.sparks(_p, null, heavy ? 26 : 16, STEEL_SPARK, 7, 0.4, 0.15);
-      // a rock or a fist: stone shatters on the warrior
-      if (this.debris && e.source !== 'hazard' && e.source !== 'push') {
-        for (let i = 0; i < (heavy ? 8 : 4); i++) {
-          const a = Math.random() * Math.PI * 2;
-          _v.set(Math.cos(a) * rnd(2, 5), rnd(2, 6), Math.sin(a) * rnd(2, 5));
-          this.debris.emit(_p, _v, rnd(0.1, 0.22), rnd(1.4, 2.4));
+      // a rock or a fist: stone shatters on the warrior, wider than the body so the burst shows from behind
+      if (e.source !== 'hazard' && e.source !== 'push') {
+        this.flash(_p, SPARK, heavy ? 2.6 : 1.6, 0.12);
+        if (this.debris) {
+          for (let i = 0; i < (heavy ? 14 : 6); i++) {
+            const a = Math.random() * Math.PI * 2;
+            _v.set(Math.cos(a) * rnd(3, 7), rnd(2.5, 7), Math.sin(a) * rnd(3, 7));
+            _q.set(_p.x + Math.cos(a) * 0.35, _p.y + rnd(-0.3, 0.4), _p.z + Math.sin(a) * 0.35);
+            this.debris.emit(_q, _v, rnd(0.12, heavy ? 0.32 : 0.2), rnd(1.4, 2.4));
+          }
+        }
+        if (heavy) {
+          for (let i = 0; i < 14; i++) {
+            const a = Math.random() * Math.PI * 2;
+            _v.set(Math.cos(a) * rnd(1.5, 3.5), rnd(0.3, 1.8), Math.sin(a) * rnd(1.5, 3.5));
+            this.dust.emit({ pos: _p, vel: _v, life: rnd(0.7, 1.2), size: rnd(0.6, 1.1), grow: 2.6, color: DUST, alpha: 0.4, drag: 2.2, gravity: -0.15 });
+          }
         }
       }
     }));
+    u.push(on('heavyLand', (e) => {
+      // the heavy chop bites the floor: a crack scar, chips, grit and a spray of steel sparks
+      this.scar(e.pos, e.charged ? 2.1 : 1.4);
+      this.dustRing(e.pos, 0.35, e.charged ? 18 : 11, e.charged ? 4.2 : 3, 0.6, 0.95);
+      this.chunks(e.pos, e.charged ? 8 : 5, 0.5, 5.5, 0.17);
+      _q.copy(e.pos).setY(0.1);
+      this.sparks(_q, UP, e.charged ? 26 : 16, STEEL_SPARK, 7, 0.4, 0.12);
+      this.flash(_q, e.charged ? GOLD : STEEL_SPARK, e.charged ? 1.6 : 1.0, 0.12);
+      this.splash(e.pos, e.charged ? 12 : 8, 3);
+    }));
     u.push(on('dodged', (e) => {
-      // a clean dodge: a silver shimmer peels off the warrior
-      for (let i = 0; i < 24; i++) {
+      // a clean dodge: a silver shimmer peels off around the warrior (starting outside the body, so the
+      // tumbling silhouette stays readable instead of turning into a white ghost)
+      for (let i = 0; i < 14; i++) {
         const a = Math.random() * Math.PI * 2;
-        _p.set(e.pos.x + Math.cos(a) * 0.4, rnd(0.3, 1.6), e.pos.z + Math.sin(a) * 0.4);
-        _v.set(Math.cos(a) * rnd(1.5, 3), rnd(0.2, 1.4), Math.sin(a) * rnd(1.5, 3));
-        this.glow.emit({ pos: _p, vel: _v, life: rnd(0.3, 0.5), size: rnd(0.08, 0.14), grow: 0.5, color: STEEL_SPARK, alpha: 0.9, drag: 2 });
+        _p.set(e.pos.x + Math.cos(a) * 0.75, rnd(0.2, 1.2), e.pos.z + Math.sin(a) * 0.75);
+        _v.set(Math.cos(a) * rnd(1.8, 3.2), rnd(0.2, 1.2), Math.sin(a) * rnd(1.8, 3.2));
+        this.glow.emit({ pos: _p, vel: _v, life: rnd(0.25, 0.4), size: rnd(0.06, 0.1), grow: 0.4, color: STEEL_SPARK, alpha: 0.75, drag: 2 });
       }
     }));
     u.push(on('hazardBurn', (e) => {
@@ -311,6 +374,7 @@ export class Fx {
     meteors: THREE.Vector3[];
     waves?: { center: THREE.Vector3; r: number; maxR: number }[];
   }): void {
+    this.updateScars(dt);
     for (const [i, w] of (ctx.waves ?? []).entries()) {
       if (w.r < 1 || w.r > w.maxR - 0.5) continue;
       this.rate(`wv${i}`, 40 + w.r * 4, dt, () => {

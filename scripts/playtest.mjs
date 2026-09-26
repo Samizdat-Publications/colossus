@@ -599,7 +599,8 @@ try {
       game.player.pos.set(mx + dx * (shin.r + 1.0), 0, mz + dz * (shin.r + 1.0));
       game.player.yaw = Math.atan2(-dx, -dz);
     });
-    await sleep(500);
+    // let the lock-on camera settle after the teleport (a player walks there; the camera is already framed)
+    await sleep(1400);
     const sinceD = (await state()).time;
     await click('left');
     await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'deflect'), 1500, sinceD).catch(() => log('warn: no deflect'));

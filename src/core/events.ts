@@ -4,6 +4,8 @@ import type * as THREE from 'three';
 export interface GameEvents {
   // player
   swing: { heavy: boolean; charged: boolean; pos: THREE.Vector3 };
+  /** a heavy blow's blade meets the floor (the end of the chop) */
+  heavyLand: { pos: THREE.Vector3; charged: boolean };
   roll: { pos: THREE.Vector3 };
   jump: { pos: THREE.Vector3 };
   land: { pos: THREE.Vector3; hard: boolean };

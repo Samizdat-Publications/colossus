@@ -6,6 +6,9 @@ import type { GolemTarget } from '../game/context';
 
 export const BOSS_NAME = 'OSTRAKON, THE LIVING RUIN';
 
+const _right = new THREE.Vector3();
+const _edge = new THREE.Vector3();
+
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, parent?: HTMLElement, html?: string): HTMLElementTagNameMap[K] {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
@@ -78,13 +81,16 @@ export class Hud {
     this.breakFill = el('div', 'fill', bb);
 
     const pl = el('div', 'player', this.root);
+    el('span', 'plabel', pl, 'Health');
     const hp = el('div', 'pbar hp', pl);
     this.hpTrail = el('div', 'trail', hp);
     this.hpFill = el('div', 'fill', hp);
+    el('span', 'plabel', pl, 'Stamina');
     this.stWrap = el('div', 'pbar st', pl);
     this.stFill = el('div', 'fill', this.stWrap);
     this.flaskWrap = el('div', 'flasks', pl);
 
+    el('div', 'low-vignette', this.root);
     this.flashEl = el('div', 'hurt-flash', this.root);
     this.reticle = el('div', 'reticle', this.root);
     this.marker = el('div', 'core-marker', this.root, '<i></i><span>STRIKE</span>');
@@ -96,7 +102,7 @@ export class Hud {
       'div',
       'controls',
       this.root,
-      `<div class="grid"><b>WASD</b><span>move</span><b>LMB</b><span>light attack</span><b>Mouse</b><span>camera</span><b>RMB</b><span>heavy (hold)</span><b>Q</b><span>lock on</span><b>Shift</b><span>block</span><b>R</b><span>flask</span><b>Space</b><span>roll</span><b>Esc</b><span>pause</span><b>F</b><span>jump</span></div><div class="foot"><b>H</b> hides or shows this card</div>`,
+      `<div class="grid"><b>W A S D</b><span>move</span><b>Left click</b><span>light attack</span><b>Mouse</b><span>camera</span><b>Right click</b><span>heavy (hold)</span><b>Q</b><span>lock on</span><b>Shift</b><span>block</span><b>R</b><span>drink a flask</span><b>Space</b><span>dodge roll</span><b>Esc</b><span>pause</span><b>F</b><span>jump</span></div><div class="foot"><b>H</b> hides or shows this card</div>`,
     );
     this.controlsPill = el('div', 'controls-pill', this.root, '<b>H</b> controls');
 
@@ -104,7 +110,7 @@ export class Hud {
     bus.on('coreHit', (e) => {
       this.dmgAccum += e.damage;
       this.dmgTimer = 2.2;
-      this.floatText(e.pos, e.crit ? `${Math.round(e.damage)}!` : `${Math.round(e.damage)}`, e.crit ? 'crit' : 'core');
+      this.floatText(e.pos, e.crit ? `${Math.round(e.damage)}!` : `${Math.round(e.damage)}`, e.crit ? 'crit' : 'core', e.core);
     });
     bus.on('bodyHit', (e) => {
       this.dmgAccum += e.damage;
@@ -116,11 +122,12 @@ export class Hud {
   }
 
   private camera: THREE.Camera | null = null;
-  private readonly pending: { pos: THREE.Vector3; text: string; cls: string; t: number; el: HTMLDivElement }[] = [];
+  private readonly pending: { pos: THREE.Vector3; text: string; cls: string; t: number; el: HTMLDivElement; core?: string; offset?: THREE.Vector3 }[] = [];
 
-  private floatText(pos: THREE.Vector3, text: string, cls: string): void {
+  /** core: a number rides along with that core (a fist pulled out of the ground takes its number with it) */
+  private floatText(pos: THREE.Vector3, text: string, cls: string, core?: string): void {
     const e = el('div', `floater ${cls}`, this.floaters, text);
-    this.pending.push({ pos: pos.clone(), text, cls, t: 0, el: e });
+    this.pending.push({ pos: pos.clone(), text, cls, t: 0, el: e, core });
     if (this.pending.length > 12) this.pending.shift()!.el.remove();
   }
 
@@ -163,8 +170,12 @@ export class Hud {
     const hf = player.healthFrac;
     this.hpFill.style.width = `${hf * 100}%`;
     if (this.hpTrailFrac < hf || !player.alive) this.hpTrailFrac = hf;
-    else this.hpTrailFrac = Math.max(hf, this.hpTrailFrac - dt * 0.4);
+    else this.hpTrailFrac = Math.max(hf, this.hpTrailFrac - dt * 0.9);
     this.hpTrail.style.width = `${this.hpTrailFrac * 100}%`;
+    // low health: the bar pulses, a blood-red edge closes in, and the flask key lights up if one is left
+    const low = player.alive && hf < 0.3;
+    this.root.classList.toggle('low', low);
+    this.flaskWrap.classList.toggle('drink', low && player.flasks > 0);
     this.stFill.style.width = `${(player.stamina / player.B.maxStamina) * 100}%`;
     this.stFlash = Math.max(0, this.stFlash - dt * 2.5);
     this.stWrap.classList.toggle('flash', this.stFlash > 0);
@@ -187,9 +198,14 @@ export class Hud {
     } else this.reticle.style.display = 'none';
     for (const d of this.coreDots) d.style.display = 'none';
     if (this.markCore) {
-      const p = toScreen(this.markCore.pos.clone().setY(this.markCore.pos.y + this.markCore.radius + 0.6));
+      // the chevron points at the top of the core's glow, whatever the distance
+      const c = this.markCore;
+      const p = toScreen(c.pos);
+      _right.setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(c.radius);
+      const e = toScreen(_edge.copy(c.pos).add(_right));
+      const rPx = Math.min(60, Math.hypot(e.x - p.x, e.y - p.y));
       this.marker.style.display = p.on ? 'block' : 'none';
-      this.marker.style.transform = `translate(${p.x}px, ${p.y}px)`;
+      this.marker.style.transform = `translate(${p.x}px, ${p.y - rPx - 4}px)`;
     } else this.marker.style.display = 'none';
 
     this.flashAmt = Math.max(0, this.flashAmt - dt * 2.2);
@@ -207,16 +223,25 @@ export class Hud {
 
     for (let i = this.pending.length - 1; i >= 0; i--) {
       const f = this.pending[i];
+      if (f.core) {
+        const tgt = golem.targets.find((x) => x.name === f.core);
+        if (tgt) {
+          f.offset ??= f.pos.clone().sub(tgt.pos);
+          f.pos.copy(tgt.pos).add(f.offset);
+        }
+      }
       f.t += dt;
       const p = f.pos.clone();
-      p.y += (f.cls === 'deflect' || f.cls === 'evade' ? 0.5 : 1.4) + f.t * 1.2; // numbers float above the glow; words stay by the body
+      // numbers rise from the hit point, to the side of the STRIKE chevron; words stay by the body
+      const word = f.cls === 'deflect' || f.cls === 'evade';
+      p.y += (word ? 0.5 : 0.15) + f.t * (word ? 1.2 : 0.9);
       p.project(this.camera);
       if (f.t > 1.1 || p.z > 1) {
         f.el.remove();
         this.pending.splice(i, 1);
         continue;
       }
-      f.el.style.transform = `translate(${((p.x + 1) / 2) * width + 58}px, ${((1 - p.y) / 2) * height}px) translate(-50%, -50%)`;
+      f.el.style.transform = `translate(${((p.x + 1) / 2) * width + (word ? 58 : 34 + f.t * 30)}px, ${((1 - p.y) / 2) * height}px) translate(-50%, -50%)`;
       f.el.style.opacity = String(Math.min(1, (1.1 - f.t) * 3));
     }
   }

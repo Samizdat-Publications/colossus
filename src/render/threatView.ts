@@ -41,7 +41,7 @@ function brokenRingGeometry(): THREE.BufferGeometry {
   return g;
 }
 
-function crackTexture(): THREE.CanvasTexture {
+export function crackTexture(): THREE.CanvasTexture {
   const S = 256;
   const cv = document.createElement('canvas');
   cv.width = cv.height = S;

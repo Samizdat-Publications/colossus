@@ -266,6 +266,8 @@ const HEAL: PoseDef = mergeDefs(IDLE, {
 // struck: the torso snaps back from the blow, the head whips, the arms fling down and out, the knees buckle
 const HIT: PoseDef = mergeDefs(IDLE, {
   $pos: [0, -0.16, -0.2],
+  // whipped back and round by the blow (the twist reads from behind as well as from the side)
+  $rot: [0, 18, 10],
   hips: [-10, 10, 0],
   spine: [-20, 8, 0],
   chest: [-26, -12, 8],
@@ -285,7 +287,8 @@ const HIT: PoseDef = mergeDefs(IDLE, {
 
 const DOWN: PoseDef = {
   $pos: [0, 0.2, -0.2],
-  $rot: [-86, 0, 0],
+  // flat on the back, twisted round and tipped onto one shoulder
+  $rot: [-84, 34, 16],
   spine: [-4, 0, 0],
   chest: [-4, 0, 0],
   neck: [-8, 0, 0],

@@ -28,17 +28,18 @@ export interface EndStats {
   staggers?: number;
 }
 
-const CONTROLS: [string, string][] = [
-  ['W A S D', 'move'],
-  ['Mouse', 'camera (click the game to capture it)'],
-  ['Left click', 'light attack, three-hit combo'],
-  ['Right click', 'heavy attack, hold to charge'],
-  ['Shift', 'block'],
-  ['Space', 'dodge roll (invulnerable for a moment)'],
-  ['F', 'jump'],
-  ['Q or Tab', 'lock on to the golem'],
-  ['R', 'drink a flask (3 per attempt)'],
-  ['Esc', 'pause'],
+/** keys (one keycap each), what they do, the gamepad button. The in-fight card uses the same words. */
+export const CONTROLS: [string[], string, string][] = [
+  [['W', 'A', 'S', 'D'], 'move', 'L stick'],
+  [['Mouse'], 'camera (click the game to capture it)', 'R stick'],
+  [['Left click'], 'light attack, three-hit combo', 'RB'],
+  [['Right click'], 'heavy attack, hold to charge', 'RT'],
+  [['Shift'], 'block', 'LB'],
+  [['Space'], 'dodge roll (invulnerable for a moment)', 'B'],
+  [['F'], 'jump', 'A'],
+  [['Q', 'Tab'], 'lock on to the golem', 'R3'],
+  [['R'], 'drink a flask (3 per attempt)', 'X'],
+  [['Esc'], 'pause', 'Start'],
 ];
 
 export class Screens {
@@ -80,7 +81,8 @@ export class Screens {
       const key = r.dataset.set as keyof Settings;
       const out = this.root.querySelector<HTMLElement>(`output[data-for="${key}"]`);
       const show = () => {
-        if (out) out.textContent = r.type === 'checkbox' ? (r.checked ? 'On' : 'Off') : `${Math.round(Number(r.value) * (key === 'sensitivity' ? 100 : 100))}%`;
+        // sensitivity is a multiplier (1.00x is the default, a third of the way along); the rest are levels
+        if (out) out.textContent = r.type === 'checkbox' ? (r.checked ? 'On' : 'Off') : key === 'sensitivity' ? `${Number(r.value).toFixed(2)}x` : `${Math.round(Number(r.value) * 100)}%`;
       };
       show();
       r.addEventListener('input', () => {
@@ -183,6 +185,8 @@ export class Screens {
                 <p>Stone deflects your blade. Strike only the <span class="core">cyan cores</span>: one on each forearm, one low on its back.</p>
                 <p>After a slam or a sweep a fist stays stuck in the ground. That is your window: the <span class="core">STRIKE</span> tag marks the core.</p>
                 <p>Core hits fill <span class="core">BREAK</span>. Fill it and the Ruin falls to its knees: get behind it and strike its back.</p>
+                <h3>Health and stamina</h3>
+                <p><span class="hp">Red</span> is your health. <span class="st">Green</span> is stamina: attacks, rolls, blocks and jumps spend it, and it refills when you ease off. With it empty you cannot roll or block. <kbd>R</kbd> drinks a flask.</p>
                 <h3>Read the floor</h3>
                 <ul class="legend">
                   <li><i class="sw red"></i><span><b>Red</b> ring, sector or strip: a blow lands here. Roll out.</span></li>
@@ -193,8 +197,8 @@ export class Screens {
               </section>
               <section>
                 <h3>Controls</h3>
-                <table class="keys">${CONTROLS.map(([k, v]) => `<tr><td><kbd>${k}</kbd></td><td>${v}</td></tr>`).join('')}</table>
-                <p class="small">A gamepad works too. Every action is buffered: press it during another move and it fires as soon as it can.</p>
+                <table class="keys"><tr class="head"><td>Keyboard</td><td></td><td>Pad</td></tr>${CONTROLS.map(([k, v, pad]) => `<tr><td class="caps">${k.map((x) => `<kbd>${x}</kbd>`).join('')}</td><td>${v}</td><td class="pad">${pad}</td></tr>`).join('')}</table>
+                <p class="small">Every action is buffered: press it during another move and it fires as soon as it can.</p>
               </section>
             </div>
             <nav class="menu row"><button data-act="back" class="primary">Back</button></nav>
@@ -244,7 +248,8 @@ export class Screens {
       }
       case 'victory': {
         const st = stats ?? this.lastStats;
-        this.root.innerHTML = `<div class="center-col end">
+        // a column at the left: the warrior and the rubble stay in view on the right
+        this.root.innerHTML = `<div class="center-col end side">
             <p class="eyebrow">Ostrakon falls back into the rubble</p>
             <h1 class="victory-title">RUIN SILENCED</h1>
             <div class="rule gold"></div>
