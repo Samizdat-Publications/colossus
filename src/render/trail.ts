@@ -55,7 +55,7 @@ export class SwordTrail {
           if (vA < 0.01) discard;
           // faint near the hilt, brightest along the path of the blade's edge, soft everywhere (no hard sheet)
           float k = pow(vEdge, 2.2) * 0.7 + smoothstep(0.7, 1.0, vEdge) * 0.6;
-          gl_FragColor = vec4(uColor * (0.7 + 0.7 * smoothstep(0.8, 1.0, vEdge)), vA * k);
+          gl_FragColor = vec4(uColor * (0.95 + 1.0 * smoothstep(0.8, 1.0, vEdge)), vA * k);
         }`,
       uniforms: { uColor: { value: new THREE.Color(0xdde8ff) } },
       transparent: true,
@@ -77,7 +77,9 @@ export class SwordTrail {
   /** active: the blade is in an attack's strike window. heavy swings leave a warmer, longer trail. */
   update(dt: number, active: boolean, heavy: boolean): void {
     for (let i = 0; i < N; i++) this.age[i] += dt;
-    if (active) {
+    // a paused or frozen frame (dt 0) must not record: re-recording the same blade position every frozen
+    // frame collapsed the whole ribbon onto the blade
+    if (active && dt > 0) {
       // shift and record
       for (let i = N - 1; i > 0; i--) {
         this.base[i].copy(this.base[i - 1]);
@@ -98,7 +100,8 @@ export class SwordTrail {
       this.count = Math.min(N, this.count + 1);
     }
     const life = heavy ? 0.3 : 0.26;
-    this.mat.uniforms.uColor.value.setHex(heavy ? 0xffd9a8 : 0xdde8ff);
+    // warm steel (the rain is cool blue-white, so a pale blue trail vanished into it)
+    this.mat.uniforms.uColor.value.setHex(heavy ? 0xffc27a : 0xfff0d2);
     let any = false;
     for (let i = 0; i < N; i++) {
       const k = i < this.count ? Math.max(0, 1 - this.age[i] / life) * (1 - i / N) : 0;

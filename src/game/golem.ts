@@ -359,7 +359,7 @@ export class Golem {
     bus.emit('golemDeath', { pos: this.pos.clone() });
     this.anim.play([
       // a standing golem reels back first; a kneeling one (the usual killing blow) just slumps
-      { name: 'stagger', dur: kneeling ? 0.2 : 0.45, pose: kneeling ? undefined : P.reelBack, ease: 'outCubic' },
+      { name: 'stagger', dur: kneeling ? 0.2 : 0.45, pose: kneeling ? undefined : P.kneel, ease: 'outCubic' },
       { name: 'collapse', dur: 0.9, pose: P.fallBack, ease: 'inQuad' },
       { name: 'slump', dur: 1.4, pose: P.fallBack, ease: 'inOutSine' },
       { name: 'still', dur: 1000, pose: P.fallBack },

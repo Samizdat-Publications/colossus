@@ -248,7 +248,7 @@ export class Fx {
       }
       this.sparks(e.pos, e.normal, e.crit ? 30 : 16, CYAN, 9, 0.5, 0.13);
       this.sparks(e.pos, e.normal, 6, STEEL_SPARK, 6, 0.3, 0.08);
-      this.flash(e.pos, CYAN, e.crit ? 1.9 : 1.15);
+      this.flash(e.pos, CYAN, e.crit ? 2.8 : 2.0, 0.18);
     }));
     u.push(on('bodyHit', (e) => {
       this.sparks(e.pos, e.normal, 8, SPARK, 6, 0.35);
@@ -257,13 +257,13 @@ export class Fx {
     u.push(on('deflect', (e) => {
       // blade on stone: a fan of hot sparks, white steel sparks, stone chips and a puff of grit
       // mostly white steel on grey stone (hot orange belongs to fire, cyan to cores)
-      this.sparks(e.pos, e.normal, e.heavy ? 24 : 16, SPARK, 11, 0.5, 0.15);
-      this.sparks(e.pos, e.normal, e.heavy ? 40 : 30, STEEL_SPARK, 12, 0.5, 0.15);
-      this.flash(e.pos, SPARK, e.heavy ? 2.4 : 1.8, 0.12);
+      this.sparks(e.pos, e.normal, e.heavy ? 36 : 26, SPARK, 12, 0.55, 0.2);
+      this.sparks(e.pos, e.normal, e.heavy ? 40 : 30, STEEL_SPARK, 13, 0.5, 0.2);
+      this.flash(e.pos, SPARK, e.heavy ? 3.2 : 2.6, 0.14);
       if (this.debris) {
-        for (let i = 0; i < (e.heavy ? 7 : 4); i++) {
+        for (let i = 0; i < (e.heavy ? 10 : 7); i++) {
           _v.set(e.normal.x * rnd(2, 5) + rnd(-2, 2), rnd(2, 5), e.normal.z * rnd(2, 5) + rnd(-2, 2));
-          this.debris.emit(e.pos, _v, rnd(0.07, 0.16), rnd(1.2, 2));
+          this.debris.emit(e.pos, _v, rnd(0.1, 0.22), rnd(1.2, 2));
         }
       }
       for (let i = 0; i < 6; i++) {

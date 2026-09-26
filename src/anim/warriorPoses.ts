@@ -114,9 +114,9 @@ const L2_STRIKE: PoseDef = mergeDefs(IDLE, {
 // Light 3: two-handed overhead chop.
 const L3_WIND: PoseDef = mergeDefs(IDLE, {
   $pos: [0, 0.0, -0.05],
-  hips: [-2, -4, 0],
-  spine: [-6, 0, 0],
-  chest: [-10, 6, 0],
+  hips: [-2, -18, 0],
+  spine: [-6, -12, -6],
+  chest: [-10, -16, -10],
   neck: [4, -4, 0],
   head: [2, -2, 0],
   upperarm_R: [-168, 10, -8],
@@ -131,9 +131,9 @@ const L3_WIND: PoseDef = mergeDefs(IDLE, {
 });
 const L3_STRIKE: PoseDef = mergeDefs(IDLE, {
   $pos: [0, -0.2, 0.1],
-  hips: [10, -4, 0],
-  spine: [16, 0, 0],
-  chest: [18, 6, 0],
+  hips: [10, 14, 0],
+  spine: [16, 12, 6],
+  chest: [18, 22, 10],
   neck: [-18, -4, 0],
   head: [-12, -2, 0],
   upperarm_R: [-58, 8, -6],
@@ -151,11 +151,11 @@ const L3_STRIKE: PoseDef = mergeDefs(IDLE, {
 
 // Heavy: big overhead wind-up, full-body slam.
 const HEAVY_WIND: PoseDef = mergeDefs(IDLE, {
-  // a low, coiled stance while the blow charges
+  // a low, coiled stance while the blow charges, the blade cocked over the right shoulder
   $pos: [0, -0.17, -0.14],
-  hips: [-6, -10, 0],
-  spine: [-10, -4, 0],
-  chest: [-16, 4, 0],
+  hips: [-6, -22, 0],
+  spine: [-10, -16, -6],
+  chest: [-16, -22, -12],
   neck: [8, 0, 0],
   head: [6, 0, 0],
   upperarm_R: [-176, 6, -6],
@@ -171,10 +171,11 @@ const HEAVY_WIND: PoseDef = mergeDefs(IDLE, {
   foot_R: [-60, 0, 0],
 });
 const HEAVY_STRIKE: PoseDef = mergeDefs(IDLE, {
+  // the cleave finishes low and to the left
   $pos: [0, -0.3, 0.18],
-  hips: [14, -2, 0],
-  spine: [22, 0, 0],
-  chest: [22, 4, 0],
+  hips: [14, 16, 0],
+  spine: [22, 14, 6],
+  chest: [22, 24, 10],
   neck: [-24, 0, 0],
   head: [-14, 0, 0],
   upperarm_R: [-44, 8, -4],

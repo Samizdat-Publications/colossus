@@ -1018,3 +1018,66 @@ input[type='checkbox']:checked::after {
 .end.side .rule.gold {
   background: linear-gradient(90deg, var(--gold), rgba(224, 178, 90, 0));
 }
+
+/* ------------------------------------------------------------------ M4 critic round 3: legibility pass */
+.death-title,
+.victory-title,
+.end.side .victory-title {
+  letter-spacing: 0.22em;
+}
+.death-title {
+  margin-right: -0.22em;
+}
+.stats span {
+  font-size: 16px;
+  color: rgba(230, 223, 207, 0.72);
+}
+.end.side .stats,
+.end.side .menu.row {
+  width: 100%;
+  box-sizing: border-box;
+}
+.end.side .menu.row button {
+  flex: 1;
+  min-width: 0;
+}
+.plabel {
+  font-size: 15px;
+  color: rgba(230, 223, 207, 0.72);
+}
+.pbar.st {
+  background: rgba(20, 30, 14, 0.75);
+}
+.flasks i {
+  border-color: var(--bone);
+}
+.flasks i.full {
+  background: linear-gradient(#f4e7c8, #d9b877);
+  box-shadow: 0 0 6px rgba(230, 210, 160, 0.45);
+}
+.keys tr.head td {
+  font-size: 13px;
+  color: rgba(230, 223, 207, 0.66);
+}
+.keys td.pad {
+  font-size: 14px;
+  color: rgba(230, 223, 207, 0.72);
+}
+.sheet .small {
+  font-size: 16px;
+  color: rgba(230, 223, 207, 0.66);
+}
+.title-side .hint {
+  font-size: 19px;
+  font-weight: 500;
+}
+/* the shockwave swatch is a band (dashed), not a ring like the red blow marker */
+.sw.shock {
+  border-style: dashed;
+  background: none;
+}
+@media (max-height: 860px) {
+  .sheet .small {
+    font-size: 15px;
+  }
+}

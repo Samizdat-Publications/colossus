@@ -1484,7 +1484,7 @@ export class Game {
     // the roar flares the veins; in death the glow bleeds out while the body falls apart
     const roarFlare = g.state === 'transition' ? Math.sin(Math.min(1, g.stateTime / 2.8) * Math.PI) : 0;
     const level = g.phase >= 3 ? 0.95 : g.phase >= 2 ? 1.0 : 0;
-    const dying = g.state === 'dead' ? Math.max(0, 1 - Math.max(0, g.stateTime - 1.2) / 2.4) : 1;
+    const dying = g.state === 'dead' ? Math.max(0, 1 - Math.max(0, g.stateTime - 0.25) / 1.5) : 1;
     const crackWant = dormant ? 0 : (level + 0.9 * roarFlare) * dying;
     const heatWant = g.phase >= 3 ? dying : 0;
     this.crackShown += (crackWant - this.crackShown) * Math.min(1, dt * (g.state === 'transition' ? 3.5 : 3));
@@ -1555,6 +1555,8 @@ export class Game {
         this.crumbleT = 0;
         this.assembler.setCenter(g.pos);
         this.assembler.collapse(g.pos);
+        // the body gives way: a plume of dust rolls out from its feet
+        this.fx.dustRing(g.pos, 5, 70, 5, 2.6, 3.2, false, 0.4);
       }
       if (this.crumbleT >= 0) {
         this.crumbleT += dt;
@@ -1576,9 +1578,14 @@ export class Game {
       if (g.state === 'dead') base = Math.max(0.0, base * (1 - g.stateTime / 0.25));
       const low = marked || (t.kind !== 'arm' && t.open && g.state !== 'dead');
       const pulse = low ? 1.15 + 0.45 * Math.sin(this.ctx.time * 9) : 1;
-      mat.emissiveIntensity = base * pulse + t.flash * 3;
+      mat.emissiveIntensity = base * pulse + t.flash * 7;
       const halo = mesh.getObjectByName('core_halo') as THREE.Sprite | undefined;
-      if (halo) (halo.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.35 * base * pulse + t.flash);
+      if (halo) {
+        (halo.material as THREE.SpriteMaterial).opacity = Math.min(1, 0.35 * base * pulse + t.flash * 1.5);
+        // a hit flares the halo out, then it settles
+        halo.userData.s0 ??= halo.scale.x;
+        halo.scale.setScalar(halo.userData.s0 * (1 + 0.9 * t.flash));
+      }
       // sealed cores are plain stone knobs, not dim teal balls; arm cores ignite at the roar
       mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x80848c);
       mesh.visible = t.kind === 'back' ? t.open || t.flash > 0.05 : lit && !g.staggered;
@@ -1612,7 +1619,7 @@ export class Game {
     }
     const eyeMat = this.golemEyes[0]?.material as THREE.MeshStandardMaterial | undefined;
     const eyeOn = (this.assets ? 2.1 : 2.0) * (g.phase >= 3 ? 1.7 : 1);
-    if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, eyeOn * (1 - Math.max(0, g.stateTime - 1.0) / 0.8)) : g.state === 'dormant' ? 0 : g.staggered ? eyeOn * (0.22 + 0.12 * Math.sin(this.ctx.time * 11) * Math.sin(this.ctx.time * 3.7)) : eyeOn * (1 + 1.4 * this.roarFlare);
+    if (eyeMat) eyeMat.emissiveIntensity = g.state === 'dead' ? Math.max(0, eyeOn * (1 - Math.max(0, g.stateTime - 0.2) / 0.6)) : g.state === 'dormant' ? 0 : g.staggered ? eyeOn * (0.22 + 0.12 * Math.sin(this.ctx.time * 11) * Math.sin(this.ctx.time * 3.7)) : eyeOn * (1 + 1.4 * this.roarFlare);
     const chest = this.coreMeshes.get('core_chest');
     // phase 3: while the heart burns out of reach, remind the player how to get at it (in the tip strip)
     const heartT = g.targets.find((t) => t.kind === 'chest');

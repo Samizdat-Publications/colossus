@@ -59,6 +59,8 @@ export class Hud {
   private dmgAccum = 0;
   private dmgTimer = 0;
   private tipTimer = 0;
+  /** the STRIKE chevron steps aside while a core hit flares */
+  private markHide = 0;
   private stFlash = 0;
   bossVisible = false;
   showControls = true;
@@ -108,6 +110,7 @@ export class Hud {
 
     bus.on('noStamina', () => (this.stFlash = 1));
     bus.on('coreHit', (e) => {
+      this.markHide = 0.45;
       this.dmgAccum += e.damage;
       this.dmgTimer = 2.2;
       this.floatText(e.pos, e.crit ? `${Math.round(e.damage)}!` : `${Math.round(e.damage)}`, e.crit ? 'crit' : 'core', e.core);
@@ -197,7 +200,8 @@ export class Hud {
       this.reticle.style.transform = `translate(${p.x}px, ${p.y}px) rotate(45deg)`;
     } else this.reticle.style.display = 'none';
     for (const d of this.coreDots) d.style.display = 'none';
-    if (this.markCore) {
+    this.markHide = Math.max(0, this.markHide - dt);
+    if (this.markCore && this.markHide <= 0) {
       // the chevron points at the top of the core's glow, whatever the distance
       const c = this.markCore;
       const p = toScreen(c.pos);
@@ -234,14 +238,14 @@ export class Hud {
       const p = f.pos.clone();
       // numbers rise from the hit point, to the side of the STRIKE chevron; words stay by the body
       const word = f.cls === 'deflect' || f.cls === 'evade';
-      p.y += (word ? 0.5 : 0.15) + f.t * (word ? 1.2 : 0.9);
+      p.y += (word ? 0.5 : 0.35) + f.t * (word ? 1.2 : 0.9);
       p.project(this.camera);
       if (f.t > 1.1 || p.z > 1) {
         f.el.remove();
         this.pending.splice(i, 1);
         continue;
       }
-      f.el.style.transform = `translate(${((p.x + 1) / 2) * width + (word ? 58 : 34 + f.t * 30)}px, ${((1 - p.y) / 2) * height}px) translate(-50%, -50%)`;
+      f.el.style.transform = `translate(${((p.x + 1) / 2) * width + (word ? 58 : 58 + f.t * 30)}px, ${((1 - p.y) / 2) * height}px) translate(-50%, -50%)`;
       f.el.style.opacity = String(Math.min(1, (1.1 - f.t) * 3));
     }
   }
