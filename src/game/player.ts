@@ -55,6 +55,11 @@ interface AttackRun {
   resolved: 'none' | 'core' | 'deflect' | 'body' | 'whiff';
 }
 
+interface RollShape {
+  centre: THREE.Vector3;
+  heightAt: (tuck: number, angle: number) => number;
+}
+
 export const PLAYER_RADIUS = 0.42;
 /** Extra radius around cores for sword checks (forgiving aim). */
 const CORE_GRACE = 0.45;
@@ -96,6 +101,7 @@ export class Player {
   atk: AttackRun | null = null;
   readonly rollDir = new THREE.Vector3();
   private rollDone = 0;
+  private rollShape: RollShape | null = null;
   private healDone = false;
   private buffer: { a: Act; t: number } | null = null;
   private lockToggle = false;
@@ -123,6 +129,11 @@ export class Player {
 
   get B() {
     return balance.player;
+  }
+
+  /** One-off measurements behind the loading screen (so the first roll never stalls a frame). */
+  prepare(): void {
+    this.rollShape ??= this.measureRollShape();
   }
 
   get alive(): boolean {
@@ -387,27 +398,95 @@ export class Player {
     const R = this.B.roll;
     const P = this.poses;
     const dir = backward ? -1 : 1;
+    const shape = this.rollShape ?? (this.rollShape = this.measureRollShape());
+    const C = shape.centre;
     this.anim.play([
       {
         name: 'roll',
         dur: R.duration,
-        ease: 'linear',
+        // follow the pose function exactly after a short blend, so the full turn is shown
+        blendIn: 0.05,
         pose: (out, t) => {
-          // tuck in, somersault around the body centre, untuck at the end
-          const tuck = t < 0.15 ? t / 0.15 : t > 0.8 ? (1 - t) / 0.2 : 1;
-          out.blend(P.idle, P.rollTuck, ease.inOutSine(Math.max(0, Math.min(1, tuck))));
-          // NOTE (see HANDOFF.md): this step blends from the pre-roll pose with a linear weight, so the
-          // somersault is only partly applied; a full-strength roll (Step.blendIn) also needs the rotation
-          // pivot raised to the tucked body's centre, or the body sinks into the floor
-          const a = ease.inOutSine(Math.min(1, t / 0.9)) * Math.PI * 2 * dir;
-          const h = 0.55;
+          // tuck in, somersault around the tucked body's centre, come up and untuck
+          const tuck = ease.inOutSine(clamp(t < 0.12 ? t / 0.12 : t > 0.78 ? (1 - t) / 0.22 : 1, 0, 1));
+          out.blend(P.idle, P.rollTuck, tuck);
+          const r = clamp((t - 0.03) / 0.75, 0, 1);
+          const a = ease.inOutSine(r) * Math.PI * 2 * dir;
           out.rot.setFromAxisAngle(_v2.set(1, 0, 0), a);
-          out.pos.set(0, h - h * Math.cos(a) - 0.42 * tuck, -h * Math.sin(a));
+          // p' = R (p - C) + C, then drop the centre to the height where the lowest point touches the floor
+          const drop = shape.heightAt(tuck, a) - C.y;
+          _v2.copy(C).applyQuaternion(out.rot);
+          out.pos.set(0, C.y - _v2.y + drop, C.z - _v2.z);
         },
       },
     ]);
     bus.emit('roll', { pos: this.pos });
     return true;
+  }
+
+  /**
+   * The roll as a rolling shape: the fully tucked body's centre in rig space, and for any tuck weight and
+   * somersault angle the height that centre must sit at so the lowest point of the body (sword, cape and
+   * flask aside) just touches the floor. Measured once from the real meshes, so the roll neither sinks nor
+   * floats, including while tucking in and standing up.
+   */
+  private measureRollShape(): RollShape {
+    const rig = this.rig;
+    const pose = this.anim.out.clone();
+    const W = 5; // tuck weights 0, 0.25 .. 1
+    const N = 72; // angles
+    const clouds: { ys: number[]; zs: number[] }[] = [];
+    const box = new THREE.Box3();
+    for (let w = 0; w < W; w++) {
+      pose.blend(this.poses.idle, this.poses.rollTuck, w / (W - 1)).applyTo(rig);
+      rig.root.updateMatrixWorld(true);
+      const toRig = new THREE.Matrix4().copy(rig.root.matrixWorld).invert();
+      const ys: number[] = [];
+      const zs: number[] = [];
+      rig.offset.traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (!m.isMesh || !m.geometry?.attributes.position) return;
+        for (let n: THREE.Object3D | null = o; n && n !== rig.offset; n = n.parent) if (/sword|cape|flask/i.test(n.name)) return;
+        const pos = m.geometry.attributes.position;
+        const step = Math.max(1, Math.floor(pos.count / 400));
+        for (let i = 0; i < pos.count; i += step) {
+          _v.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld).applyMatrix4(toRig);
+          ys.push(_v.y);
+          zs.push(_v.z);
+          if (w === W - 1) box.expandByPoint(_v);
+        }
+      });
+      clouds.push({ ys, zs });
+    }
+    // restore the pose shown this frame
+    this.anim.out.applyTo(rig);
+    rig.root.updateMatrixWorld(true);
+    const centre = box.isEmpty() ? new THREE.Vector3(0, 0.62, 0.05) : box.getCenter(new THREE.Vector3());
+    centre.x = 0;
+    const table = new Float32Array(W * (N + 1));
+    for (let w = 0; w < W; w++) {
+      const { ys, zs } = clouds[w];
+      for (let k = 0; k <= N; k++) {
+        const a = (k / N) * Math.PI * 2;
+        const ca = Math.cos(a);
+        const sa = Math.sin(a);
+        // rotated about +X: y' = y cos a - z sin a (relative to the centre)
+        let lowest = Infinity;
+        for (let i = 0; i < ys.length; i++) lowest = Math.min(lowest, (ys[i] - centre.y) * ca - (zs[i] - centre.z) * sa);
+        table[w * (N + 1) + k] = Number.isFinite(lowest) ? -lowest : centre.y;
+      }
+    }
+    const heightAt = (tuck: number, a: number): number => {
+      const u = ((((a / (Math.PI * 2)) % 1) + 1) % 1) * N;
+      const k = Math.min(N - 1, Math.floor(u));
+      const fu = u - k;
+      const v = clamp(tuck, 0, 1) * (W - 1);
+      const j = Math.min(W - 2, Math.floor(v));
+      const fv = v - j;
+      const at = (jj: number) => table[jj * (N + 1) + k] + (table[jj * (N + 1) + k + 1] - table[jj * (N + 1) + k]) * fu;
+      return at(j) + (at(j + 1) - at(j)) * fv;
+    };
+    return { centre, heightAt };
   }
 
   private startJump(): boolean {

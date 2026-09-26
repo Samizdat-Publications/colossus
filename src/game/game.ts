@@ -616,6 +616,7 @@ export class Game {
    * the light count must stay what it is in play.
    */
   warmUp(): void {
+    this.player.prepare();
     const shown: THREE.Object3D[] = [];
     const culled: THREE.Object3D[] = [];
     this.scene.traverse((o) => {
