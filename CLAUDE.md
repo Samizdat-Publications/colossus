@@ -117,6 +117,9 @@ Milestone 2 closed after 16 critic rounds (see `docs/critic/m2-r16.md`): rounds 
 recurring items (the golem reads as a heap at melee range, phase lighting, effects) move to milestones 3 and 4.
 Balance at the close: the decent bot wins about 3 attempts in 10.
 
+Milestone 3 is in progress: 7 critic rounds so far (`docs/critic/m3-r*.md`). **Start here in a new session:
+`HANDOFF.md`** (status, next steps in order, the open roll-animation fix, critic loop mechanics).
+
 ## Asset list
 
 | Family script | Output | Contents |
@@ -268,3 +271,12 @@ Newest at the bottom. Record every non-obvious choice.
 - 2026-09-25 (M2 critic r12): the death camera keeps one clock and one viewpoint across dying and the FALLEN
   screen, picks the clearest of 16 directions around the body, re-picks (gliding) if a limb swings into the
   view, and frames the body in an outer third clear of the screen's text.
+- 2026-09-25 (balance): player 110 HP, golem 1750 HP, the stagger rise push is a harmless shove, stomp ring 18,
+  phase 2 and 3 idle gaps a little longer, fissure 16, flask heal 50: the decent bot wins about 3 in 10.
+- 2026-09-25 (M3): the feel critic uses frame bursts captured with the simulation frozen per frame
+  (`--scenario feelcritic`). Hits read through several layers at once: a white-hot rim flash on the warrior, a
+  recoil pose, sparks and stone, a shake and a short hit stop; knockdowns toss the warrior; a working dodge shows
+  a silver shimmer and EVADED; burning shows a hot glow from the bottom of the screen, flinches and steam.
+- 2026-09-25 (M3): swings resolve 40% into the strike (mid-arc), and core bursts sit on the blade's nearest point.
+- 2026-09-25 (perf): shaders for the transparent (fading) golem materials are compiled at load; the hidden HUD
+  stays laid out (opacity, not display none) so showing it never stalls a frame.

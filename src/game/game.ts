@@ -196,6 +196,7 @@ export class Game {
       pRig = wm.rig;
       this.trail = new SwordTrail(wm.sword);
       this.swordMat = wm.swordMat;
+      this.pendingSword = wm.sword;
       this.scene.add(this.trail.mesh);
       if (wm.cape) {
         const r = pRig;
@@ -219,6 +220,7 @@ export class Game {
     }
     this.scene.add(pRig.root);
     this.player = new Player(pRig);
+    this.player.sword = this.pendingSword;
 
     let gRig: Rig;
     if (assets) {
@@ -832,6 +834,7 @@ export class Game {
   private readonly firePool = new FirePool(24);
   private readonly fireSpots: { x: number; z: number; size: number }[] = [];
   private swordMat: THREE.MeshStandardMaterial | null = null;
+  private pendingSword: THREE.Object3D | null = null;
   private chargeMoteT = 0;
   private heldHeat = 0;
   private readonly swordMid = new THREE.Vector3();
@@ -1570,8 +1573,17 @@ export class Game {
       mat.color.setHex(base > 0.05 ? 0x0a2a30 : 0x80848c);
       mesh.visible = t.kind === 'back' ? t.open || t.flash > 0.05 : lit && !g.staggered;
       if (g.state === 'dead' && g.stateTime > 0.3) mesh.visible = false; // spent cores crumble with the body
-      if (t.kind !== 'chest' && mesh.visible) {
-        const want = (base * pulse * 0.6 + t.flash * 1.5) * 3.2;
+      // a core whose bone is faded out of the view dims with it (a bright core used to shine through the fade)
+      const faded = this.blockedPivots.has(mesh.parent as THREE.Object3D);
+      if (faded) {
+        mat.emissiveIntensity *= 0.2;
+        const hl = mesh.getObjectByName('core_halo') as THREE.Sprite | undefined;
+        if (hl) (hl.material as THREE.SpriteMaterial).opacity *= 0.15;
+      }
+      if (t.kind !== 'chest' && mesh.visible && !faded) {
+        // the core only lights the stone around it when it is marked, just hit, or the back core is open
+        const window = marked || t.flash > 0.05 || (t.kind === 'back' && t.open);
+        const want = (base * pulse * 0.6 + t.flash * 1.5) * (window ? 3.2 : 0.8);
         const prio = (marked ? 4 : 0) + (t.kind === 'back' && t.open ? 3 : 0) + t.flash * 2 + 1 / (1 + t.pos.distanceTo(this.player.pos));
         if (want > 0 && prio > cyanPrio) {
           cyanPrio = prio;

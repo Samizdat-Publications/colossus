@@ -433,7 +433,7 @@ export class ThreatView {
         const flick = armed ? 0.85 + 0.15 * Math.sin(this.time * 7 + h.seed) : 0.75 + 0.25 * Math.sin(this.time * 26 + h.seed);
         mat.opacity = Math.max(0, armed ? flick * (0.35 + 0.65 * glow) : (0.35 + 0.5 * warn) * flick);
         edgeMat.color.copy(mat.color);
-        edgeMat.opacity = armed ? 0.45 * (0.35 + 0.65 * glow) : 0;
+        edgeMat.opacity = 0;
       }
       // before it burns, the fire creeps out from the centre and reaches the rim exactly when it ignites
       const spread = armed ? 1 : 0.15 + 0.85 * warn;

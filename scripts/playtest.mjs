@@ -91,6 +91,7 @@ async function shot(label) {
     chest.y += 0.9;
     chest.project(c);
     return {
+      stateT: +g.player.stateTime.toFixed(2),
       warriorAt: [Math.round(((chest.x + 1) / 2) * innerWidth), Math.round(((1 - chest.y) / 2) * innerHeight)],
       warriorPx: Math.round(Math.abs(a.y - b.y) * 0.5 * innerHeight),
       camDist: +Math.hypot(c.position.x - p.x, c.position.z - p.z).toFixed(1),
@@ -98,7 +99,7 @@ async function shot(label) {
     };
   });
   shots.push({ file, label, flow: s.flow, golem: s.golem.state, attack: s.golem.attack, step: s.golem.step, php: s.player.hp, ghp: s.golem.hpFrac, ...view });
-  log('shot', file, s.flow, s.golem.attack ?? '', s.golem.step, `warrior ${s.player.state} ${view.warriorPx}px at ${view.warriorAt} cam ${view.camDist}m fov ${view.fov}`);
+  log('shot', file, s.flow, s.golem.attack ?? '', s.golem.step, `warrior ${s.player.state} +${view.stateT}s ${view.warriorPx}px at ${view.warriorAt} cam ${view.camDist}m fov ${view.fov}`);
 }
 async function waitFor(fn, timeoutMs, arg) {
   await page.waitForFunction(fn, arg, { timeout: timeoutMs, polling: 100 });
@@ -633,14 +634,28 @@ try {
     await page.evaluate(() => window.__CO.forceAttack('slam', 'L'));
     await waitFor(() => window.__CO.state().golem.step === 'stuck', 10000).catch(() => {});
     await burst('slam_impact', 3, 110);
-    // the bot punishes the stuck fist: capture a core hit
-    await page.evaluate(() => window.__CO.bot('expert'));
+    // punish a stuck fist with a real click from within reach, early in the window (a fresh slam, so the
+    // window has not run out while the impact frames were taken)
+    await idle();
+    await page.evaluate(() => {
+      window.__game.threats.hazards.length = 0;
+      window.__game.player.hp = 110;
+    });
+    await page.evaluate(() => window.__CO.forceAttack('slam', 'L'));
+    await waitFor(() => window.__CO.state().golem.step === 'stuck', 10000).catch(() => {});
+    await page.evaluate(() => {
+      const g = window.__game.golem;
+      const c = g.targets.find((t) => t.name === 'core_arm_L');
+      let dx = c.pos.x - g.pos.x;
+      let dz = c.pos.z - g.pos.z;
+      const l = Math.hypot(dx, dz) || 1;
+      window.__CO.teleportPlayer(c.pos.x + (dx / l) * 1.6, c.pos.z + (dz / l) * 1.6);
+    });
+    await sleep(120);
     const since = (await state()).time;
-    await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'coreHit'), 8000, since).catch(() => {});
-    await sleep(40);
+    await click('left');
+    await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'coreHit'), 3000, since).catch(() => log('warn: no core hit'));
     await burst('core_hit', 2, 80);
-    await page.evaluate(() => window.__CO.stopBot());
-    await page.evaluate(() => window.__CO.holdGolem(true));
     // shockwave: roll through the ring (on clean ground, at full health: only the roll is judged)
     await idle();
     await page.evaluate(() => {
@@ -663,7 +678,7 @@ try {
     // roll forward, through the ring (rolling away lets it catch up after the invulnerable frames)
     await page.keyboard.down('KeyW');
     await key('Space');
-    await sleep(60);
+    await sleep(90);
     await burst('roll_through_shockwave', 3, 110);
     await page.keyboard.up('KeyW');
     // player hit by a thrown rock

@@ -89,11 +89,12 @@ export class Assembler {
       _m.compose(pc.finalPos, pc.finalQuat, pc.finalScale);
       _fw.multiplyMatrices(parent.matrixWorld, _m);
       _fw.decompose(_pos, _quat, _scl);
-      // arc from rubble to place, with a wobble while lying
-      const e = ease.inOutCubic(u);
+      // arc from rubble to place (rising: eased; crumbling: stones accelerate as they fall)
+      const falling = this.lastProgress > p;
+      const e = falling ? 1 - (1 - u) * (1 - u) * (1 - u) : ease.inOutCubic(u);
       const wob = u === 0 ? Math.sin(time * 3 + pc.order * 20) * 0.02 * p : 0;
       const wp = new THREE.Vector3().lerpVectors(pc.startPos, _pos, e);
-      wp.y += Math.sin(e * Math.PI) * (3 + pc.order * 4) + wob;
+      wp.y += (falling ? Math.sin(e * Math.PI) * 0.8 : Math.sin(e * Math.PI) * (3 + pc.order * 4)) + wob;
       const wq = new THREE.Quaternion().slerpQuaternions(pc.startQuat, _quat, ease.inOutSine(u));
       // back to parent-local
       _mInv.copy(parent.matrixWorld).invert();

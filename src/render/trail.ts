@@ -53,9 +53,9 @@ export class SwordTrail {
         varying float vEdge;
         void main() {
           if (vA < 0.01) discard;
-          // faint near the hilt, brightest along the path of the blade's edge
-          float k = pow(vEdge, 1.6) * 0.75 + smoothstep(0.82, 1.0, vEdge) * 0.9;
-          gl_FragColor = vec4(uColor * (0.6 + 0.8 * smoothstep(0.85, 1.0, vEdge)), vA * k);
+          // faint near the hilt, brightest along the path of the blade's edge, soft everywhere (no hard sheet)
+          float k = pow(vEdge, 2.2) * 0.7 + smoothstep(0.7, 1.0, vEdge) * 0.6;
+          gl_FragColor = vec4(uColor * (0.7 + 0.7 * smoothstep(0.8, 1.0, vEdge)), vA * k);
         }`,
       uniforms: { uColor: { value: new THREE.Color(0xdde8ff) } },
       transparent: true,

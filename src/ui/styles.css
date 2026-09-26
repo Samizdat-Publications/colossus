@@ -112,7 +112,7 @@ body {
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.2s ease-out;
-  background: linear-gradient(to top, rgba(255, 96, 20, 0.42), rgba(255, 70, 10, 0.12) 24%, rgba(255, 60, 0, 0) 45%);
+  background: linear-gradient(to top, rgba(255, 96, 20, 0.6), rgba(255, 70, 10, 0.18) 28%, rgba(255, 60, 0, 0) 50%);
 }
 .hud.burning::before {
   opacity: 1;

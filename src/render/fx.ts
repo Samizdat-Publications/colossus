@@ -16,6 +16,7 @@ const STEEL_SPARK = new THREE.Color(0.85, 0.9, 1.0);
 const CYAN = new THREE.Color(0.45, 0.95, 1.0);
 const GOLD = new THREE.Color(1.0, 0.8, 0.45);
 const SMOKE = new THREE.Color(0.16, 0.15, 0.15);
+const STEAM = new THREE.Color(0.62, 0.64, 0.68);
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
@@ -141,8 +142,16 @@ export class Fx {
       // a low, fast dust wave rolling out, a slower cloud, chunks thrown high and a water splash
       this.dustRing(e.pos, e.radius * 0.5, e.big ? 64 : 44, 16, 1.5, 1.2, true, 0.42);
       this.dustRing(e.pos, e.radius * 0.8, e.big ? 60 : 42, 7, 1.9, 2.4, false, 0.36);
-      this.chunks(e.pos, e.big ? 26 : 18, e.radius, 11, 0.5);
+      this.chunks(e.pos, e.big ? 26 : 18, e.radius, 11, 0.62);
       this.splash(e.pos, 32, 7);
+      // a column of dust boiling up where the fist struck
+      for (let i = 0; i < (e.big ? 34 : 24); i++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = rnd(0, e.radius * 0.35);
+        _p.set(e.pos.x + Math.cos(a) * r, rnd(0.2, 1.2), e.pos.z + Math.sin(a) * r);
+        _v.set(Math.cos(a) * rnd(0.4, 1.4), rnd(2.5, 6), Math.sin(a) * rnd(0.4, 1.4));
+        this.dust.emit({ pos: _p, vel: _v, life: rnd(1.1, 1.9), size: rnd(1.1, 2), grow: 2.6, color: DUST, alpha: 0.4, drag: 1.4, gravity: 0.6 });
+      }
     }));
     u.push(on('stompImpact', (e) => {
       this.dustRing(e.pos, e.radius * 0.6, 36, 8, 1.4);
@@ -234,11 +243,19 @@ export class Fx {
       }
     }));
     u.push(on('hazardBurn', (e) => {
-      // burning: embers and a lick of flame around the warrior's legs
-      this.embers(e.pos, 3, 0.35, 1.6);
+      // burning: embers, a lick of flame and steam hissing off the wet armour
+      this.embers(e.pos, 4, 0.35, 1.6);
       this.flameLick(e.pos, 0.35);
+      for (let i = 0; i < 5; i++) {
+        _p.set(e.pos.x + rnd(-0.3, 0.3), rnd(0.4, 1.6), e.pos.z + rnd(-0.3, 0.3));
+        _v.set(rnd(-0.3, 0.3), rnd(1.2, 2.2), rnd(-0.3, 0.3));
+        this.dust.emit({ pos: _p, vel: _v, life: rnd(0.6, 1), size: rnd(0.4, 0.7), grow: 2.2, color: STEAM, alpha: 0.35, drag: 1, gravity: -0.4 });
+      }
     }));
-    u.push(on('roll', (e) => this.splash(e.pos, 8, 3)));
+    u.push(on('roll', (e) => {
+      this.splash(e.pos, 16, 3.5);
+      this.dustRing(e.pos, 0.3, 6, 2.2, 0.5, 0.7, false, 0.3);
+    }));
     u.push(on('swing', (e) => {
       // a heavy blow kicks up a ring of grit and spray at the warrior's feet
       if (!e.heavy) return;

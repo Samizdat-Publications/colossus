@@ -134,6 +134,12 @@ export interface Step {
   /** Target pose reached at the end of the step (interpolated from the pose at step start). */
   pose?: PoseTarget;
   ease?: EaseName;
+  /**
+   * Procedural poses only: blend in from the previous pose over this many seconds, then follow the pose
+   * function exactly. (The default blend weight grows with progress, so a pose function that drives a full
+   * somersault was only partly applied, and past 180 degrees the rotation took the short way, backwards.)
+   */
+  blendIn?: number;
   enter?: () => void;
   /** t = normalized progress in the step. */
   update?: (t: number, dt: number) => void;
@@ -210,8 +216,9 @@ export class Sequence {
       remaining -= use;
       const t = step.dur > 0 ? Math.min(1, this.time / step.dur) : 1;
       this.evalTarget(step, t, use);
-      const e = ease[step.ease ?? 'inOutSine'](t);
-      this.current.blend(this.from, this.target, e);
+      const e = step.blendIn !== undefined ? Math.min(1, step.blendIn > 0 ? this.time / step.blendIn : 1) : ease[step.ease ?? 'inOutSine'](t);
+      if (e >= 1) this.current.copy(this.target);
+      else this.current.blend(this.from, this.target, e);
       step.update?.(t, use);
       if (this.time >= step.dur - 1e-6) {
         step.exit?.();

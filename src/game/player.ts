@@ -61,6 +61,10 @@ const CORE_GRACE = 0.45;
 const STRIDE = 4.2; // metres per run cycle (two steps)
 
 const _v = new THREE.Vector3();
+const _bladeA = new THREE.Vector3();
+const _bladeB = new THREE.Vector3();
+const _bladeC = new THREE.Vector3();
+const _bladeD = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 const _p = new THREE.Vector3();
@@ -392,6 +396,9 @@ export class Player {
           // tuck in, somersault around the body centre, untuck at the end
           const tuck = t < 0.15 ? t / 0.15 : t > 0.8 ? (1 - t) / 0.2 : 1;
           out.blend(P.idle, P.rollTuck, ease.inOutSine(Math.max(0, Math.min(1, tuck))));
+          // NOTE (see HANDOFF.md): this step blends from the pre-roll pose with a linear weight, so the
+          // somersault is only partly applied; a full-strength roll (Step.blendIn) also needs the rotation
+          // pivot raised to the tucked body's centre, or the body sinks into the floor
           const a = ease.inOutSine(Math.min(1, t / 0.9)) * Math.PI * 2 * dir;
           const h = 0.55;
           out.rot.setFromAxisAngle(_v2.set(1, 0, 0), a);
@@ -627,6 +634,9 @@ export class Player {
         const windEnd = a.windup + chargeLen;
         const inWind = a.heavy ? this.anim.seq?.stepName === 'wind' || this.anim.seq?.stepName === 'charge' : t < a.windup;
         const inActive = a.heavy ? this.anim.seq?.stepName === 'strike' : t >= a.windup && t < a.windup + a.active;
+        // the blow lands mid-arc (not on the first frame of the strike, when the blade is still out to the side)
+        const activeT = a.heavy ? (this.anim.seq?.time ?? 0) : t - a.windup;
+        const midArc = activeT >= a.active * 0.4;
         const inRecover = !inWind && !inActive;
         if (inWind) face = 'attack';
         // lunge during wind-up and strike
@@ -649,7 +659,7 @@ export class Player {
             a.damage = B.heavy.chargedDamage;
             a.breakAmount = B.heavy.chargedBreak;
           }
-          if (a.resolved === 'none') this.resolveSwing(ctx, a);
+          if (a.resolved === 'none' && midArc) this.resolveSwing(ctx, a);
           if (a.heavy && a.resolved === 'none' && !a.chargeDone) a.chargeDone = true;
         }
         if (inRecover) {
@@ -866,6 +876,20 @@ export class Player {
 
   // ------------------------------------------------------------------ sword
 
+  /** The sword (set by the model) so hits can be placed on the blade. */
+  sword: THREE.Object3D | null = null;
+
+  /** The point on the blade nearest `to` (falls back to the sword hand). */
+  private bladeNear(to: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
+    if (!this.sword) return this.rig.worldPos(this.rig.i('hand_R'), out);
+    this.sword.updateWorldMatrix(true, false);
+    const a = _bladeA.set(0, 0, 0.15).applyMatrix4(this.sword.matrixWorld);
+    const b = _bladeB.set(0, 0, 1.26).applyMatrix4(this.sword.matrixWorld);
+    const ab = _bladeC.subVectors(b, a);
+    const u = Math.min(1, Math.max(0, _bladeD.subVectors(to, a).dot(ab) / Math.max(1e-6, ab.lengthSq())));
+    return out.copy(a).addScaledVector(ab, u);
+  }
+
   private resolveSwing(ctx: FightContext, a: AttackRun): void {
     const g = ctx.golem;
     let best: GolemTarget | null = null;
@@ -894,8 +918,8 @@ export class Player {
     }
     yawToDir(this.yaw, _fwd);
     if (best) {
-      // the burst sits on the side of the core facing the sword hand, where the blade meets it
-      this.rig.worldPos(this.rig.i('hand_R'), _p);
+      // the burst sits where the blade meets the core: the blade point nearest the core, drawn to its surface
+      this.bladeNear(best.pos, _p);
       _p.sub(best.pos);
       if (_p.lengthSq() < 1e-6) _p.set(this.pos.x - best.pos.x, this.y + 1.2 - best.pos.y, this.pos.z - best.pos.z);
       _p.normalize();
