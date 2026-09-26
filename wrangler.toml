@@ -1,0 +1,6 @@
+# Cloudflare Pages project for the public site (landing page at /, the game at /play/).
+# Build and deploy with:
+#   npm run site -- --deploy
+name = "colossus"
+compatibility_date = "2026-09-25"
+pages_build_output_dir = "site-dist"

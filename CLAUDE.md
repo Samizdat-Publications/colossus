@@ -96,9 +96,9 @@ phase-change roar, `killGolem()` starts the victory, `forceAttack(name, side)`.
    3 phases, weak points, break and stagger, hazards, win and lose states.
 2. [x] **Assets**: model everything in Blender via the MCP (golem, warrior, arena, pillars, rubble),
    bake procedural textures, export GLB, swap into the game.
-3. [ ] **Feel**: animation, camera, particles, screen shake, hit stop and feedback, rain, lightning,
+3. [x] **Feel**: animation, camera, particles, screen shake, hit stop and feedback, rain, lightning,
    dust and debris, synthesized sound and music.
-4. [ ] **UI**: title, HUD, pause menu, death and victory screens. Consistent font, palette and spacing.
+4. [x] **UI**: title, HUD, pause menu, death and victory screens. Consistent font, palette and spacing.
 5. [ ] **Polish and perf**: steady 60 fps on a mid-range laptop, zero console errors, final balance,
    README, 6 final screenshots.
 
@@ -117,8 +117,14 @@ Milestone 2 closed after 16 critic rounds (see `docs/critic/m2-r16.md`): rounds 
 recurring items (the golem reads as a heap at melee range, phase lighting, effects) move to milestones 3 and 4.
 Balance at the close: the decent bot wins about 3 attempts in 10.
 
-Milestone 3 is in progress: 7 critic rounds so far (`docs/critic/m3-r*.md`). **Start here in a new session:
-`HANDOFF.md`** (status, next steps in order, the open roll-animation fix, critic loop mechanics).
+Milestone 3 closed after 12 critic rounds (see `docs/critic/m3-r12.md`). The worst severity went BLOCKER (r8) to
+MAJOR (r9 to r12), with the MAJOR items changing every round and some contradicting earlier rounds (the slam praised
+in r10, rated MAJOR in r12); the reasoning is in the closing report.
+
+Milestone 4 closed after 5 critic rounds (see `docs/critic/m4-r5.md`): MAJOR, MINOR, MINOR, MAJOR, MAJOR, with
+round 5 asking to reverse a round 1 fix. From round 8 of milestone 3 on, the critic read copies of the screenshots
+in the session scratchpad: inside the repo, Claude Code auto-loads this file into the subagent, which breaks the
+"screenshots and pitch only" rule.
 
 ## Asset list
 
@@ -280,3 +286,29 @@ Newest at the bottom. Record every non-obvious choice.
 - 2026-09-25 (M3): swings resolve 40% into the strike (mid-arc), and core bursts sit on the blade's nearest point.
 - 2026-09-25 (perf): shaders for the transparent (fading) golem materials are compiled at load; the hidden HUD
   stays laid out (opacity, not display none) so showing it never stalls a frame.
+- 2026-09-26 (M3 roll): the dodge roll is a full somersault about the tucked body's centre (`Step.blendIn`), with the
+  floor contact exact: a support table measured once from the warrior's meshes gives, for every tuck weight and roll
+  angle, the height the centre must sit at so the lowest point touches the floor (`Player.measureRollShape`, built
+  behind the loading screen). The roll axis is tilted 32 degrees toward forward (a shoulder roll): a plain forward
+  somersault is end-on to the camera behind the warrior and read as nothing.
+- 2026-09-26 (M3): for the same reason (motion along the camera's line of sight is invisible from behind), the heavy
+  blow and the combo finisher cleave diagonally from over the right shoulder, and knockdowns twist the body round.
+- 2026-09-26 (M3): a frozen capture frame still ticks the game with dt 0; the sword trail re-recorded the same blade
+  position on every frozen tick and collapsed, so no critic had ever seen a trail. Trails skip dt 0 and draw a
+  Catmull-Rom curve through the recorded blade positions.
+- 2026-09-26 (M3): the victory crumble is a physical collapse (`Assembler.collapse`): each stone drops from where it
+  is under gravity, tumbling outward, bounces and settles; the fire and the eyes die out as it falls. A golem killed
+  on its knees slumps; a standing one buckles to its knees first.
+- 2026-09-26 (M3): a hanging fist's blocks stick out well past its bone capsule, so fists and forearms get a wider
+  line-of-sight margin in the camera fade; core hits turn the warrior fully onto the core, aim the swing up at high
+  cores and draw a slash streak and a core flare.
+- 2026-09-26 (M4): Health and Stamina labels, a dark blood damage chip and a low-health pulse and vignette; the STRIKE
+  chevron sits on the core's glow at any distance and hit numbers ride with their core inside a safe inset; one
+  keycap per key with a pad column, the same words in the card and How to fight; "cyan cores" in every tip.
+- 2026-09-26 (release): `scripts/film.mjs` records the finished game at 60 fps on a virtual clock (the page's
+  requestAnimationFrame and performance.now only advance when the script steps a frame, so capture speed never shows)
+  and tags every notable game event with its frame (`__CO.drain()`); `scripts/make-media.mjs` cuts the landing page's
+  clips, scrub frames, chapters and README GIFs at those events, so a new recording re-cuts itself. The filmed bot
+  fights in god mode with a health floor (`__CO.godFloor`), so the HUD shows real hits but never the low-health state.
+- 2026-09-26 (release): public site on Cloudflare Pages, project `colossus`: the landing page (`site/`) at `/` and
+  the game built with base `/play/` at `/play/`. `npm run site -- --deploy` builds `site-dist/` and deploys it.

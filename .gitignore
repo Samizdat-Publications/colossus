@@ -11,3 +11,7 @@ __pycache__/
 # Local env
 .env
 .env.*
+site-dist/
+.wrangler/
+site/fonts/
+.claude/

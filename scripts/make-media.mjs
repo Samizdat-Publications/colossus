@@ -122,8 +122,12 @@ for (const c of CLIPS) {
   events.push({ t: r1(end), kind: 'end', label: 'Ruin silenced' });
   events.sort((a, b) => a.t - b.t);
   const count = (label) => m.filter((x) => x.label === label).length;
+  // where each clip's moment falls in the film (the page shows it as time into the fight)
+  const clips = {};
+  for (const c of CLIPS) if (c.r === fight) clips[c.name] = r1(c.start + c.poster);
   const data = {
     duration: r1(fight.dur),
+    clips,
     phases: [
       { n: 1, from: r1(start), to: r1(p2) },
       { n: 2, from: r1(p2), to: r1(p3) },
