@@ -257,8 +257,8 @@ export class Fx {
     u.push(on('deflect', (e) => {
       // blade on stone: a fan of hot sparks, white steel sparks, stone chips and a puff of grit
       // mostly white steel on grey stone (hot orange belongs to fire, cyan to cores)
-      this.sparks(e.pos, e.normal, e.heavy ? 36 : 26, SPARK, 12, 0.55, 0.2);
-      this.sparks(e.pos, e.normal, e.heavy ? 40 : 30, STEEL_SPARK, 13, 0.5, 0.2);
+      this.sparks(e.pos, e.normal, e.heavy ? 44 : 34, SPARK, 17, 0.38, 0.17);
+      this.sparks(e.pos, e.normal, e.heavy ? 30 : 22, STEEL_SPARK, 15, 0.34, 0.15);
       this.flash(e.pos, SPARK, e.heavy ? 3.2 : 2.6, 0.14);
       if (this.debris) {
         for (let i = 0; i < (e.heavy ? 10 : 7); i++) {

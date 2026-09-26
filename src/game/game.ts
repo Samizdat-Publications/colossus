@@ -417,6 +417,7 @@ export class Game {
   }
 
   private resetFight(): void {
+    for (const e of this.golemEyes) e.visible = true;
     const B = balance;
     this.threats.clear();
     this.player.reset(ARENA.spawn[0], ARENA.spawn[1], Math.PI);
@@ -1555,6 +1556,7 @@ export class Game {
         this.crumbleT = 0;
         this.assembler.setCenter(g.pos);
         this.assembler.collapse(g.pos);
+        for (const e of this.golemEyes) e.visible = false;
         // the body gives way: a plume of dust rolls out from its feet
         this.fx.dustRing(g.pos, 5, 70, 5, 2.6, 3.2, false, 0.4);
       }

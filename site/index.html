@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COLOSSUS: one fight against a living ruin</title>
+<meta name="description" content="A third-person boss fight in your browser. A lone warrior, a drowned arena at night, and a stone golem eight times your height that can only be hurt in its glowing cores. Free, no install.">
+<meta name="theme-color" content="#0e131a">
+<meta property="og:title" content="COLOSSUS">
+<meta property="og:description" content="One fight against a living ruin. A Souls-like boss fight in your browser: three phases, one place to strike.">
+<meta property="og:image" content="media/og.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230e131a'/%3E%3Cpath d='M16 4 L27 16 L16 28 L5 16 Z' fill='none' stroke='%236ff3ff' stroke-width='3'/%3E%3Cpath d='M16 11 L21 16 L16 21 L11 16 Z' fill='%236ff3ff'/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/cinzel-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/garamond-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="media/rise/r00.jpg" as="image">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<a class="skip" href="#fight">Skip to the fight</a>
+
+<header class="bar">
+  <a class="bar-mark" href="#top" aria-label="COLOSSUS, back to the top">Colossus</a>
+  <nav class="bar-links" aria-label="Sections">
+    <a href="#fight">The fight</a>
+    <a href="#watch">Whole fight</a>
+    <a href="#stages">Greybox to finished</a>
+    <a href="#controls">Controls</a>
+    <a href="#making">How it was made</a>
+  </nav>
+  <a class="btn btn-strike btn-small" href="play/">Play</a>
+</header>
+
+<main>
+
+<!-- The ruin rises: the intro, scrubbed by the scroll position -->
+<section class="rise" id="top" aria-labelledby="rise-title">
+  <div class="rise-stick">
+    <img class="rise-still" id="rise-still" src="media/rise/r00.jpg" alt="A heap of rubble in a flooded, ruined arena at night, which rises into a stone golem as you scroll." width="1280" height="720">
+    <canvas class="rise-canvas" id="rise-canvas" aria-hidden="true"></canvas>
+    <canvas class="rain" id="rain" aria-hidden="true"></canvas>
+    <div class="rise-shade" aria-hidden="true"></div>
+    <div class="rise-copy">
+      <h1 class="wordmark" id="rise-title" aria-label="Colossus"><span aria-hidden="true">C</span><span aria-hidden="true">O</span><span aria-hidden="true">L</span><span aria-hidden="true">O</span><span aria-hidden="true">S</span><span aria-hidden="true">S</span><span aria-hidden="true">U</span><span aria-hidden="true">S</span></h1>
+      <div class="ledes">
+        <p class="lede" data-from="0" data-to="0.3">A drowned arena at night. Rain on the flagstones, and a heap of rubble in the middle.</p>
+        <p class="lede" data-from="0.3" data-to="0.62">Then the stones begin to move.</p>
+        <p class="lede" data-from="0.62" data-to="2">Ostrakon, the Living Ruin: more than eight times your height, and only one kind of place to hurt it.</p>
+      </div>
+      <div class="cta" id="rise-cta">
+        <span class="strike-tag" aria-hidden="true">Strike<i></i></span>
+        <a class="btn btn-strike" href="play/">Play in your browser</a>
+        <a class="btn btn-quiet" href="#watch">Watch a whole fight</a>
+      </div>
+      <p class="fine">Free, no install. A desktop browser with a mouse and keyboard or a gamepad.</p>
+    </div>
+    <p class="scroll-cue" id="scroll-cue" aria-hidden="true">Scroll to wake it</p>
+    <div class="rise-meter" aria-hidden="true"><i id="rise-meter"></i></div>
+  </div>
+</section>
+
+<!-- The one rule -->
+<section class="rule" aria-labelledby="rule-h">
+  <div class="wrap rule-grid">
+    <h2 class="inscription" id="rule-h">Stone deflects your blade. Only the glowing cores can be harmed.</h2>
+    <div class="rule-text">
+      <p>There is one on each forearm and one low on its back. The arm cores come within reach when a fist is buried in the floor after a slam or a sweep. The back core only when it falls to its knees.</p>
+      <p>Every attack it makes is drawn on the ground before it lands. You will die, and you will know why.</p>
+    </div>
+  </div>
+</section>
+
+<!-- How the fight goes: steps on the left, a stage of real footage on the right -->
+<section class="fight" id="fight" aria-labelledby="fight-h">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 id="fight-h">How the fight goes</h2>
+      <p>One boss and three phases. Each clip is the finished game, recorded one frame at a time while a test bot played it. The time beside each one is where it falls in the whole fight further down.</p>
+    </div>
+
+    <div class="story" id="story">
+      <ol class="steps" id="steps">
+        <li class="step" data-clip="deflect" data-phase="1">
+          <p class="step-meta"><span class="phase-num">I</span><span class="step-time" data-at="deflect"></span></p>
+          <h3>Stone deflects your blade</h3>
+          <p>Swing at its legs and the sword skips off in a spray of sparks. The golem is stone almost everywhere, and the game teaches this in the first seconds.</p>
+        </li>
+        <li class="step" data-clip="strike" data-phase="1">
+          <p class="step-meta"><span class="phase-num">I</span><span class="step-time" data-at="strike"></span></p>
+          <h3>When a fist comes down, strike</h3>
+          <p>A slam leaves its fist stuck in the flagstones for a moment. The cyan core on the forearm is in reach, and a STRIKE tag marks it. Hit it, then get clear before the fist tears free.</p>
+        </li>
+        <li class="step" data-clip="dodge" data-phase="1">
+          <p class="step-meta"><span class="phase-num">I</span><span class="step-time" data-at="dodge"></span></p>
+          <h3>Read the floor</h3>
+          <p>Every blow is drawn on the ground first. A red ring or sector: move. A pale red band: a shockwave, so roll or jump through it. A roll timed well makes you untouchable for a moment.</p>
+        </li>
+        <li class="step" data-clip="break" data-phase="1">
+          <p class="step-meta"><span class="phase-num">I</span><span class="step-time" data-at="break"></span></p>
+          <h3>Break it</h3>
+          <p>Core hits fill the BREAK meter. Fill it and the Ruin falls to its knees. For a few seconds every blow counts, and the core on its back takes critical damage.</p>
+        </li>
+        <li class="step" data-clip="phase2" data-phase="2">
+          <p class="step-meta"><span class="phase-num">II</span><span class="step-time" data-at="phase2"></span></p>
+          <h3>The cracks wake</h3>
+          <p>At two thirds of its health it roars and splits with glowing cracks. It gets faster and learns a two-fisted slam, a volley of rocks and a sweeping combo.</p>
+        </li>
+        <li class="step" data-clip="fissure" data-phase="2">
+          <p class="step-meta"><span class="phase-num">II</span><span class="step-time" data-at="fissure"></span></p>
+          <h3>Fissures</h3>
+          <p>The double slam sends a fissure tearing across the arena toward you. The line glows red before it erupts: step off it.</p>
+        </li>
+        <li class="step" data-clip="phase3" data-phase="3">
+          <p class="step-meta"><span class="phase-num">III</span><span class="step-time" data-at="phase3"></span></p>
+          <h3>The molten heart</h3>
+          <p>At a third, its chest bursts open on a white-hot heart and lava light floods the joints of the floor. The heart can be struck, but only while the golem is down.</p>
+        </li>
+        <li class="step" data-clip="meteors" data-phase="3">
+          <p class="step-meta"><span class="phase-num">III</span><span class="step-time" data-at="meteors"></span></p>
+          <h3>It calls the sky down</h3>
+          <p>A roar, then burning rubble falls across the arena. Each landing point is ringed on the floor before the rock arrives. It also leaps, and you can see the landing coming from the top of the arc.</p>
+        </li>
+        <li class="step" data-clip="victory" data-phase="4">
+          <p class="step-meta"><span class="phase-num">IV</span><span class="step-time" data-at="victory"></span></p>
+          <h3>Ruin silenced</h3>
+          <p>Bring it to nothing and it buckles, its fire goes out and the stones fall back into rubble. Then the tally: your time, your attempts, your core strikes and how often you broke it.</p>
+        </li>
+      </ol>
+
+      <div class="stage" id="stage" aria-hidden="true">
+        <div class="stage-frame">
+          <div class="stage-shots" id="stage-shots"></div>
+        </div>
+        <div class="stage-foot">
+          <span class="stage-cap" id="stage-cap"></span>
+          <span class="stage-ticks" id="stage-ticks"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- The whole fight, uncut -->
+<section class="watch" id="watch" aria-labelledby="watch-h">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 id="watch-h">Watch a whole fight</h2>
+      <p>The same test bot from the first step to the last, uncut. Its health never drops below 40%, so it always makes it to the end. It cannot lose. You can.</p>
+    </div>
+    <figure class="player">
+      <video id="run" controls playsinline preload="none" poster="media/fight.jpg">
+        <source src="media/fight.mp4" type="video/mp4">
+      </video>
+    </figure>
+    <div class="timeline" id="timeline" role="group" aria-label="Moments in the fight: pick one to jump to it">
+      <div class="tl-bands" id="tl-bands"></div>
+      <div class="tl-fill" id="tl-fill"></div>
+      <div class="tl-ticks" id="tl-ticks"></div>
+    </div>
+    <p class="now" id="now" aria-live="polite"></p>
+    <p class="tally" id="tally"></p>
+  </div>
+</section>
+
+<!-- Losing -->
+<section class="fallen" aria-labelledby="fallen-h">
+  <div class="wrap fallen-grid">
+    <figure class="clip-inline">
+      <video data-inview muted loop playsinline preload="none" poster="media/fallen.jpg" aria-label="The golem's slam lands on the warrior, who falls, and the FALLEN screen names the slam as the cause.">
+        <source src="media/fallen.mp4" type="video/mp4">
+      </video>
+    </figure>
+    <div>
+      <h2 id="fallen-h">And when it wins</h2>
+      <p>The death screen says what killed you and how to beat it next time. Try again puts you straight back in the fight, with a short reassembly instead of the whole intro.</p>
+      <p>A player who learns the tells should win within three to six attempts.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Greybox to finished, on the same beats -->
+<section class="stages" id="stages" aria-labelledby="stages-h">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 id="stages-h">From grey boxes to the finished fight</h2>
+      <p>The game was built in five milestones. After each one a script played it and took screenshots at the same moments, so the stages line up. Drag the line to compare.</p>
+    </div>
+    <div class="compare-tabs" role="tablist" aria-label="Moment">
+      <button type="button" role="tab" aria-selected="true" data-beat="punish">A fist stuck in the floor</button>
+      <button type="button" role="tab" aria-selected="false" data-beat="roar">The phase II roar</button>
+      <button type="button" role="tab" aria-selected="false" data-beat="meteor">Meteor rain</button>
+    </div>
+    <div class="compare" id="compare" style="--x: 50%">
+      <img class="cmp-after" id="cmp-after" src="media/evo-punish-final.jpg" alt="The finished game at this moment." width="1280" height="720" loading="lazy">
+      <img class="cmp-before" id="cmp-before" src="media/evo-punish-grey.jpg" alt="The same moment in an earlier milestone." width="1280" height="720" loading="lazy">
+      <div class="cmp-line" aria-hidden="true"><i></i></div>
+      <span class="cmp-label cmp-label-l" id="cmp-label-l">Greybox, milestone 1</span>
+      <span class="cmp-label cmp-label-r">Finished</span>
+      <input class="cmp-range" id="cmp-range" type="range" min="0" max="100" value="50" aria-label="Compare the earlier milestone with the finished game">
+    </div>
+    <div class="compare-left" role="radiogroup" aria-label="Earlier milestone on the left">
+      <label><input type="radio" name="cmp-stage" value="grey" checked> Greybox (milestone 1)</label>
+      <label><input type="radio" name="cmp-stage" value="blender"> First Blender models (milestone 2)</label>
+    </div>
+  </div>
+</section>
+
+<!-- Controls -->
+<section class="controls" id="controls" aria-labelledby="controls-h">
+  <div class="wrap controls-grid">
+    <div>
+      <h2 id="controls-h">Controls</h2>
+      <p class="controls-note">Click the game to capture the mouse. Every action is buffered: press it mid-move and it fires as soon as it can.</p>
+      <table class="keys">
+        <thead><tr><th scope="col">Keyboard and mouse</th><th scope="col">Action</th><th scope="col">Gamepad</th></tr></thead>
+        <tbody>
+          <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td>Move</td><td>Left stick</td></tr>
+          <tr><td><kbd>Mouse</kbd></td><td>Camera</td><td>Right stick</td></tr>
+          <tr><td><kbd>Left click</kbd></td><td>Light attack, a three-hit combo</td><td>RB</td></tr>
+          <tr><td><kbd>Right click</kbd></td><td>Heavy attack, hold to charge</td><td>RT</td></tr>
+          <tr><td><kbd>Shift</kbd></td><td>Block</td><td>LB</td></tr>
+          <tr><td><kbd>Space</kbd></td><td>Dodge roll, briefly untouchable</td><td>B</td></tr>
+          <tr><td><kbd>F</kbd></td><td>Jump</td><td>A</td></tr>
+          <tr><td><kbd>Q</kbd><span class="or">or</span><kbd>Tab</kbd></td><td>Lock on to the golem</td><td>R3</td></tr>
+          <tr><td><kbd>R</kbd></td><td>Drink a flask, three per attempt</td><td>X</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Pause and settings</td><td>Start</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="floor">
+      <h3>Read the floor</h3>
+      <ul class="legend">
+        <li><i class="sw sw-red"></i><span><b>Red ring, sector or strip.</b> A blow lands here. Get out.</span></li>
+        <li><i class="sw sw-shock"></i><span><b>Pale red band.</b> A shockwave. Roll or jump through it.</span></li>
+        <li><i class="sw sw-fire"></i><span><b>Amber cracks.</b> Burning ground. Step off.</span></li>
+        <li><i class="sw sw-core"></i><span><b>Cyan.</b> A core. Strike it.</span></li>
+      </ul>
+      <p class="floor-note">Health is red, stamina green. Attacks, rolls, blocks and jumps spend stamina, and with none left you cannot roll or block.</p>
+    </div>
+  </div>
+</section>
+
+<!-- How it was made -->
+<section class="making" id="making" aria-labelledby="making-h">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2 id="making-h">How it was made</h2>
+      <p>COLOSSUS was built by Claude (Opus 5.5) from a single prompt, the fourth game in a series of one-shot builds. Nothing was downloaded: every model is a Python script run in Blender, every texture is baked or drawn in a shader, and every sound, the music included, is synthesized in the browser while you play.</p>
+    </div>
+    <ol class="milestones">
+      <li>
+        <img src="media/milestone-m1.jpg" width="640" height="360" loading="lazy" alt="Milestone 1: flat grey blocks for the golem and a checkered floor, with a red shockwave ring.">
+        <h3><span>1</span>Greybox</h3>
+        <p>The whole fight in primitive shapes: every attack, all three phases, winning and losing.</p>
+        <p class="rounds" data-rounds="m1">16 critic rounds</p>
+      </li>
+      <li>
+        <img src="media/milestone-m2.jpg" width="640" height="360" loading="lazy" alt="Milestone 2: the Blender-built golem kneeling, its back core open.">
+        <h3><span>2</span>Models</h3>
+        <p>Golem, warrior, arena, pillars and rubble, each built by a Blender script.</p>
+        <p class="rounds" data-rounds="m2">16 critic rounds</p>
+      </li>
+      <li>
+        <img src="media/milestone-m3.jpg" width="640" height="360" loading="lazy" alt="Milestone 3: a blade strike on an arm core with a cyan flare and a warm sword trail.">
+        <h3><span>3</span>Feel</h3>
+        <p>Animation, camera, hit feedback, rain, lightning, dust, sound and music.</p>
+        <p class="rounds" data-rounds="m3">11 critic rounds</p>
+      </li>
+      <li>
+        <img src="media/milestone-m4.jpg" width="640" height="360" loading="lazy" alt="Milestone 4: the How to fight screen with the loop, the floor legend and the controls.">
+        <h3><span>4</span>Interface</h3>
+        <p>Title, How to fight, the HUD, pause, death and victory screens.</p>
+        <p class="rounds" data-rounds="m4">4 critic rounds</p>
+      </li>
+      <li>
+        <img src="media/milestone-m5.jpg" width="640" height="360" loading="lazy" alt="Milestone 5: phase III, the molten golem calling burning rubble down on the arena.">
+        <h3><span>5</span>Polish</h3>
+        <p>A steady 60 fps, final balance, zero console errors.</p>
+        <p class="rounds" data-rounds="m5">Final checks</p>
+      </li>
+    </ol>
+    <div class="making-grid">
+      <div class="loop">
+        <h3>The critic loop</h3>
+        <p>After every milestone a script played the game with scripted input and saved screenshots from the player's camera. A separate reviewer, which saw only those screenshots and a one-paragraph pitch and never the code, listed the five worst problems a player would notice. They were fixed and the loop ran again, until the worst problem left was a minor one.</p>
+      </div>
+      <dl class="facts">
+        <div><dt>Engine</dt><dd>Three.js on WebGL2 with TypeScript and Vite: soft shadows, bloom and a graded image, and a quality governor that holds 60 fps</dd></div>
+        <div><dt>Models</dt><dd>Six Blender scripts, one per asset family, about 2 MB of compressed glTF in all</dd></div>
+        <div><dt>Sound</dt><dd>Web Audio synthesis: impacts, stone, rain and thunder, and a layered score that changes with each phase</dd></div>
+        <div><dt>Balance</dt><dd>One tuning file. A test bot of decent skill wins about three attempts in ten</dd></div>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section class="last" aria-labelledby="last-h">
+  <div class="wrap">
+    <h2 id="last-h">The ruin is waiting.</h2>
+    <a class="btn btn-strike" href="play/">Play in your browser</a>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-row">
+    <p>COLOSSUS 1.0. Game code and assets made for this project. Cinzel and EB Garamond are licensed under the SIL Open Font License 1.1.</p>
+    <p><a href="play/">Play</a> <a href="#top">Back to the top</a></p>
+  </div>
+</footer>
+
+<script src="site.js" defer></script>
+</body>
+</html>

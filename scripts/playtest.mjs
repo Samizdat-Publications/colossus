@@ -692,9 +692,16 @@ try {
     });
     await page.evaluate(() => window.__CO.forceAttack('throw', 'R'));
     const s2 = (await state()).time;
+    // the rock arriving (in flight, a few metres out), then the hit itself
+    await page.waitForFunction(() => {
+      const s = window.__CO.state();
+      const r = s.threats.rocks[0];
+      return !!r && Math.hypot(r.pos.x - s.player.pos.x, r.pos.z - s.player.pos.z) < 5.5;
+    }, null, { timeout: 12000, polling: 'raf' }).catch(() => {});
+    await frozenShot('player_hit_by_rock_a');
     await waitFor((t) => window.__CO.events(t).some((e) => e.type === 'playerHit'), 12000, s2).catch(() => {});
-    await sleep(30);
-    await burst('player_hit_by_rock', 2, 110);
+    await sleep(60);
+    await frozenShot('player_hit_by_rock_b');
     await page.evaluate(() => window.__CO.god(true));
     await sleep(1500);
     // burning ground after a slam
