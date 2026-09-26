@@ -213,6 +213,8 @@ export class Weather {
       const t = this.strikeT;
       const pulse = (t0: number, k: number) => (t >= t0 ? Math.exp(-(t - t0) * k) : 0);
       this.flash = Math.min(1.2, pulse(0, 9) + 0.7 * pulse(0.09, 12) + 0.9 * pulse(0.24, 7));
+      // each return stroke takes a slightly different channel: the bolt flickers instead of hanging still
+      if ((t - dt < 0.09 && t >= 0.09) || (t - dt < 0.24 && t >= 0.24)) this.buildBolt(camera, this.boltAngle);
       this.boltMat.uniforms.opacity.value = Math.min(1, this.flash * 1.4);
       if (t > 1.2) {
         this.strikeT = -1;
@@ -223,12 +225,18 @@ export class Weather {
     u.uFlash.value = this.flash;
   }
 
-  private buildBolt(camera: THREE.Camera): void {
-    // somewhere over the cliffs in front of the camera, so the player sees it
+  private boltAngle: number | null = null;
+  private boltDist = 100;
+
+  /** again: a new channel on the same bearing (the later return strokes of one strike) */
+  private buildBolt(camera: THREE.Camera, again: number | null = null): void {
+    // somewhere in front of the camera: over the broken arches or over the cliffs behind them
     const f = new THREE.Vector3();
     camera.getWorldDirection(f);
-    const a = Math.atan2(f.x, f.z) + (Math.random() - 0.5) * 1.4;
-    const r = 110 + Math.random() * 60;
+    const a = again ?? Math.atan2(f.x, f.z) + (Math.random() - 0.5) * 1.4;
+    if (again === null) this.boltDist = Math.random() < 0.5 ? 50 + Math.random() * 25 : 110 + Math.random() * 60;
+    this.boltAngle = a;
+    const r = this.boltDist + (again === null ? 0 : (Math.random() - 0.5) * 4);
     let x = Math.sin(a) * r;
     let z = Math.cos(a) * r;
     let y = 120;

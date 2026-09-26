@@ -112,6 +112,7 @@ export class Hud {
       this.floatText(e.pos, `${Math.round(e.damage)}`, 'body');
     });
     bus.on('deflect', (e) => this.floatText(e.pos, 'DEFLECTED', 'deflect'));
+    bus.on('dodged', (e) => this.floatText(e.pos.clone().setY(e.pos.y + 0.4), 'EVADED', 'evade'));
   }
 
   private camera: THREE.Camera | null = null;
@@ -208,7 +209,7 @@ export class Hud {
       const f = this.pending[i];
       f.t += dt;
       const p = f.pos.clone();
-      p.y += (f.cls === 'deflect' ? 0.5 : 1.4) + f.t * 1.2; // numbers float above the glow; DEFLECTED stays by the blade
+      p.y += (f.cls === 'deflect' || f.cls === 'evade' ? 0.5 : 1.4) + f.t * 1.2; // numbers float above the glow; words stay by the body
       p.project(this.camera);
       if (f.t > 1.1 || p.z > 1) {
         f.el.remove();

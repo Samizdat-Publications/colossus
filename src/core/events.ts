@@ -13,6 +13,8 @@ export interface GameEvents {
   justGuard: { pos: THREE.Vector3 };
   guardBreak: { pos: THREE.Vector3 };
   hazardBurn: { pos: THREE.Vector3 };
+  /** a blow passed through the rolling warrior's invulnerability */
+  dodged: { pos: THREE.Vector3 };
   /** a thrown rock or a meteor broke apart (pos: where; vel: how it was travelling; size: its radius) */
   rockShatter: { pos: THREE.Vector3; vel: THREE.Vector3; size: number };
   /** the staggered golem's knees hit the floor */

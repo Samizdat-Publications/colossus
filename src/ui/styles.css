@@ -49,8 +49,13 @@ body {
   pointer-events: none;
 }
 
-.hud.hidden,
-.hidden {
+/* the HUD stays laid out (and its fonts drawn) while hidden, so showing it at the start of the fight never
+   stalls a frame; everything else simply leaves the page */
+.hud.hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+.hidden:not(.hud) {
   display: none !important;
 }
 
@@ -463,9 +468,14 @@ kbd {
   font-size: 17px;
 }
 .floater.deflect {
-  color: #b8c0cc;
-  font-size: 13px;
+  color: #f0d49a;
+  font-size: 15px;
   letter-spacing: 0.2em;
+}
+.floater.evade {
+  color: #d8e2ee;
+  font-size: 14px;
+  letter-spacing: 0.24em;
 }
 
 /* ------------------------------------------------------------------ full-screen menus */

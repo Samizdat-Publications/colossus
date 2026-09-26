@@ -224,6 +224,15 @@ export class Fx {
         }
       }
     }));
+    u.push(on('dodged', (e) => {
+      // a clean dodge: a silver shimmer peels off the warrior
+      for (let i = 0; i < 24; i++) {
+        const a = Math.random() * Math.PI * 2;
+        _p.set(e.pos.x + Math.cos(a) * 0.4, rnd(0.3, 1.6), e.pos.z + Math.sin(a) * 0.4);
+        _v.set(Math.cos(a) * rnd(1.5, 3), rnd(0.2, 1.4), Math.sin(a) * rnd(1.5, 3));
+        this.glow.emit({ pos: _p, vel: _v, life: rnd(0.3, 0.5), size: rnd(0.08, 0.14), grow: 0.5, color: STEEL_SPARK, alpha: 0.9, drag: 2 });
+      }
+    }));
     u.push(on('hazardBurn', (e) => {
       // burning: embers and a lick of flame around the warrior's legs
       this.embers(e.pos, 3, 0.35, 1.6);

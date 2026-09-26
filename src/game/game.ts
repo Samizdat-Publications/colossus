@@ -1097,8 +1097,8 @@ export class Game {
     this.weather.update(dt, this.ctx.time, cam, this.player.pos, g.phase >= 3 ? 1.7 : 1);
     const f = this.weather.flash;
     skyUniforms.uFlash.value = f;
-    this.moon.intensity = this.moonBase + f * 9;
-    this.hemi.intensity = this.hemiBase + f * 2.2;
+    this.moon.intensity = this.moonBase + f * 6.5;
+    this.hemi.intensity = this.hemiBase + f * 1.6;
     this.flames?.update(this.ctx.time);
     // embers from the golem's cracks: sample its body
     if (this.golemPoints.length !== g.capsules.length) {
@@ -1529,7 +1529,8 @@ export class Game {
       this.hud.markCore = best;
     } else if (fighting) {
       const arm = g.focusCore(this.player.pos);
-      this.hud.markCore = arm && arm.kind === 'arm' && arm.pos.y < REACH && g.windowOpen && !danger ? arm : null;
+      const reeling = this.player.state === 'down' || this.player.state === 'hit';
+      this.hud.markCore = arm && arm.kind === 'arm' && arm.pos.y < REACH && g.windowOpen && !danger && !reeling ? arm : null;
       if (this.hud.markCore) {
         this.tips.show('window', 'Its fist is stuck: strike the <b class="core">glowing core</b> on its arm!', 3, 3.5);
       }

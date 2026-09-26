@@ -107,6 +107,7 @@ export class Player {
   lastHitSource = '';
   /** seconds left of a small flinch from standing in fire */
   private burnJolt = 0;
+  private lastDodge = -9;
   private aimW = 0;
   lastOutcome: HitOutcome | '' = '';
   readonly stats = { damageTaken: 0, hits: 0, flasksUsed: 0, rolls: 0, swings: 0, coreHits: 0, bodyHits: 0, deflects: 0, whiffs: 0 };
@@ -438,6 +439,8 @@ export class Player {
   takeHit(h: IncomingHit): HitOutcome {
     if (!this.alive) return 'ignored';
     if (this.invulnerable) {
+      if (this.lastOutcome !== 'dodged' || this.time - this.lastDodge > 0.3) bus.emit('dodged', { pos: this.pos });
+      this.lastDodge = this.time;
       this.lastOutcome = 'dodged';
       return 'dodged';
     }

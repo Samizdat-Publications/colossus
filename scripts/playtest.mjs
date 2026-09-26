@@ -98,7 +98,7 @@ async function shot(label) {
     };
   });
   shots.push({ file, label, flow: s.flow, golem: s.golem.state, attack: s.golem.attack, step: s.golem.step, php: s.player.hp, ghp: s.golem.hpFrac, ...view });
-  log('shot', file, s.flow, s.golem.attack ?? '', s.golem.step, `warrior ${view.warriorPx}px at ${view.warriorAt} cam ${view.camDist}m fov ${view.fov}`);
+  log('shot', file, s.flow, s.golem.attack ?? '', s.golem.step, `warrior ${s.player.state} ${view.warriorPx}px at ${view.warriorAt} cam ${view.camDist}m fov ${view.fov}`);
 }
 async function waitFor(fn, timeoutMs, arg) {
   await page.waitForFunction(fn, arg, { timeout: timeoutMs, polling: 100 });
@@ -641,22 +641,31 @@ try {
     await burst('core_hit', 2, 80);
     await page.evaluate(() => window.__CO.stopBot());
     await page.evaluate(() => window.__CO.holdGolem(true));
-    // shockwave: roll through the ring
+    // shockwave: roll through the ring (on clean ground, at full health: only the roll is judged)
     await idle();
-    await page.evaluate(() => window.__CO.teleportPlayer(0, 11));
+    await page.evaluate(() => {
+      window.__game.threats.hazards.length = 0;
+      window.__game.player.hp = 110;
+      window.__game.player.stamina = 100;
+      window.__CO.teleportPlayer(0, 11);
+    });
     await sleep(900);
     await page.evaluate(() => window.__CO.forceAttack('stomp', 'L'));
     await waitFor(() => window.__CO.state().threats.waves.length > 0, 10000).catch(() => {});
-    await waitFor(() => {
+    // watch every frame (a 100 ms poll let the ring arrive before the roll's invulnerability began)
+    await page.waitForFunction(() => {
       const s = window.__CO.state();
       const w = s.threats.waves[0];
       if (!w) return true;
       const d = Math.hypot(s.player.pos.x - w.c.x, s.player.pos.z - w.c.z);
-      return d - w.r < 2.2;
-    }, 6000).catch(() => {});
+      return d - w.r < 2.4;
+    }, null, { timeout: 6000, polling: 'raf' }).catch(() => {});
+    // roll forward, through the ring (rolling away lets it catch up after the invulnerable frames)
+    await page.keyboard.down('KeyW');
     await key('Space');
     await sleep(60);
     await burst('roll_through_shockwave', 3, 110);
+    await page.keyboard.up('KeyW');
     // player hit by a thrown rock
     await idle();
     await page.evaluate(() => window.__CO.teleportPlayer(3, 22));
