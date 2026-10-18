@@ -1,0 +1,33 @@
+{
+  "name": "COLOSSUS",
+  "repo": "colossus",
+  "pitch": "Souls-like boss fight in the browser: a lone warrior against OSTRAKON, a stone golem rising from a drowned arena.",
+  "status": "v1",
+  "version": "1.0.0",
+  "kind": "game",
+  "started": "2026-09-24",
+  "updated": "2026-09-26",
+  "tech": [
+    "TypeScript",
+    "Three.js",
+    "Blender",
+    "Web Audio"
+  ],
+  "links": {
+    "landing": "https://colossus-bem.pages.dev",
+    "play": "https://colossus-bem.pages.dev/play/",
+    "devlog": ""
+  },
+  "hero": {
+    "gif": "docs/media/phase3.gif",
+    "poster": "site/media/phase3.jpg",
+    "clip": "site/media/phase3.mp4"
+  },
+  "credits": [
+    {
+      "what": "Cinzel and EB Garamond fonts",
+      "who": "Natanael Gama; Georg Duffner and Octavio Pardo (via @fontsource)",
+      "licence": "SIL OFL 1.1"
+    }
+  ]
+}

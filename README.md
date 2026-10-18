@@ -1,5 +1,7 @@
 # COLOSSUS
 
+![Status: v1.0](https://img.shields.io/badge/status-v1.0-2ea043)
+
 **One fight against a living ruin.** A third-person, Souls-like boss fight in the browser. A lone warrior walks into
 a drowned arena at night. Rain hammers the flagstones, lightning cracks over the broken arches, and the rubble in the
 middle of the arena rises, stone by stone, into **OSTRAKON, THE LIVING RUIN**: a golem more than eight times your
@@ -214,3 +216,5 @@ screenshots/      six final full-HD player-view screenshots
 
 The game code and assets in this repository were made for this project. Cinzel and EB Garamond are licensed under
 the SIL Open Font License 1.1 and bundled from npm (`@fontsource`).
+
+Code is MIT (see [LICENSE](LICENSE)).
